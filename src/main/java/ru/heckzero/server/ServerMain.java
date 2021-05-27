@@ -10,6 +10,7 @@ import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.Delimiters;
+import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.apache.commons.configuration2.XMLConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,7 +28,8 @@ public class ServerMain {
     }
 
     public void startOperation() {
-        logger.info("starting");
+        logger.info("HeckZero server version %s starting", Defines.VERSION);
+        HZMainHandler hzMainHandler = new HZMainHandler();
 
         EventLoopGroup group = new EpollEventLoopGroup();
         try {
@@ -38,8 +40,11 @@ public class ServerMain {
                     childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
-                            ch.pipeline().addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));
-                            ch.pipeline().addLast(new HZMainHandler());
+                            ch.pipeline().addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));
+                            ch.pipeline().addLast(new HZOutHanlder());
+
+                            ch.pipeline().addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));      //detect Flash XML Socket NULL - termination string
+                            ch.pipeline().addLast(hzMainHandler);
                         }
                     });
             ChannelFuture f = b.bind(5190).sync();                                                                                          //Bind and start to accept incoming connections
