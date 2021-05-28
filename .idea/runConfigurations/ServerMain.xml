@@ -2,7 +2,7 @@
   <configuration default="false" name="ServerMain" type="Application" factoryName="Application" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="ru.heckzero.server.ServerMain" />
     <module name="HeckZero-6.4-2.4" />
-    <option name="VM_PARAMETERS" value="-Dlog4j.configurationFile=conf/log4j2.xml -Dio.netty.leakDetectionLevel=ADVANCED" />
+    <option name="VM_PARAMETERS" value="-Dlog4j.configurationFile=conf/log4j2.xml -Dio.netty.leakDetectionLevel=PARANOID" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="ru.heckzero.server.*" />

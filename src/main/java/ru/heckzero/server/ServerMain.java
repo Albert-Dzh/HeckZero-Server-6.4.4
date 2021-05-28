@@ -1,10 +1,7 @@
 package ru.heckzero.server;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
@@ -27,7 +24,7 @@ public class ServerMain {
         return;
     }
 
-    public void startOperation() {
+    public void startOperation()  {
         logger.info("HeckZero server version %s starting", Defines.VERSION);
         HZMainHandler hzMainHandler = new HZMainHandler();
 
@@ -40,18 +37,24 @@ public class ServerMain {
                     childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
-                            ch.pipeline().addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));
-                            ch.pipeline().addLast(new HZOutHanlder());
+                            ChannelPipeline pl = ch.pipeline();
+                            pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout
+                            pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to a string
 
-                            ch.pipeline().addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));      //detect Flash XML Socket NULL - termination string
-                            ch.pipeline().addLast(hzMainHandler);
+                            pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable flash XML Socket (\0x0) termination string detection
+                            pl.addLast(hzMainHandler);
                         }
                     });
-            ChannelFuture f = b.bind(5190).sync();                                                                                          //Bind and start to accept incoming connections
-            f.channel().closeFuture().sync();
-        } catch (Exception e) {e.printStackTrace();}
-        finally {
-            group.shutdownGracefully();
+            ChannelFuture f = b.bind(Defines.PORT).sync();                                                                                  //bind and start to accept incoming connections
+            f.channel().closeFuture().sync();                                                                                               //wait for the server to stop
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                group.shutdownGracefully().sync();                                                                                          //shut down the server
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         return;
