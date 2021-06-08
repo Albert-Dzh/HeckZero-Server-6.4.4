@@ -6,10 +6,12 @@
 
     <groupId>org.heckzero</groupId>
     <artifactId>HeckZero-6.4-2.4</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1</version>
+    <packaging>jar</packaging>
 
     <properties>
-        <finalJarName>${project.artifactId}-${project.version}</finalJarName>
+        <mainCLass>ru.heckzero.server.ServerMain</mainCLass>
+        <finalJarName>${project.artifactId}</finalJarName>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <skipTests>true</skipTests>
@@ -71,10 +73,14 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
                 <executions>
-                    <execution> <goals>  <goal>java</goal>  </goals>  </execution>
+                    <execution>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                    </execution>
                 </executions>
                 <configuration>
-                    <mainClass>ru.heckzero.server.ServerMain</mainClass>
+                    <mainClass>${mainCLass}</mainClass>
                     <systemProperties>
                         <systemProperty>
                             <key>log4j.configurationFile</key>
@@ -82,6 +88,59 @@
                         </systemProperty>
                     </systemProperties>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <outputDirectory>${project.basedir}</outputDirectory>
+                    <finalName>${finalJarName}</finalName>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>libs/</classpathPrefix>
+                            <mainClass>${mainCLass}</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.basedir}</directory>
+                            <includes>
+                                <include>${finalJarName}.${project.packaging}</include>
+                            </includes>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.1.2</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.basedir}/libs</outputDirectory>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>

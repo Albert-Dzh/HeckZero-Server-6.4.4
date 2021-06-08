@@ -23,7 +23,7 @@ public class HZMainHandler extends ChannelInboundHandlerAdapter {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //get client's address
         logger.info("client connected from %s:%d", sa.getHostString(), sa.getPort());
-        String genKey = genEncryptionKey();                                                                                                 //generate an encryption key for the new client
+        String genKey = RandomStringUtils.randomAlphanumeric(Defines.CHANNEL_KEY_SIZE);                                                     //generate an encryption key for the new client
         ctx.channel().attr(encKey).set(genKey);                                                                                             //put the channel id and the key on the MAP
         ctx.writeAndFlush(String.format("<KEY s =\"%s\" />", genKey));                                                                      //send the generated encryption key to the client
         return;
@@ -52,12 +52,10 @@ public class HZMainHandler extends ChannelInboundHandlerAdapter {
         return;
     }
 
-    private String genEncryptionKey() {
-        return  RandomStringUtils.randomAlphanumeric(Defines.CHANNEL_KEY_SIZE);
-    }
+
 }
 
-class HZOutHanlder extends MessageToByteEncoder<String> {
+class HZOutHanlder extends MessageToByteEncoder<String> {                                                                                   //add '\0' (null terminator) to all outbound messages
     private static final Logger logger = LogManager.getFormatterLogger();
     @Override
     protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {

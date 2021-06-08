@@ -38,7 +38,7 @@ public class ServerMain {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pl = ch.pipeline();
-                            pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout
+                            pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
                             pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to a string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable flash XML Socket (\0x0) termination string detection
