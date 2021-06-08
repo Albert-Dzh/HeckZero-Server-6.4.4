@@ -43,7 +43,7 @@ public class HZMainHandler extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //get client's address
         if (cause instanceof ReadTimeoutException) {
-            logger.error("read timeout for client %s:%d, closing connection", sa.getHostString(), sa.getPort());
+            logger.error("client %s:%d read timeout, closing connection", sa.getHostString(), sa.getPort());
         } else {
             logger.error(cause);
             super.exceptionCaught(ctx, cause);
