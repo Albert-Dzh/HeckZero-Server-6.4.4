@@ -41,7 +41,7 @@ public class ServerMain {
                             pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
                             pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to a string
 
-                            pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable flash XML Socket (\0x0) termination string detection
+                            pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) termination string detection
                             pl.addLast(hzMainHandler);
                         }
                     });
