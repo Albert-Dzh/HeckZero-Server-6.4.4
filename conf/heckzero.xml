@@ -4,7 +4,7 @@
 		<Host>mail.nic.ru</Host>
 		<Port>587</Port>
 		<Username>mbilling@adlernet.net</Username>
-		<Password>Ityaecby40</Password>
+		<Password>top_secret</Password>
 		<From>mbilling@adlernet.net</From>
 		<FromName>Mbilling</FromName>
 	</SMTP>
