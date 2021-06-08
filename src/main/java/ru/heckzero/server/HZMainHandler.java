@@ -35,7 +35,7 @@ public class HZMainHandler extends ChannelInboundHandlerAdapter {
         String s = (String)in.readCharSequence(in.readableBytes() - 2, Charset.defaultCharset());
         logger.info("received line feed delimited string: %s", s);
 
-//        in.release();
+        in.release();
         return;
     }
 
