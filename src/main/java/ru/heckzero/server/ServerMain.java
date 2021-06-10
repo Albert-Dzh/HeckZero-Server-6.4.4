@@ -7,6 +7,7 @@ import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.Delimiters;
+import io.netty.handler.codec.xml.XmlDecoder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.apache.commons.configuration2.XMLConfiguration;
 import org.apache.logging.log4j.LogManager;
@@ -37,15 +38,17 @@ public class ServerMain {
                     childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
-                            ChannelPipeline pl = ch.pipeline();
-                            pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
-                            pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to a string
+                            ChannelPipeline pl = ch.pipeline();                                                                             //the channel pipeline
 
-                            pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) termination string detection
-                            pl.addLast(hzMainHandler);
+                            pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
+                            pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to an outbound string
+
+                            pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) terminator detection
+                            pl.addLast(new XmlDecoder());                                                                                   //ByteBuf to XML decoder
+                            pl.addLast(hzMainHandler);                                                                                      //main inbound handler
                         }
                     });
-            ChannelFuture f = b.bind(Defines.PORT).sync();                                                                                  //bind and start to accept incoming connections
+            ChannelFuture f = b.bind(Defines.PORT).syncUninterruptibly();                                                                   //bind and start to accept incoming connections
             f.channel().closeFuture().sync();                                                                                               //wait for the server to stop
         } catch (Exception e) {
             e.printStackTrace();
@@ -56,7 +59,6 @@ public class ServerMain {
                 e.printStackTrace();
             }
         }
-
         return;
     }
 }
