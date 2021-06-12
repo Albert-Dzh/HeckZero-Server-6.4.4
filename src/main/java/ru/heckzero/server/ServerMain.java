@@ -44,6 +44,7 @@ public class ServerMain {
                             pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to an outbound string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) terminator detection
+                            pl.addLast(new HZLoggerHandler());
                             pl.addLast(new XmlDecoder());                                                                                   //ByteBuf to XML decoder
                             pl.addLast(hzMainHandler);                                                                                      //main inbound handler
                         }

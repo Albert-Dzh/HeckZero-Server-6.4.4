@@ -36,7 +36,7 @@ public class HZMainHandler extends MessageToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, Object msg, List out) throws Exception {
-        logger.info("decoding XML object");
+        logger.info("decoding called size = %d", out.size());
 
         if (msg instanceof XmlElementStart) {
             XmlElementStart xes = (XmlElementStart) msg;
@@ -47,19 +47,6 @@ public class HZMainHandler extends MessageToMessageDecoder {
         }
         return;
     }
-
-/*
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-//        ByteBuf in = (ByteBuf)msg;
-//        String s = (String)in.readCharSequence(in.readableBytes() - 2, Charset.defaultCharset());
-        logger.info("received string: %s: ");
-
-//        in.release();
-        return;
-    }
-*/
 
 
     @Override
@@ -77,9 +64,15 @@ public class HZMainHandler extends MessageToMessageDecoder {
 }
 
 class HZLoggerHandler extends ChannelInboundHandlerAdapter {
+    private static final Logger logger = LogManager.getFormatterLogger();
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-
+        ByteBuf in = ((ByteBuf)msg).slice();
+        String rcvd = (String)in.readCharSequence(in.readableBytes(), Charset.defaultCharset());
+        InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //get client's address
+        logger.info("received from %s:%d  %s", sa.getHostString(), sa.getPort(), rcvd);
+        ctx.fireChannelRead(msg);
+        return;
     }
 }
 
@@ -93,3 +86,4 @@ class HZOutHanlder extends MessageToByteEncoder<String> {                       
         return;
     }
 }
+
