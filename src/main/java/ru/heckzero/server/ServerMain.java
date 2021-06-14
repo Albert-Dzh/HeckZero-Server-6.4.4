@@ -22,12 +22,13 @@ public class ServerMain {
 
     public static void main(String[] args) {
         new ServerMain().startOperation();
+
         return;
     }
 
     public void startOperation()  {
         logger.info("HeckZero server version %s starting", Defines.VERSION);
-        HZMainHandler hzMainHandler = new HZMainHandler();
+        MainHandler mainHandler = new MainHandler();
 
         EventLoopGroup group = new EpollEventLoopGroup();
         try {
@@ -41,12 +42,12 @@ public class ServerMain {
                             ChannelPipeline pl = ch.pipeline();                                                                             //the channel pipeline
 
                             pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
-                            pl.addLast(new HZOutHanlder());                                                                                 //outbound handler to add null terminator to an outbound string
+                            pl.addLast(new OutHanlder());                                                                                   //outbound handler to add null terminator to an outbound string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) terminator detection
-                            pl.addLast(new HZLoggerHandler());
+                            pl.addLast(new LoggerHandler());
                             pl.addLast(new XmlDecoder());                                                                                   //ByteBuf to XML decoder
-                            pl.addLast(hzMainHandler);                                                                                      //main inbound handler
+                            pl.addLast(mainHandler);                                                                                        //main inbound handler
                         }
                     });
             ChannelFuture f = b.bind(Defines.PORT).syncUninterruptibly();                                                                   //bind and start to accept incoming connections
