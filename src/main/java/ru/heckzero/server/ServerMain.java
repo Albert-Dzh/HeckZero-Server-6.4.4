@@ -45,7 +45,7 @@ public class ServerMain {
                             pl.addLast(new OutHanlder());                                                                                   //outbound handler to add null terminator to an outbound string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) terminator detection
-                            pl.addLast(new LoggerHandler());
+                            pl.addLast(new PreprocessHandler());                                                                            //log and do a small processing of an incoming message
                             pl.addLast(new XmlDecoder());                                                                                   //ByteBuf to XML decoder
                             pl.addLast(mainHandler);                                                                                        //main inbound handler
                         }
@@ -61,6 +61,7 @@ public class ServerMain {
                 e.printStackTrace();
             }
         }
+        DbUtil.close();
         return;
     }
 }

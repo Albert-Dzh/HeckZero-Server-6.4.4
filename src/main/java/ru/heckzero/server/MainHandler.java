@@ -1,13 +1,15 @@
 package ru.heckzero.server;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler.*;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.xml.XmlElementStart;
 import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.util.AttributeKey;
+import io.netty.util.ReferenceCountUtil;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,14 +20,16 @@ import java.nio.charset.Charset;
 @Sharable
 class MainHandler extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final AttributeKey<String> encKey = AttributeKey.newInstance("encKey");                                                  //encryption key generated for each channel
+    private static final AttributeKey<String> encKey = AttributeKey.valueOf("encKey");                                                      //encryption key generated for each channel
+    private UserHelper userHelper;
+    private CommandProccessor commandProccessor = new CommandProccessor();
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //get client's address
         logger.info("client connected from %s:%d", sa.getHostString(), sa.getPort());
 
-        String genKey = RandomStringUtils.randomAlphanumeric(Defines.CHANNEL_KEY_SIZE);                                                     //generate an encryption key for the new client
+        String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate an encryption key for the new client authentication
         ctx.channel().attr(encKey).set(genKey);                                                                                             //store an encryption key as a channel attribute
         ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a generated message with the encryption key to the client
 
@@ -33,13 +37,15 @@ class MainHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        logger.info("channel read element is: %s toString() is: %s", msg.getClass(), msg.toString());
-
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {                                                       //here we have a valid XmlElement as a msg
+        logger.debug("channel read element is: %s toString() is: %s", msg.getClass(), msg.toString());
         if (!(msg instanceof XmlElementStart))
             return;
-        XmlElementStart element = (XmlElementStart) msg;
-        Player player = new Player(ctx.channel());
+        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);
+//        XmlElementStart element = (XmlElementStart) msg;
+///        User player = User.getPlayer(ctx.channel());
+
+//        Player player = new Player(ctx.channel());
 //        player.process(element);
 
 
@@ -60,28 +66,41 @@ class MainHandler extends ChannelInboundHandlerAdapter {
     }
 }
 
-class LoggerHandler extends ChannelInboundHandlerAdapter {
+class PreprocessHandler extends ChannelInboundHandlerAdapter {                                                                              //log and preprocess an incoming message
     private static final Logger logger = LogManager.getFormatterLogger();
+
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf in = ((ByteBuf)msg).slice();
-        String rcvd = (String)in.readCharSequence(in.readableBytes(), Charset.defaultCharset());
-        InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //get client's address
-        logger.info("received from %s:%d  %s", sa.getHostString(), sa.getPort(), rcvd);
-        ctx.fireChannelRead(msg);
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {                                                       //here we have a received String after striping the trailing 0x00
+        InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client's address
+
+        String rcvd = ((ByteBuf)msg).toString(Charset.forName("UTF-8"));                                                                    //get the context of a received message for the logging purpose
+        logger.info("received %d bytes from %s:%d  %s, length = %d", ((ByteBuf) msg).readableBytes(), sa.getHostString(), sa.getPort(), rcvd, rcvd.length());
+        ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
+
+        rcvd.replace("\r", "&#xD;");                                                                                                        //replace CR with the corresponding XML code
+        String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><BODY>" + rcvd + "</BODY>";                                          //wrap the source message into XML root elements <BODY>source_message>/BODY>
+        ByteBuf out = ctx.alloc().buffer(ByteBufUtil.utf8Bytes(xmlString), ByteBufUtil.utf8MaxBytes(xmlString));                            //allocate a new ByteBuf for the wrapped message
+        out.writeCharSequence(xmlString, Charset.forName("UTF-8"));                                                                         //write the wrapped message to the new ByteBuf
+        ctx.fireChannelRead(out);                                                                                                           //call the next Channel Inbound Handler with the new ByteBuf
         return;
     }
 }
 
 class OutHanlder extends MessageToByteEncoder<String> {                                                                                     //add '\0' (null terminator) to all outbound messages
     private static final Logger logger = LogManager.getFormatterLogger();
+
     @Override
     protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
         InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //get client's address
-        logger.info("sending %s to %s;%d", msg, sa.getHostString(), sa.getPort());
-        msg = msg + "\0";
+        logger.info("sending %s to %s:%d", msg, sa.getHostString(), sa.getPort());                                                          //log an outbound message
         out.writeCharSequence(msg, Charset.defaultCharset());
+        out.writeZero(1);                                                                                                                   //add terminating 0x00 to the message
         return;
+    }
+
+    @Override
+    protected ByteBuf allocateBuffer(ChannelHandlerContext ctx, String msg, boolean preferDirect) throws Exception {                        //allocate ByteBuff for the outgoing message with a capacity enough to hold one additional byte for the null terminator
+        return super.allocateBuffer(ctx, msg, preferDirect).capacity(msg.length() + 1);
     }
 }
 

@@ -64,7 +64,7 @@ public class DbUtil {
         return query(sql, new MapHandler(), id);
     }
     public static <T> T findById(String table , int id , BeanHandler<T> beanHandler){
-        String sql = "select * from "+table +" where id = ?";
+        String sql = "select * from " + table  +" where id = ?";
         return query(sql, beanHandler,id);
     }
     public static List<Map<String,Object>> findByCondition(String table, String condition){
@@ -85,7 +85,7 @@ public class DbUtil {
         String sql = "select * from "+table +" where "+ condition + "order by "+ sort + limit;
         return query(sql, new MapListHandler());
     }
-    public static void close(){
+    public static void close() {
         dataSource.close();
     }
 }
