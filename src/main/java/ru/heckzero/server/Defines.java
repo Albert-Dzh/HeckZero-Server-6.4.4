@@ -7,3 +7,4 @@ public class Defines {
     public static final int ENCRYPTION_KEY_SIZE = 32;                                                                                          //password encryption key size (bytes)
     public static final int READ_TIMEOUT = 30;
 }
+

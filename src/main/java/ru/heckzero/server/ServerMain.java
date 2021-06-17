@@ -4,7 +4,9 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.Delimiters;
 import io.netty.handler.codec.xml.XmlDecoder;
@@ -20,6 +22,11 @@ public class ServerMain {
     public static final String VERSION = "1.0";
     public static XMLConfiguration config;
 
+    private static String OS = System.getProperty("os.name").toLowerCase();
+    public static boolean IS_WINDOWS = (OS.indexOf("win") >= 0);
+    public static boolean IS_MAC = (OS.indexOf("mac") >= 0);
+    public static boolean IS_UNIX = (OS.indexOf("nix") >= 0 || OS.indexOf("nux") >= 0 || OS.indexOf("aix") > 0);
+
     public static void main(String[] args) {
         new ServerMain().startOperation();
 
@@ -29,12 +36,13 @@ public class ServerMain {
     public void startOperation()  {
         logger.info("HeckZero server version %s starting", Defines.VERSION);
         MainHandler mainHandler = new MainHandler();
+        PreprocessHandler preHandler = new PreprocessHandler();
 
-        EventLoopGroup group = new EpollEventLoopGroup();
+        EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(group).
-                    channel(EpollServerSocketChannel.class).
+                    channel(IS_UNIX ? EpollServerSocketChannel.class : NioServerSocketChannel.class).
                     option(ChannelOption.SO_BACKLOG, 128).childOption(ChannelOption.SO_KEEPALIVE, true).
                     childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -45,7 +53,7 @@ public class ServerMain {
                             pl.addLast(new OutHanlder());                                                                                   //outbound handler to add null terminator to an outbound string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (\0x0) terminator detection
-                            pl.addLast(new PreprocessHandler());                                                                            //log and do a small processing of an incoming message
+                            pl.addLast(preHandler);                                                                                         //log and do a small processing of an incoming message
                             pl.addLast(new XmlDecoder());                                                                                   //ByteBuf to XML decoder
                             pl.addLast(mainHandler);                                                                                        //main inbound handler
                         }

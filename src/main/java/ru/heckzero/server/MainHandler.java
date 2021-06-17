@@ -21,7 +21,6 @@ import java.nio.charset.Charset;
 class MainHandler extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final AttributeKey<String> encKey = AttributeKey.valueOf("encKey");                                                      //encryption key generated for each channel
-    private UserHelper userHelper;
     private CommandProccessor commandProccessor = new CommandProccessor();
 
     @Override
@@ -39,16 +38,9 @@ class MainHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {                                                       //here we have a valid XmlElement as a msg
         logger.debug("channel read element is: %s toString() is: %s", msg.getClass(), msg.toString());
-        if (!(msg instanceof XmlElementStart))
+        if (!(msg instanceof XmlElementStart))                                                                                              //we process only XmlElementStart elements
             return;
-        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);
-//        XmlElementStart element = (XmlElementStart) msg;
-///        User player = User.getPlayer(ctx.channel());
-
-//        Player player = new Player(ctx.channel());
-//        player.process(element);
-
-
+        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);                                                              //process the command
         return;
     }
 
