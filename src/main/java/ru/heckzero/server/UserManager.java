@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class UserManager {                                                                                                                   //yes, this class name ends in 'er' fuck off, Egor ;)
-    private static final Logger logger = LogManager.getFormatterLogger();
-    private CopyOnWriteArrayList<User> onlineUsers = new CopyOnWriteArrayList<>();
     public static final int ERROR_CODE_NOERROR = 0;
     public static final int ERROR_CODE_WRONG_USER = 1;
     public static final int ERROR_CODE_WRONG_PASSWORD = 2;
@@ -21,6 +19,9 @@ public class UserManager {                                                      
     public static final int ERROR_CODE_NEED_KEY = 6;
     public static final int ERROR_CODE_WRONG_KEY = 7;
     public static final int ERROR_CODE_SRV_FAIL = 9;
+
+    private static final Logger logger = LogManager.getFormatterLogger();
+    private CopyOnWriteArrayList<User> onlineUsers = new CopyOnWriteArrayList<>();
 
     public UserManager() { }
 
