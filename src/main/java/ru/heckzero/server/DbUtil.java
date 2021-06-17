@@ -53,6 +53,13 @@ public class DbUtil {
         }
         return result;
     }
+
+    public static Map<String, Object> findUserByLogin(String login) {
+        String sql = "select * from users where login ILIKE '?'";
+        return query(sql, new MapHandler(), login);
+    }
+
+
     public static Map<String,Object> findById(String table, int id) {
         String sql = "select * from " + table  + " where id = ?";
         return query(sql, new MapHandler(), id);
