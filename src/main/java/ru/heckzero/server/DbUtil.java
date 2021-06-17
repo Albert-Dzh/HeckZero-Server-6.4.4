@@ -11,8 +11,6 @@ import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -26,10 +24,6 @@ public class DbUtil {
         dataSource = new HikariDataSource(config);
         queryRunner = new QueryRunner(dataSource);
     }
-    public static Connection getConnection() throws SQLException {
-        return dataSource.getConnection();
-    }
-
 
     public static <T> T query(String sql , ResultSetHandler<T> resultSetHandler, Object... params) {
         T result = null;
@@ -54,8 +48,8 @@ public class DbUtil {
         int result = 0;
         try {
             result = queryRunner.execute(sql,params);
-        }catch (Exception e){
-            logger.error("",e);
+        }catch (Exception e) {
+            logger.error("", e);
         }
         return result;
     }
@@ -72,13 +66,13 @@ public class DbUtil {
         return query(sql, new MapListHandler());
     }
 
-    public static <T> List<T> findByCondition(String table, String condition , BeanListHandler<T> beanListHandler ){
+    public static <T> List<T> findByCondition(String table, String condition , BeanListHandler<T> beanListHandler ) {
         String sql = "select * from "+table +" where "+ condition;
         return query(sql, beanListHandler);
     }
 
-    public static List<Map<String,Object>> findByCondition(String table, String condition, String sort){
-        String sql = "select * from "+table +" where "+ condition + "order by "+ sort;
+    public static List<Map<String,Object>> findByCondition(String table, String condition, String sort) {
+        String sql = "select * from "+ table + " where "+ condition + "order by " + sort;
         return query(sql, new MapListHandler());
     }
     public static List<Map<String,Object>> findByCondition(String table, String condition,String sort,String limit){

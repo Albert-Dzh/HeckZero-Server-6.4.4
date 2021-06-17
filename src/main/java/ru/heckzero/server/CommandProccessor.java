@@ -9,18 +9,20 @@ import java.net.InetSocketAddress;
 
 public class CommandProccessor {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private UserHelper userHelper = new UserHelper();
+    private UserManager userManager = new UserManager();
     public CommandProccessor() { }
 
     public void processCommand(Channel ch, XmlElementStart command) {
         String commandName = command.name();                                                                                                //XML element name (command from a client)
         switch (commandName) {
-            case "BODY":                                                                                                                    //ignore <BODY> element
+            case "BODY":                                                                                                                    //silently ignore <BODY> element
                 break;
             case "LOGIN":
                 InetSocketAddress sa = (InetSocketAddress)ch.remoteAddress();                                                               //client's socket address
                 logger.info("authenticating user from %s:%d", sa.getHostString(), sa.getPort());
-                User user = userHelper.canLogin(ch, command);
+                User user = userManager.loginUser(ch, command);
+                if (user == null)
+                    ch.writeAndFlush("<ERROR code = \"3\" />");
                 break;
             default:
                 logger.warn("command %s is not implemented", commandName);
