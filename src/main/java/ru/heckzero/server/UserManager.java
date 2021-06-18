@@ -91,7 +91,7 @@ public class UserManager {                                                      
             String passKey = userClearPass.substring(0, 1) + encrKey.substring(0, 10) + userClearPass.substring(1) + encrKey.substring(10);
 
             // stage c (cipher the string with SHA-1)
-            char[] shuffled_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase(Locale.ROOT).toCharArray();
+            char[] shuffled_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase().toCharArray();
 
             // stage d (shuffle result of ciphering)
             for (int i = 0; i < s_block.length; i += 2) {
