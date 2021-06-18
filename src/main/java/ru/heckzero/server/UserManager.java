@@ -1,5 +1,6 @@
 package ru.heckzero.server;
 
+import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.xml.XmlAttribute;
 import io.netty.handler.codec.xml.XmlElementStart;
@@ -90,7 +91,7 @@ public class UserManager {                                                      
             String passKey = userClearPass.substring(0, 1) + encrKey.substring(0, 10) + userClearPass.substring(1) + encrKey.substring(10);
 
             // stage c (cipher the string with SHA-1)
-            char[] shuffled_SHA1 = getHex(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase(Locale.ROOT).toCharArray();
+            char[] shuffled_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase(Locale.ROOT).toCharArray();
 
             // stage d (shuffle result of ciphering)
             for (int i = 0; i < s_block.length; i += 2) {
@@ -105,18 +106,5 @@ public class UserManager {                                                      
         }
 
         return result;
-    }
-
-    // helper method to get HEX representation of SHA-1-encrypted byte array
-    private String getHex(byte[] raw) {
-        if (raw == null) {
-            return null;
-        }
-        final StringBuilder hex = new StringBuilder(2 * raw.length);
-        for (final byte b : raw) {
-            hex.append("0123456789ABCDEF".charAt((b & 0xF0) >> 4))
-                    .append("0123456789ABCDEF".charAt((b & 0x0F)));
-        }
-        return hex.toString();
     }
 }
