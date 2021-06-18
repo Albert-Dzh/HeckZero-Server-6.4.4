@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.xml.XmlAttribute;
 import io.netty.handler.codec.xml.XmlElementStart;
+import io.netty.util.internal.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -44,34 +45,44 @@ public class UserManager {                                                      
         return null;
     }
 
-    public void loginUser(Channel ch, XmlElementStart xmlLogin) {
-        XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);           //get login (l) attribute from <LOGIN />element
-        XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);     //get password (p) attribute from <LOGIN />element
+    public void loginUser(Channel ch, XmlElementStart xmlLogin) {                                                                           //check if the user can login and set it online
+        XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);                 //get login (l) attribute from <LOGIN />element
+        XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //get password (p) attribute from <LOGIN />element
         if (attrLogin == null || attrCryptedPass == null) {                                                                                 //login or password attributes are missed, this is abnormal. close the channel silently
             ch.close();
             logger.error("login or password(p) attribute were not found in <LOGIN /> element of client %s, closing channel", ch.attr(ServerMain.sockAddrStr).get());
             return;
         }
-        String login = attrLogin.value();
-        String userClientCryptedPass = attrCryptedPass.value();
+        String login = attrLogin.value();                                                                                                   //login  value
+        String userCryptedPass = attrCryptedPass.value();                                                                                   //encrypted password value
 
         Map<String, Object> userDbParams = DbUtil.findUserByLogin(login);
         if (userDbParams == null) {                                                                                                         //SQL Exception
+            logger.error("can't get user data from database for login %s", login);
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_SRV_FAIL);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
-        String userClearPass = (String)userDbParams.get("password");
-        String userServerCryptedPass = encryptPass(ch.attr(ServerMain.encKey).get(), userClearPass);
-        logger.info("user crypted pass: %s, server crypted pass = %s, equals = %s", userClientCryptedPass, userServerCryptedPass, userClientCryptedPass.equals(userServerCryptedPass));
+
+        String userClearPass = (String)userDbParams.get("password");                                                                        //compare password
+        String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);
+        if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //password mismatch
+            logger.info("wrong password for user %s", login);
+            String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_PASSWORD);
+            ch.writeAndFlush(errMsg);
+            ch.close();
+            return;
+        }
+
+        logger.info("user crypted pass: %s, server crypted pass = %s, equals = %s", userCryptedPass, serverCryptedPass, userCryptedPass.equals(serverCryptedPass));
+
+
         return;
     }
 
-    private String encryptPass(String encrKey, String userClearPass) {
-
-        int[] s_block =
-                {
+    private String encrypt(String key, String msg) {
+        byte [] s_block = {
                         0, 30, 30, 28, 28, 37, 37,  9,  9, 18, 18, 34, 34, 35,                                                              // the 1st chain of pairs' transpositions
                         1, 26, 26, 32, 32, 22, 22, 23, 23, 21, 21, 14, 14, 33, 33, 16,                                                      // the 2nd chain of pairs' transpositions
                         16,  7,  7,  4,  4,  2,  2, 24, 24, 29, 29, 20, 20,  8,  8,  5,
@@ -80,16 +91,14 @@ public class UserManager {                                                      
                         11, 38, 38, 13, 13, 19, 19, 31                                                                                      // the 5th chain of pairs' transpositions
                 };
 
-        String result = "";
-
+        String result = StringUtil.EMPTY_STRING;
         try {
             MessageDigest sha1 = MessageDigest.getInstance("SHA-1");                                                                        // stage a (get SHA-1 encryptor)
 
-            String passKey = userClearPass.substring(0, 1) + encrKey.substring(0, 10) + userClearPass.substring(1) + encrKey.substring(10); // stage b (collect the string)
-
+            String passKey = msg.substring(0, 1) + key.substring(0, 10) + msg.substring(1) + key.substring(10); // stage b (collect the string)
             char[] shuffled_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase().toCharArray();  // stage c (cipher the string with SHA-1)
 
-            for (int i = 0; i < s_block.length; i += 2) {                                                                                   // stage d (shuffle result of ciphering)
+            for (byte i = 0; i < s_block.length; i += 2) {                                                                                   // stage d (shuffle result of ciphering)
                 char tmp = shuffled_SHA1[s_block[i]];
                 shuffled_SHA1[s_block[i]] = shuffled_SHA1[s_block[i + 1]];
                 shuffled_SHA1[s_block[i + 1]] = tmp;
