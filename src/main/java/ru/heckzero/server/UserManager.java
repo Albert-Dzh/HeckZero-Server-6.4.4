@@ -6,6 +6,10 @@ import io.netty.handler.codec.xml.XmlElementStart;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -66,6 +70,53 @@ public class UserManager {                                                      
 
     private String encryptPass(String encrKey, String userClearPass) {
 
-        return "";
+        int[] s_block =
+                {
+                        0, 30, 30, 28, 28, 37, 37,  9,  9, 18, 18, 34, 34, 35,                      // the 1st chain of pairs' transpositions
+                        1, 26, 26, 32, 32, 22, 22, 23, 23, 21, 21, 14, 14, 33, 33, 16,              // the 2nd chain of pairs' transpositions
+                        16,  7,  7,  4,  4,  2,  2, 24, 24, 29, 29, 20, 20,  8,  8,  5,
+                        5, 15, 15, 17, 17, 36, 36,  6,                                              // the 3rd chain of pairs' transpositions
+                        3, 39, 39, 12, 12, 10, 10, 27, 27, 25,                                      // the 4th chain of pairs' transpositions
+                        11, 38, 38, 13, 13, 19, 19, 31                                              // the 5th chain of pairs' transpositions
+                };
+
+        String result = "";
+
+        try {
+            // stage a (get SHA-1 encryptor)
+            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
+
+            // stage b (collect the string)
+            String passKey = userClearPass.substring(0, 1) + encrKey.substring(0, 10) + userClearPass.substring(1) + encrKey.substring(10);
+
+            // stage c (cipher the string with SHA-1)
+            char[] shuffled_SHA1 = getHex(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase(Locale.ROOT).toCharArray();
+
+            // stage d (shuffle result of ciphering)
+            for (int i = 0; i < s_block.length; i += 2) {
+                char tmp = shuffled_SHA1[s_block[i]];
+                shuffled_SHA1[s_block[i]] = shuffled_SHA1[s_block[i + 1]];
+                shuffled_SHA1[s_block[i + 1]] = tmp;
+            }
+            result = new String(shuffled_SHA1);
+        }
+        catch (NoSuchAlgorithmException e) {
+            logger.error("encrypt: %s", e.getMessage());
+        }
+
+        return result;
+    }
+
+    // helper method to get HEX representation of SHA-1-encrypted byte array
+    private String getHex(byte[] raw) {
+        if (raw == null) {
+            return null;
+        }
+        final StringBuilder hex = new StringBuilder(2 * raw.length);
+        for (final byte b : raw) {
+            hex.append("0123456789ABCDEF".charAt((b & 0xF0) >> 4))
+                    .append("0123456789ABCDEF".charAt((b & 0x0F)));
+        }
+        return hex.toString();
     }
 }
