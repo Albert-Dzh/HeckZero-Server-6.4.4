@@ -55,7 +55,7 @@ public class DbUtil {
     }
 
     public static Map<String, Object> findUserByLogin(String login) {
-        String sql = "select * from users where login ILIKE '?'";
+        String sql = "select * from users where login ILIKE ?";
         return query(sql, new MapHandler(), login);
     }
 

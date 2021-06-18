@@ -41,9 +41,9 @@ public class UserManager {                                                      
     }
 
     public void loginUser(Channel ch, XmlElementStart xmlLogin) {
-        XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("login")).findFirst().orElse(null);             //login is absent in <LOGIN attributes/>
-        XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //pass is absent in <LOGIN attributes/>
-        if (attrLogin == null || attrCryptedPass == null) {
+        XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);                 //get login (l) attribute from <LOGIN />element
+        XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //get password (p) attribute from <LOGIN />element
+        if (attrLogin == null || attrCryptedPass == null) {                                                                                 //login or password attributes are missed, this is abnormal. close the channel silently
             ch.close();
             logger.error("login or password(p) attribute were not found in <LOGIN /> element of client %s, closing channel", ch.attr(ServerMain.sockAddrStr).get());
             return;
@@ -60,11 +60,12 @@ public class UserManager {                                                      
         }
         String userClearPass = (String)userDbParams.get("password");
         String userServerCryptedPass = encryptPass(ch.attr(ServerMain.encKey).get(), userClearPass);
+        logger.info("user crypted pass: %s, server crypted pass = %s, equals = %s", userClientCryptedPass, userServerCryptedPass, userClientCryptedPass.equals(userServerCryptedPass));
         return;
     }
 
     private String encryptPass(String encrKey, String userClearPass) {
 
-        return null;
+        return "";
     }
 }

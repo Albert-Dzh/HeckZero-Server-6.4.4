@@ -87,7 +87,7 @@ class OutHanlder extends MessageToByteEncoder<String> {                         
 
     @Override
     protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
-        logger.info("sending %s to %s:%d", msg, ctx.channel().attr(ServerMain.sockAddrStr).get());                                          //log an outbound message
+        logger.info("sending %s to %s", msg, ctx.channel().attr(ServerMain.sockAddrStr).get());                                             //log an outbound message
         out.writeCharSequence(msg, Charset.defaultCharset());
         out.writeZero(1);                                                                                                                   //add terminating 0x00 to the message
         return;
