@@ -62,14 +62,9 @@ public class ServerMain {
             ChannelFuture f = b.bind(Defines.PORT).syncUninterruptibly();                                                                   //bind and start to accept incoming connections
             f.channel().closeFuture().sync();                                                                                               //wait for the server to stop
         } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                group.shutdownGracefully().sync();                                                                                          //shut down the server
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            logger.error(e);
         }
+        group.shutdownGracefully().syncUninterruptibly();                                                                                   //shut down the event group
         DbUtil.close();
         return;
     }
