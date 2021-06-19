@@ -26,7 +26,7 @@ class MainHandler extends ChannelInboundHandlerAdapter {
         logger.info("client connected from %s", ctx.channel().attr(ServerMain.sockAddrStr));
 
         String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate an encryption key for the new client authentication
-        ctx.channel().attr(ServerMain.encKey).set(genKey);                                                                                             //store an encryption key as a channel attribute
+        ctx.channel().attr(ServerMain.encKey).set(genKey);                                                                                  //store the encryption key as a channel attribute
         ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a generated message with the encryption key to the client
         return;
     }
