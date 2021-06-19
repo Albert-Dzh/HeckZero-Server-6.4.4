@@ -4,15 +4,10 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
-import org.apache.commons.dbutils.handlers.BeanHandler;
-import org.apache.commons.dbutils.handlers.BeanListHandler;
-import org.apache.commons.dbutils.handlers.MapHandler;
-import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.List;
-import java.util.Map;
+import java.sql.SQLException;
 
 public class DbUtil {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -25,12 +20,13 @@ public class DbUtil {
         queryRunner = new QueryRunner(dataSource);
     }
 
-    public static <T> T query(String sql , ResultSetHandler<T> resultSetHandler, Object... params) {
+    public static <T> T query(String sql , ResultSetHandler<T> resultSetHandler, Object... params) throws SQLException {
         T result = null;
         try {
             result = queryRunner.query(sql, resultSetHandler, params);
-        }catch (Exception e) {
-            logger.error(e);
+        } catch (SQLException e) {
+            logger.error("can't execute query %s: %s", sql, e.getMessage());
+            throw e;
         }
         return result;
     }
@@ -53,12 +49,7 @@ public class DbUtil {
         }
         return result;
     }
-
-    public static Map<String, Object> findUserByLogin(String login) {
-        String sql = "select * from users where login ILIKE ?";
-        return query(sql, new MapHandler(), login);
-    }
-
+/*
 
     public static Map<String,Object> findById(String table, int id) {
         String sql = "select * from " + table  + " where id = ?";
@@ -86,6 +77,8 @@ public class DbUtil {
         String sql = "select * from "+table +" where "+ condition + "order by "+ sort + limit;
         return query(sql, new MapListHandler());
     }
+
+ */
     public static void close() {
         dataSource.close();
     }

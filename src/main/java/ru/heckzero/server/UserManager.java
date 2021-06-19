@@ -5,12 +5,15 @@ import io.netty.channel.Channel;
 import io.netty.handler.codec.xml.XmlAttribute;
 import io.netty.handler.codec.xml.XmlElementStart;
 import io.netty.util.internal.StringUtil;
+import org.apache.commons.dbutils.handlers.MapHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -28,57 +31,108 @@ public class UserManager {                                                      
     private static final Logger logger = LogManager.getFormatterLogger();
     private CopyOnWriteArrayList<User> onlineUsers = new CopyOnWriteArrayList<>();
 
+    private boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                          //validate if a user provided password conforms the requirements
+    public boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                           //validate a string as a valid SHA1 hash
+
     public UserManager() { }
 
-    public User getUser(Channel ch) {                                                                                                       //only online users search
-
+    public User getOnlineUser(Channel ch) {                                                                                                 //do only online users search
         return null;
     }
-    public User getUser(String login) {                                                                                                     //online and db search
+
+    private User getDbUser(String login) {                                                                                                  //instantiate User by getting it's data from db
+        String sql = "select * from users where login ILIKE ?";
+        try {
+            Map<String, Object> userDbParams = DbUtil.query(sql, new MapHandler(), login);
+            if (userDbParams == null)                                                                                                       //user was not found, return an empty User instance
+                return new User();
+            logger.info("userDbParams: %s", userDbParams);
+            return new User(userDbParams);                                                                                                  //return an existing User having params set from db
+        } catch (SQLException e) {
+            return null;                                                                                                                    //return null in case of SQL exception
+        }
+    }
+
+    public User getUser(String login) {                                                                                                     //get user from cached online or from db
         User user = getDbUser(login);
         return user;
     }
-
-    private User getDbUser(String logn) {
-        String sqlBuf = "select login, password from users where login ILIKE '?'";
-
-        return null;
-    }
-
     public void loginUser(Channel ch, XmlElementStart xmlLogin) {                                                                           //check if the user can login and set it online
         XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);                 //get login (l) attribute from <LOGIN />element
         XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //get password (p) attribute from <LOGIN />element
         if (attrLogin == null || attrCryptedPass == null) {                                                                                 //login or password attributes are missed, this is abnormal. close the channel silently
             ch.close();
-            logger.error("login or password(p) attribute were not found in <LOGIN /> element of client %s, closing channel", ch.attr(ServerMain.sockAddrStr).get());
+            logger.warn("login or password(p) attributes don't exist, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
             return;
         }
-        String login = attrLogin.value();                                                                                                   //login  value
-        String userCryptedPass = attrCryptedPass.value();                                                                                   //encrypted password value
 
-        Map<String, Object> userDbParams = DbUtil.findUserByLogin(login);
-        if (userDbParams == null) {                                                                                                         //SQL Exception
-            logger.error("can't get user data from database for login %s", login);
+        String login = attrLogin.value();                                                                                                   //login value
+        String userCryptedPass = attrCryptedPass.value();                                                                                   //encrypted password value
+        if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid
+            ch.close();
+            logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
+            return;
+        }
+
+        logger.info("phase 1 checking if a user '%s' exists", login);
+        User user = getUser(login);
+        if (user == null) {                                                                                                                 //SQL Exception was thrown while getting user data from a db
+            logger.error("can't get user data from database by login %s due to DB error", login);
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_SRV_FAIL);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
-
-        String userClearPass = (String)userDbParams.get("password");                                                                        //compare password
-        String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);
-        if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //password mismatch
-            logger.info("wrong password for user %s", login);
+        if (user.isEmpty()) {                                                                                                               //this an empty User instance, which means the user has not been found in a database
+            logger.info("user '%s' does not exist", login);
+            String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_USER);
+            ch.writeAndFlush(errMsg);
+            ch.close();
+            return;
+        }
+        logger.info("phase 2 checking user '%s' credentials", login);
+        String userClearPass = user.getParam("password");                                                                                   //user clear password from database
+        String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);                                                //encrypt user password using the same algorithm as a client does
+        if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
+            logger.info("wrong password for user '%s'", login);
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_PASSWORD);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
+        if (!user.getParam("dismiss").isBlank()) {                                                                                          //user is blocked
+            logger.info("user '%s' is banned, reason: '%s'", login, user.getParam("dismiss"));
+            String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam("dismiss"));
+            ch.writeAndFlush(errMsg);
+            ch.close();
+        }
 
-        logger.info("user crypted pass: %s, server crypted pass = %s, equals = %s", userCryptedPass, serverCryptedPass, userCryptedPass.equals(serverCryptedPass));
+
+        //logger.info("user crypted pass: %s, server crypted pass = %s, equals = %s", userCryptedPass, serverCryptedPass, userCryptedPass.equals(serverCryptedPass));
 
 
         return;
+    }
+
+    public boolean isValidLogin(String login) {
+        int len = StringUtils.length(login);																				            	//null safe string length calculation
+        String en_c = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        String ru_c = "абвгдежзийклмнопрстуфхцчшщьыъэюяАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯЁё";
+        String symbolChars = " -_*0123456789";
+        String validChars = ru_c + en_c + symbolChars;										        										//the set of the allowed symbols
+
+        if  (len < 3  ||  len > 16 || login.startsWith(" ")  || login.endsWith(" ")  || login.contains("  "))								//login is too short or too long or contains spaces at a wrong places
+            return false;
+        if (login.chars().anyMatch((ch) -> validChars.indexOf(ch) == -1)) 																	//login contains illegal characters
+            return false;
+
+        long numEng = login.chars().filter((ch) -> en_c.indexOf(ch) != -1).distinct().count();												//number of unique english chars in login
+        long numRus = login.chars().filter((ch) -> ru_c.indexOf(ch) != -1).distinct().count();												//number of unique russian chars in login
+        if (numEng > 0 && numRus > 0)																						                //В имени разрешено использовать только буквы одного алфавита русского или английского. Нельзя смешивать.
+            return false;
+        if (numEng < 2 && numRus < 2)  																					                	//login must contains at least 2 unique English or Russian characters В имени обязательно должны содержаться хотя бы две разные буквы",
+            return false;
+        return true;
     }
 
     private String encrypt(String key, String msg) {
