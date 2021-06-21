@@ -21,64 +21,17 @@ public class DbUtil {
     }
 
     public static <T> T query(String sql , ResultSetHandler<T> resultSetHandler, Object... params) throws SQLException {
-        T result = null;
-        try {
-            result = queryRunner.query(sql, resultSetHandler, params);
-        } catch (SQLException e) {
-            logger.error("can't execute query %s: %s", sql, e.getMessage());
-            throw e;
-        }
-        return result;
+        return queryRunner.query(sql, resultSetHandler, params);
     }
 
-    public static int update(String sql, Object... params){
-        int result = 0;
-        try {
-            result = queryRunner.update(sql, params);
-        } catch (Exception e) {
-            logger.error(e);
-        }
-        return result;
-    }
-    public static int insert(String sql,Object... params ){
-        int result = 0;
-        try {
-            result = queryRunner.execute(sql,params);
-        }catch (Exception e) {
-            logger.error("", e);
-        }
-        return result;
-    }
-/*
-
-    public static Map<String,Object> findById(String table, int id) {
-        String sql = "select * from " + table  + " where id = ?";
-        return query(sql, new MapHandler(), id);
-    }
-    public static <T> T findById(String table , int id , BeanHandler<T> beanHandler){
-        String sql = "select * from " + table  +" where id = ?";
-        return query(sql, beanHandler,id);
-    }
-    public static List<Map<String,Object>> findByCondition(String table, String condition){
-        String sql = "select * from "+ table + " where " + condition;
-        return query(sql, new MapListHandler());
+    public static int insert(String sql, Object... params) throws SQLException {
+        return queryRunner.update(sql, params);
     }
 
-    public static <T> List<T> findByCondition(String table, String condition , BeanListHandler<T> beanListHandler ) {
-        String sql = "select * from "+table +" where "+ condition;
-        return query(sql, beanListHandler);
+    public static <T> T insert(String sql, ResultSetHandler<T> resultSetHandler, Object... params) throws SQLException {
+         return queryRunner.insert(sql, resultSetHandler, params);
     }
 
-    public static List<Map<String,Object>> findByCondition(String table, String condition, String sort) {
-        String sql = "select * from "+ table + " where "+ condition + "order by " + sort;
-        return query(sql, new MapListHandler());
-    }
-    public static List<Map<String,Object>> findByCondition(String table, String condition,String sort,String limit){
-        String sql = "select * from "+table +" where "+ condition + "order by "+ sort + limit;
-        return query(sql, new MapListHandler());
-    }
-
- */
     public static void close() {
         dataSource.close();
     }

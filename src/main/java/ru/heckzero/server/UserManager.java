@@ -44,11 +44,12 @@ public class UserManager {                                                      
         String sql = "select * from users where login ILIKE ?";
         try {
             Map<String, Object> userDbParams = DbUtil.query(sql, new MapHandler(), login);
-            if (userDbParams == null)                                                                                                       //user was not found, return an empty User instance
+            if (userDbParams == null)                                                                                                       //user was not found, return an empty User stub instance
                 return new User();
             logger.info("userDbParams: %s", userDbParams);
             return new User(userDbParams);                                                                                                  //return an existing User having params set from db
         } catch (SQLException e) {
+            logger.error("can't execute query %s: %s", sql, e.getMessage());
             return null;                                                                                                                    //return null in case of SQL exception
         }
     }
@@ -68,7 +69,7 @@ public class UserManager {                                                      
 
         String login = attrLogin.value();                                                                                                   //login value
         String userCryptedPass = attrCryptedPass.value();                                                                                   //encrypted password value
-        if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid
+        if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid, this is illegal
             ch.close();
             logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
             return;
@@ -77,39 +78,43 @@ public class UserManager {                                                      
         logger.info("phase 1 checking if a user '%s' exists", login);
         User user = getUser(login);
         if (user == null) {                                                                                                                 //SQL Exception was thrown while getting user data from a db
-            logger.error("can't get user data from database by login %s due to DB error", login);
+            logger.error("can't get user data from database by login '%s' due to DB error", login);
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_SRV_FAIL);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
         if (user.isEmpty()) {                                                                                                               //this an empty User instance, which means the user has not been found in a database
-            logger.info("user '%s' does not exist", login);
+            logger.info("user with login '%s' does not exist", login);
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_USER);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
-        logger.info("phase 2 checking user '%s' credentials", login);
+        logger.info("phase 2 checking user '%s' credentials", user.getParam("login"));
         String userClearPass = user.getParam("password");                                                                                   //user clear password from database
         String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);                                                //encrypt user password using the same algorithm as a client does
         if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
-            logger.info("wrong password for user '%s'", login);
+            logger.info("wrong password for user '%s'", user.getParam("login"));
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_PASSWORD);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
         if (!user.getParam("dismiss").isBlank()) {                                                                                          //user is blocked
-            logger.info("user '%s' is banned, reason: '%s'", login, user.getParam("dismiss"));
+            logger.info("user '%s' is banned, reason: '%s'", user.getParam("login"), user.getParam("dismiss"));
             String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam("dismiss"));
             ch.writeAndFlush(errMsg);
             ch.close();
         }
-
-
-        //logger.info("user crypted pass: %s, server crypted pass = %s, equals = %s", userCryptedPass, serverCryptedPass, userCryptedPass.equals(serverCryptedPass));
-
+        logger.info("phase 3 checking if user '%s' is already online", user.getParam("login"));
+        if (user.isOnline()) {                                                                                                              //user is already online
+            logger.info("user '%s' is already online, disconnecting user from %s", user.getChannel().attr(ServerMain.sockAddrStr).get());
+            user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION)).syncUninterruptibly();
+            user.setOffline();
+        }
+        user.setOnline(ch);
+        logger.info("phase 4 user '%s' is now online", user.getParam("login"));
 
         return;
     }

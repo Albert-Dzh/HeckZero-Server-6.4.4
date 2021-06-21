@@ -15,6 +15,9 @@ import io.netty.util.AttributeKey;
 import org.apache.commons.configuration2.XMLConfiguration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.LoggerContext;
+
+import java.io.File;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -25,9 +28,12 @@ public class ServerMain {
     public static final AttributeKey<String> sockAddrStr = AttributeKey.valueOf("sockAddrStr");                                             //encryption key generated for each channel
 
     private static String OS = System.getProperty("os.name").toLowerCase();
-    public static boolean IS_WINDOWS = (OS.indexOf("win") >= 0);
-    public static boolean IS_MAC = (OS.indexOf("mac") >= 0);
     public static boolean IS_UNIX = (OS.indexOf("nix") >= 0 || OS.indexOf("nux") >= 0 || OS.indexOf("aix") > 0);
+
+    static {
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        context.setConfigLocation(new File(System.getProperty("user.dir") + File.separatorChar + "conf" + File.separatorChar + "log4j2.xml").toURI());
+    }
 
     public static void main(String[] args) {
         new ServerMain().startOperation();

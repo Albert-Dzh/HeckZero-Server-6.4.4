@@ -34,18 +34,17 @@ class MainHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {                                                       //here we have a valid XmlElement as a msg
         logger.debug("channel read element is: %s toString() is: %s", msg.getClass(), msg.toString());
-        if (!(msg instanceof XmlElementStart))                                                                                              //we process only XmlElementStart elements
+        if (!(msg instanceof XmlElementStart))                                                                                              //we are interested in only XmlElementStart elements
             return;
-        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);                                                              //process the command
+        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);                                                              //process the command by commandProcessor
         return;
     }
 
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        InetSocketAddress sa = (InetSocketAddress) ctx.channel().remoteAddress();                                                           //client's socket address
         if (cause instanceof ReadTimeoutException) {                                                                                        //read timeout
-            logger.warn("client %s:%d read timeout, closing connection", sa.getHostString(), sa.getPort());
+            logger.warn("client %s read timeout, closing connection", ctx.channel().attr(ServerMain.sockAddrStr).get());
         } else {
             logger.error("exception: %s", cause.getMessage());
         }
@@ -61,9 +60,9 @@ class PreprocessHandler extends ChannelInboundHandlerAdapter {                  
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client's address
-        String sockStr = String.format("%s:%d", sa.getHostString(), sa.getPort());
+        String sockStr = String.format("%s:%d", sa.getHostString(), sa.getPort());                                                          //and set it as a channel attribute for future use
         ctx.channel().attr(ServerMain.sockAddrStr).set(sockStr);
-        ctx.fireChannelActive();
+        ctx.fireChannelActive();                                                                                                            //call the next handler
         return;
     }
 
