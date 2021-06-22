@@ -14,8 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class UserManager {                                                                                                                  //yes, this class name ends in 'er' fuck off, Egor ;)
     public static final int ERROR_CODE_NOERROR = 0;
@@ -28,36 +32,68 @@ public class UserManager {                                                      
     public static final int ERROR_CODE_WRONG_KEY = 7;
     public static final int ERROR_CODE_SRV_FAIL = 9;
 
+    public enum inGameUserType {CACHED, ONLINE, IN_BATTLE, IN_GAME, CHAT_ON, NPC, HUMAN, POLICE};
+
     private static final Logger logger = LogManager.getFormatterLogger();
-    private CopyOnWriteArrayList<User> onlineUsers = new CopyOnWriteArrayList<>();
+    private CopyOnWriteArrayList<User> inGameUsers = new CopyOnWriteArrayList<>();
 
     private boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                          //validate if a user provided password conforms the requirements
     public boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                           //validate a string as a valid SHA1 hash
 
     public UserManager() { }
 
-    public User getOnlineUser(Channel ch) {                                                                                                 //do only online users search
-        return null;
+    public List<User> findInGameUsers(inGameUserType type) {
+        Predicate<User> isOnline = User::isOnline;
+        Predicate<User> isChatOn = User::isChatOn;
+        Predicate<User> isNPC = User::isBot;
+        Predicate<User> isHuman = isNPC.negate();
+        Predicate<User> isCop = (u) -> u.getParam("clan").equals("police");
+        Predicate<User> isInBattle = User::isInBattle;
+        Predicate<User> isInGame = isOnline.or(isInBattle);
+
+        switch (type) {
+            case CACHED:																							                        //all logged in users (included offline in a battle)
+                return new ArrayList<User>(inGameUsers);
+            case ONLINE:																							                        //all online users
+                return inGameUsers.stream().filter(isOnline).collect(Collectors.toList());
+            case IN_BATTLE:																							                        //users that are in a battle
+                return inGameUsers.stream().filter(isInBattle).collect(Collectors.toList());
+            case IN_GAME:
+                return inGameUsers.stream().filter(isInGame).collect(Collectors.toList());
+            case CHAT_ON:																							                        //all users having their chats on
+                return inGameUsers.stream().filter(isChatOn).collect(Collectors.toList());
+            case NPC:																							                            //NPC only
+                return inGameUsers.stream().filter(isNPC).collect(Collectors.toList());
+            case HUMAN:																							                            //not NPS users
+                return inGameUsers.stream().filter(isHuman).collect(Collectors.toList());
+            case POLICE:																							                        //cops (clan = police)
+                return inGameUsers.stream().filter(isCop).collect(Collectors.toList());
+        }
+        return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
     private User getDbUser(String login) {                                                                                                  //instantiate User by getting it's data from db
         String sql = "select * from users where login ILIKE ?";
         try {
             Map<String, Object> userDbParams = DbUtil.query(sql, new MapHandler(), login);
-            if (userDbParams == null)                                                                                                       //user was not found, return an empty User stub instance
-                return new User();
+            if (userDbParams == null)                                                                                                       //user was not found in db
+                return new User();                                                                                                          //return a stub - empty User instance
             logger.info("userDbParams: %s", userDbParams);
             return new User(userDbParams);                                                                                                  //return an existing User having params set from db
-        } catch (SQLException e) {
+        } catch (SQLException e) {                                                                                                          //some db problem
             logger.error("can't execute query %s: %s", sql, e.getMessage());
             return null;                                                                                                                    //return null in case of SQL exception
         }
     }
-
-    public User getUser(String login) {                                                                                                     //get user from cached online or from db
-        User user = getDbUser(login);
-        return user;
+    public User getUser(Channel ch) {                                                                                                       //do only online users search
+        return findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
     }
+
+    public User getUser(String login) {                                                                                                     //try to find a user from the cached inGame, then from db
+        User user = findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
+        return user.isEmpty() ? getDbUser(login) : user;
+    }
+
     public void loginUser(Channel ch, XmlElementStart xmlLogin) {                                                                           //check if the user can login and set it online
         XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);                 //get login (l) attribute from <LOGIN />element
         XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //get password (p) attribute from <LOGIN />element
@@ -101,7 +137,7 @@ public class UserManager {                                                      
             ch.close();
             return;
         }
-        if (!user.getParam("dismiss").isBlank()) {                                                                                          //user is blocked
+        if (!user.getParam("dismiss").isBlank()) {                                                                                          //user is blocked (dismiss is not empty)
             logger.info("user '%s' is banned, reason: '%s'", user.getParam("login"), user.getParam("dismiss"));
             String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam("dismiss"));
             ch.writeAndFlush(errMsg);
@@ -109,7 +145,7 @@ public class UserManager {                                                      
         }
         logger.info("phase 3 checking if user '%s' is already online", user.getParam("login"));
         if (user.isOnline()) {                                                                                                              //user is already online
-            logger.info("user '%s' is already online, disconnecting user from %s", user.getChannel().attr(ServerMain.sockAddrStr).get());
+            logger.info("user '%s' is already online, disconnecting user from %s", user.getGameChannel().attr(ServerMain.sockAddrStr).get());
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION)).syncUninterruptibly();
             user.setOffline();
         }

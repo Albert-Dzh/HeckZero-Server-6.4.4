@@ -17,38 +17,48 @@ class User {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static List<String> attrsDb ;//= ((ArrayList<DataRow>)db.executeQuery("select column_name from information_schema.columns where table_name='users'")).stream().map(row -> ((Map<String,String>)row.getDataAsMap()).get("column_name")).collect(Collectors.toList());
 
-    private final Map<String, Object> userParams;
-    private Channel gameChannel = null;
-    private Channel chatChannel = null;
-    public boolean isEmpty() {return userParams.isEmpty();}                                                                                 //if this user doesn't exist and is just a stub
-    public boolean isOnline() {return gameChannel != null && gameChannel.isActive();}                                                       //if this user is online, have it's channel up and running
-
-    public Channel getChannel() { return this.gameChannel;}
+    private final Map<String, Object> params;
+    private Channel gameChannel = null;                                                                                                     //user game socket
+    private Channel chatChannel = null;                                                                                                     //user chat socket
+    public Channel getGameChannel() { return this.gameChannel;}
+    public Channel getChatChannel() { return this.chatChannel;}
 
     public User() {                                                                                                                         //create an empty User instance
         this(new HashMap<>(0));
+        return;
+    }
+    public User(Map<String, Object> params) {                                                                                               //create a User instance with a given params (taken from database_
+        this.params = new ConcurrentHashMap<>(params);
+        return;
+    }
 
-        return;
-    }
-    public User(Map<String, Object> userParams) {                                                                                           //create a User instance with a given params (taken from database_
-        this.userParams = new ConcurrentHashMap<>(userParams);
-        return;
-    }
+    public boolean isEmpty() {return params.isEmpty();}                                                                                     //this user doesn't exist and is just a stub
+    public boolean isOnline() {return gameChannel != null && gameChannel.isActive();}                                                       //this user is online and it's game channel is up and running
+    public boolean isChatOn() {return chatChannel != null && chatChannel.isActive();}                                                       //this user is online and it's game channel is up and running
+    public boolean isBot() {return !getParam("bot").isEmpty();}
+    public boolean isInBattle() {return false;}                                                                                             //just a stub yet
+
 
     public String getParam(String param) {
-        if (userParams.containsKey(param)) 																		                        	//requested param exists in userParams
-            return String.valueOf(userParams.get(param));			    													                //simply return param value
+        if (params.containsKey(param)) 																		                             	//requested param exists in userParams
+            return String.valueOf(params.get(param));			    													                    //simply return param value
 
         String handlerMethodName = String.format("getParam_%s", param);																		//handler method name to compute a param which doesn't exit in userParams
         try {
             Method handlerMethod = this.getClass().getDeclaredMethod(handlerMethodName, new Class[0]);								    	//find a method with name handlerMethodName
             return (String)handlerMethod.invoke(this);																			            //try to call this method
-        } catch (Exception e) {logger.error("getParam: can't call method %s: %s ", handlerMethodName, e.getMessage()); }	                    //such method was not found or got wrong arguments
+        } catch (Exception e) {logger.error("getParam: can't call method %s: %s ", handlerMethodName, e.getMessage()); }	                //such method was not found or got wrong arguments
         return StringUtils.EMPTY;														                    								//returns an empty string if the param is not set and no getParam_% method exists
     }
 
-    public void setOnline(Channel ch) {
+    public void setGameChannel(Channel ch) {
         this.gameChannel = ch;
+    }
+    public void setChatChannel(Channel ch) {
+        this.chatChannel = ch;
+    }
+    public void setOnline(Channel ch) {
+        setGameChannel(ch);
         return;
     }
     public void setOffline() {
