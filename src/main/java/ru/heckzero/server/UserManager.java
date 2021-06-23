@@ -32,17 +32,17 @@ public class UserManager {                                                      
     public static final int ERROR_CODE_WRONG_KEY = 7;
     public static final int ERROR_CODE_SRV_FAIL = 9;
 
-    public enum inGameUserType {CACHED, ONLINE, IN_BATTLE, IN_GAME, CHAT_ON, NPC, HUMAN, POLICE};
+    private enum inGameUserType {CACHED, ONLINE, IN_BATTLE, IN_GAME, CHAT_ON, NPC, HUMAN, POLICE}
 
     private static final Logger logger = LogManager.getFormatterLogger();
-    private CopyOnWriteArrayList<User> inGameUsers = new CopyOnWriteArrayList<>();
+    private static final CopyOnWriteArrayList<User> inGameUsers = new CopyOnWriteArrayList<>();
 
     private boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                          //validate if a user provided password conforms the requirements
     public boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                           //validate a string as a valid SHA1 hash
 
     public UserManager() { }
 
-    public List<User> findInGameUsers(inGameUserType type) {
+    private static List<User> findInGameUsers(inGameUserType type) {
         Predicate<User> isOnline = User::isOnline;
         Predicate<User> isChatOn = User::isChatOn;
         Predicate<User> isNPC = User::isBot;
@@ -72,16 +72,16 @@ public class UserManager {                                                      
         return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
-    public User getUser(Channel ch) {                                                                                                       //do only online users search
+    public static User getUser(Channel ch) {                                                                                                       //do only online users search
         return findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
     }
 
-    public User getUser(String login) {                                                                                                     //try to find a user from the cached inGame, then from db
+    public static User getUser(String login) {                                                                                                     //try to find a user from the cached inGame, then from db
         User user = findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
-    private User getDbUser(String login) {                                                                                                  //instantiate User by getting it's data from db
+    private static User getDbUser(String login) {                                                                                                  //instantiate User by getting it's data from db
         String sql = "select * from users where login ILIKE ?";
         try {
             Map<String, Object> userDbParams = DbUtil.query(sql, new MapHandler(), login);
@@ -96,16 +96,17 @@ public class UserManager {                                                      
     }
 
     public void loginUser(Channel ch, XmlElementStart xmlLogin) {                                                                           //check if the user can login and set it online
+        logger.info("phase 0 validating received user credentials");
         XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);                 //get login (l) attribute from <LOGIN />element
         XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //get password (p) attribute from <LOGIN />element
         if (attrLogin == null || attrCryptedPass == null) {                                                                                 //login or password attributes are missed, this is abnormal. close the channel silently
             ch.close();
-            logger.warn("login or password(p) attributes don't exist, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
+            logger.warn("no valid login or password attributes exist in a received message, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
             return;
         }
 
-        String login = attrLogin.value();                                                                                                   //login value
-        String userCryptedPass = attrCryptedPass.value();                                                                                   //encrypted password value
+        String login = attrLogin.value();                                                                                                   //user login value
+        String userCryptedPass = attrCryptedPass.value();                                                                                   //user encrypted password value
         if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid, this is illegal
             ch.close();
             logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
@@ -151,7 +152,7 @@ public class UserManager {                                                      
             user.setOffline();
         }
         user.setOnline(ch);
-        logger.info("phase 4 user '%s' is now online", user.getParam("login"));
+        logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam("login"), ch.attr(ServerMain.sockAddrStr).get());
 
         return;
     }
