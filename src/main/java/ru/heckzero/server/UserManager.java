@@ -47,7 +47,7 @@ public class UserManager {                                                      
         Predicate<User> isChatOn = User::isChatOn;
         Predicate<User> isNPC = User::isBot;
         Predicate<User> isHuman = isNPC.negate();
-        Predicate<User> isCop = (u) -> u.getParam("clan").equals("police");
+        Predicate<User> isCop = User::isCop;
         Predicate<User> isInBattle = User::isInBattle;
         Predicate<User> isInGame = isOnline.or(isInBattle);
 
@@ -72,6 +72,15 @@ public class UserManager {                                                      
         return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
+    public User getUser(Channel ch) {                                                                                                       //do only online users search
+        return findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
+    }
+
+    public User getUser(String login) {                                                                                                     //try to find a user from the cached inGame, then from db
+        User user = findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
+        return user.isEmpty() ? getDbUser(login) : user;
+    }
+
     private User getDbUser(String login) {                                                                                                  //instantiate User by getting it's data from db
         String sql = "select * from users where login ILIKE ?";
         try {
@@ -84,14 +93,6 @@ public class UserManager {                                                      
             logger.error("can't execute query %s: %s", sql, e.getMessage());
             return null;                                                                                                                    //return null in case of SQL exception
         }
-    }
-    public User getUser(Channel ch) {                                                                                                       //do only online users search
-        return findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
-    }
-
-    public User getUser(String login) {                                                                                                     //try to find a user from the cached inGame, then from db
-        User user = findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
-        return user.isEmpty() ? getDbUser(login) : user;
     }
 
     public void loginUser(Channel ch, XmlElementStart xmlLogin) {                                                                           //check if the user can login and set it online

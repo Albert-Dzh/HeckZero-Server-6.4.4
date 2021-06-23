@@ -70,10 +70,11 @@ class PreprocessHandler extends ChannelInboundHandlerAdapter {                  
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {                                                       //here we have a received String after striping the trailing 0x00
         String rcvd = ((ByteBuf)msg).toString(StandardCharsets.UTF_8);                                                                      //get the context of a received message for the logging purpose
+        rcvd = rcvd.replace("\r", "&#xD;");                                                                                                 //replace CR with the corresponding XML code
+        
         logger.info("received %d bytes from %s %s, length = %d", ((ByteBuf) msg).readableBytes(), ctx.channel().attr(ServerMain.sockAddrStr).get(), rcvd, rcvd.length());
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
 
-        rcvd = rcvd.replace("\r", "&#xD;");                                                                                                 //replace CR with the corresponding XML code
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><BODY>" + rcvd + "</BODY>";                                           //wrap the source message into XML root elements <BODY>source_message>/BODY>
         ByteBuf out = ctx.alloc().buffer(ByteBufUtil.utf8Bytes(xmlString), ByteBufUtil.utf8MaxBytes(xmlString));                            //allocate a new ByteBuf for the wrapped message
         out.writeCharSequence(xmlString, StandardCharsets.UTF_8);                                                                           //write the wrapped message to the new ByteBuf
