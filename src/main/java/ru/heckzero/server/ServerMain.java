@@ -31,7 +31,7 @@ public class ServerMain {
     public static boolean IS_UNIX = (OS.indexOf("nix") >= 0 || OS.indexOf("nux") >= 0 || OS.indexOf("aix") > 0);
 
     static {
-        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);                                                               //set a  log4j configuration file
         context.setConfigLocation(new File(System.getProperty("user.dir") + File.separatorChar + "conf" + File.separatorChar + "log4j2.xml").toURI());
     }
 
@@ -42,11 +42,11 @@ public class ServerMain {
     }
     public void startOperation()  {
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", Defines.VERSION);
-        MainHandler mainHandler = new MainHandler();
-        PreprocessHandler preHandler = new PreprocessHandler();
-        NetOutHandler netOutHandler = new NetOutHandler();
+        NetInHandlerPre preHandler = new NetInHandlerPre();                                                                                 //preprocessor inbound handler
+        NetInHandlerMain netInHandlerMain = new NetInHandlerMain();                                                                         //main inbound handler
+        NetOutHandler netOutHandler = new NetOutHandler();                                                                                  //outbound handler
 
-        EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();
+        EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(group).
@@ -54,16 +54,16 @@ public class ServerMain {
                     option(ChannelOption.SO_BACKLOG, 128).childOption(ChannelOption.SO_KEEPALIVE, true).
                     childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        public void initChannel(SocketChannel ch) throws Exception {
+                        public void initChannel(SocketChannel ch) throws Exception {                                                        //adding handlers
                             ChannelPipeline pl = ch.pipeline();                                                                             //the channel pipeline
 
                             pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
-                            pl.addLast(netOutHandler);                                                                                      //outbound handler to add null terminator to an outbound string
+                            pl.addLast(netOutHandler);                                                                                      //outbound handler for adding 0x00 byte terminator to an outbound XML string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (0x0) terminator detection
-                            pl.addLast(preHandler);                                                                                         //log and do a small processing of an incoming message
+                            pl.addLast(preHandler);                                                                                         //logging and do a small processing of an incoming message
                             pl.addLast(new XmlDecoder());                                                                                   //ByteBuf to XML decoder
-                            pl.addLast(mainHandler);                                                                                        //main inbound handler
+                            pl.addLast(netInHandlerMain);                                                                                   //main inbound handler
                         }
                     });
             ChannelFuture f = b.bind(Defines.PORT).syncUninterruptibly();                                                                   //bind and start to accept incoming connections
