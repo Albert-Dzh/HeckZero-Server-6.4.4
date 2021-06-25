@@ -5,7 +5,6 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.xml.XmlElementStart;
 import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.util.ReferenceCountUtil;
@@ -14,7 +13,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 @Sharable
@@ -34,10 +32,10 @@ class MainHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {                                                       //here we have a valid XmlElement as a msg
-        logger.debug("channel read element is: %s toString() is: %s", msg.getClass(), msg.toString());
+        logger.info("channel read element is: %s toString() is: %s", msg.getClass(), msg.toString());
         if (!(msg instanceof XmlElementStart))                                                                                              //we are interested in only XmlElementStart elements
             return;
-        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);                                                              //process the command by commandProcessor
+//        commandProccessor.processCommand(ctx.channel(), (XmlElementStart)msg);                                                              //process the command by commandProcessor
         return;
     }
 
@@ -48,6 +46,7 @@ class MainHandler extends ChannelInboundHandlerAdapter {
             logger.warn("client %s read timeout, closing connection", ctx.channel().attr(ServerMain.sockAddrStr).get());
         } else {
             logger.error("exception: %s", cause.getMessage());
+            cause.printStackTrace();
         }
         ctx.close();
         return;
@@ -61,8 +60,9 @@ class PreprocessHandler extends ChannelInboundHandlerAdapter {                  
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client's address
-        String sockStr = String.format("%s:%d", sa.getHostString(), sa.getPort());                                                          //and set it as a channel attribute for a future usage
-        ctx.channel().attr(ServerMain.sockAddrStr).set(sockStr);
+        String sockStr = String.format("%s:%d", sa.getHostString(), sa.getPort());
+
+        ctx.channel().attr(ServerMain.sockAddrStr).set(sockStr);                                                                            //and set it as a channel attribute for a future usage
         ctx.fireChannelActive();                                                                                                            //call the next handler
         return;
     }
@@ -77,29 +77,10 @@ class PreprocessHandler extends ChannelInboundHandlerAdapter {                  
         logger.info("received %s from %s, length = %d", rcvd, sender, rcvd.length());                                                       //log the received message
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
-
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><BODY>" + rcvd + "</BODY>";                                           //wrap the source message into XML root elements <BODY>source_message>/BODY>
         ByteBuf out = ctx.alloc().buffer(ByteBufUtil.utf8Bytes(xmlString), ByteBufUtil.utf8MaxBytes(xmlString));                            //allocate a new ByteBuf for the wrapped message
         out.writeCharSequence(xmlString, StandardCharsets.UTF_8);                                                                           //write the wrapped message to the new ByteBuf
-
         ctx.fireChannelRead(out);                                                                                                           //call the next Channel Inbound Handler with the new ByteBuf
         return;
-    }
-}
-
-class OutHanlder extends MessageToByteEncoder<String> {                                                                                     //add '\0' (null terminator) to all outbound messages
-    private static final Logger logger = LogManager.getFormatterLogger();
-
-    @Override
-    protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
-        logger.info("sending %s to %s", msg, ctx.channel().attr(ServerMain.sockAddrStr).get());                                             //log an outbound message
-        out.writeCharSequence(msg, Charset.defaultCharset());
-        out.writeZero(1);                                                                                                                   //add terminating 0x00 to the message
-        return;
-    }
-
-    @Override
-    protected ByteBuf allocateBuffer(ChannelHandlerContext ctx, String msg, boolean preferDirect) throws Exception {                        //allocate ByteBuff for the outgoing message with a capacity enough to hold one additional byte for the null terminator
-        return super.allocateBuffer(ctx, msg, preferDirect).capacity(msg.length() + 1);
     }
 }

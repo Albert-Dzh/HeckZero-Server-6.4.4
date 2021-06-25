@@ -6,6 +6,7 @@ import io.netty.handler.codec.xml.XmlAttribute;
 import io.netty.handler.codec.xml.XmlElementStart;
 import io.netty.util.internal.StringUtil;
 import org.apache.commons.dbutils.handlers.MapHandler;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -154,6 +155,8 @@ public class UserManager {                                                      
         user.setOnline(ch);
         logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam("login"), ch.attr(ServerMain.sockAddrStr).get());
 
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"s\"/>", user.getParam("login"), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));
+        ch.writeAndFlush(resultMsg);
         return;
     }
 
@@ -192,7 +195,7 @@ public class UserManager {                                                      
         try {
             MessageDigest sha1 = MessageDigest.getInstance("SHA-1");                                                                        // stage a (get SHA-1 encryptor)
 
-            String passKey = msg.substring(0, 1) + key.substring(0, 10) + msg.substring(1) + key.substring(10); // stage b (collect the string)
+            String passKey = msg.substring(0, 1) + key.substring(0, 10) + msg.substring(1) + key.substring(10);                             // stage b (collect the string)
             char[] shuffled_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase().toCharArray();  // stage c (cipher the string with SHA-1)
 
             for (byte i = 0; i < s_block.length; i += 2) {                                                                                   // stage d (shuffle result of ciphering)

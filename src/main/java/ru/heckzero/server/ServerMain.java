@@ -44,6 +44,7 @@ public class ServerMain {
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", Defines.VERSION);
         MainHandler mainHandler = new MainHandler();
         PreprocessHandler preHandler = new PreprocessHandler();
+        NetOutHandler netOutHandler = new NetOutHandler();
 
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();
         try {
@@ -57,7 +58,7 @@ public class ServerMain {
                             ChannelPipeline pl = ch.pipeline();                                                                             //the channel pipeline
 
                             pl.addLast(new ReadTimeoutHandler(Defines.READ_TIMEOUT));                                                       //set a read timeout handler
-                            pl.addLast(new OutHanlder());                                                                                   //outbound handler to add null terminator to an outbound string
+                            pl.addLast(netOutHandler);                                                                                      //outbound handler to add null terminator to an outbound string
 
                             pl.addLast(new DelimiterBasedFrameDecoder(Defines.MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                 //enable Flash XML Socket (0x0) terminator detection
                             pl.addLast(preHandler);                                                                                         //log and do a small processing of an incoming message
