@@ -68,7 +68,7 @@ class NetInHandlerMain extends ChannelInboundHandlerAdapter {
             logger.warn("read timeout from %s", fromStr);
         } else {
                 if (cause instanceof SAXException) {                                                                                        //malformed XML was received from a client
-                    logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", fromStr, cause.getMessage());
+                    logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", fromStr, cause.getMessage());                              //XML govnoy vonyaet
                 } else {                                                                                                                    //all other exceptions
                     logger.error("an exception caught from %s: %s", fromStr, cause.getMessage());
                 }

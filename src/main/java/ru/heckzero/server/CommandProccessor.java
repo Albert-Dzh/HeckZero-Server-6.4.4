@@ -36,7 +36,7 @@ public class CommandProccessor extends DefaultHandler {
         return;
     }
 
-    private void com_ROOT(Attributes attrs) {
+    private void com_ROOT(Attributes attrs) {                                                                                               //silently ignore a <ROOT> element
         logger.debug("silently ignoring a <ROOT> element");
         return;
     }
