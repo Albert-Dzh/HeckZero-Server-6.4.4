@@ -45,16 +45,10 @@
             <version>1.9.3</version>
         </dependency>
         <dependency>
-            <groupId>com.fasterxml</groupId>
-            <artifactId>aalto-xml</artifactId>
-            <version>1.2.2</version>
-        </dependency>
-        <dependency>
             <groupId>commons-dbutils</groupId>
             <artifactId>commons-dbutils</artifactId>
             <version>1.7</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
@@ -68,7 +62,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.2.20</version>
+            <version>42.2.21</version>
         </dependency>
     </dependencies>
 

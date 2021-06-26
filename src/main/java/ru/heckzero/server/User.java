@@ -37,7 +37,7 @@ class User {
     public boolean isChatOn() {return chatChannel != null && chatChannel.isActive();}                                                       //this user is online and it's game channel is up and running
     public boolean isBot() {return !getParam("bot").isEmpty();}
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet
-    public boolean isCop() {return getParam("clan").equals("police");}                                                                      //iser is a cop
+    public boolean isCop() {return getParam("clan").equals("police");}                                                                      //user is a cop
 
     public String getParam(String param) {
         if (params.containsKey(param)) 																		                             	//requested param exists in userParams

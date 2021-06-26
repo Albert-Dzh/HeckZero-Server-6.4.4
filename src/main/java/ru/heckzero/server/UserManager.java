@@ -2,8 +2,6 @@ package ru.heckzero.server;
 
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
-import io.netty.handler.codec.xml.XmlAttribute;
-import io.netty.handler.codec.xml.XmlElementStart;
 import io.netty.util.internal.StringUtil;
 import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -53,8 +51,6 @@ public class UserManager {                                                      
         Predicate<User> isInGame = isOnline.or(isInBattle);
 
         switch (type) {
-            case CACHED:																							                        //all logged in users (included offline in a battle)
-                return new ArrayList<User>(inGameUsers);
             case ONLINE:																							                        //all online users
                 return inGameUsers.stream().filter(isOnline).collect(Collectors.toList());
             case IN_BATTLE:																							                        //users that are in a battle
@@ -73,16 +69,16 @@ public class UserManager {                                                      
         return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
-    public static User getUser(Channel ch) {                                                                                                       //do only online users search
+    public static User getUser(Channel ch) {                                                                                                //do only online users search
         return findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
     }
 
-    public static User getUser(String login) {                                                                                                     //try to find a user from the cached inGame, then from db
+    public static User getUser(String login) {                                                                                              //try to find a user from the cached inGame, then from db
         User user = findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
-    private static User getDbUser(String login) {                                                                                                  //instantiate User by getting it's data from db
+    private static User getDbUser(String login) {                                                                                           //instantiate User by getting it's data from db
         String sql = "select * from users where login ILIKE ?";
         try {
             Map<String, Object> userDbParams = DbUtil.query(sql, new MapHandler(), login);
@@ -96,18 +92,14 @@ public class UserManager {                                                      
         }
     }
 
-    public void loginUser(Channel ch, XmlElementStart xmlLogin) {                                                                           //check if the user can login and set it online
+    public void loginUser(Channel ch, String login, String userCryptedPass) {                                                               //check if the user can login and set it online
         logger.info("phase 0 validating received user credentials");
-        XmlAttribute attrLogin = xmlLogin.attributes().stream().filter(a -> a.name().equals("l")).findFirst().orElse(null);                 //get login (l) attribute from <LOGIN />element
-        XmlAttribute attrCryptedPass = xmlLogin.attributes().stream().filter(a -> a.name().equals("p")).findFirst().orElse(null);           //get password (p) attribute from <LOGIN />element
-        if (attrLogin == null || attrCryptedPass == null) {                                                                                 //login or password attributes are missed, this is abnormal. close the channel silently
+        if (login == null || userCryptedPass == null) {                                                                                     //login or password attributes are missed, this is abnormal. close the channel silently
             ch.close();
             logger.warn("no valid login or password attributes exist in a received message, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
             return;
         }
 
-        String login = attrLogin.value();                                                                                                   //user login value
-        String userCryptedPass = attrCryptedPass.value();                                                                                   //user encrypted password value
         if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid, this is illegal
             ch.close();
             logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
