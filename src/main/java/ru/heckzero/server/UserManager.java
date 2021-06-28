@@ -147,7 +147,7 @@ public class UserManager {                                                      
         user.setOnline(ch);
         logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam("login"), ch.attr(ServerMain.sockAddrStr).get());
 
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"s\"/>", user.getParam("login"), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam("login"), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));
         ch.writeAndFlush(resultMsg);
         return;
     }

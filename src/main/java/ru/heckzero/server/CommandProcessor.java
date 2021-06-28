@@ -10,12 +10,12 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import java.lang.reflect.Method;
 
-public class CommandProccessor extends DefaultHandler {
+public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private Channel ch;
-    private UserManager userManager = new UserManager();
+    private final Channel ch;
+    private final UserManager userManager = new UserManager();
 
-    public CommandProccessor(Channel ch) {
+    public CommandProcessor(Channel ch) {
         this.ch = ch;
     }
 
@@ -26,8 +26,8 @@ public class CommandProccessor extends DefaultHandler {
         logger.debug("trying to find and executed method %s in this class", handleMethodName);
 
         try {
-            Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class);	                                //handler method reference
-            handlerMethod.invoke(CommandProccessor.this, attributes);
+            Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class);	                                //get a handler method reference
+            handlerMethod.invoke(CommandProcessor.this, attributes);
         } catch (NoSuchMethodException e) {
             logger.warn("cannot process command %s, a method void %s(Attributes) is not yet implemented", qName, handleMethodName);
         }catch (Exception e) {																						                        //handler is not defined or method invocation error occurred

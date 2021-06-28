@@ -55,7 +55,7 @@ class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
 
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ROOT>" + rcvd + "</ROOT>";                                           //wrap the source message into XML root elements <ROOT>source_message</ROOT>
-        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), new CommandProccessor(ctx.channel()));           //process the command by a CommandProcessor instance
+        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), new CommandProcessor(ctx.channel()));           //process the command by a CommandProcessor instance
         return;
     }
 
