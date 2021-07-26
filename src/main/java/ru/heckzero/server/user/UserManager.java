@@ -1,4 +1,4 @@
-package ru.heckzero.server;
+package ru.heckzero.server.user;
 
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
@@ -10,13 +10,15 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
+import ru.heckzero.server.Defines;
+import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.user.User;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -74,14 +76,14 @@ public class UserManager {                                                      
     }
 
     public static User getUser(String login) {                                                                                              //search cached users by login
-        User user = findInGameUsers(userType.INGAME).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
+        User user = findInGameUsers(userType.INGAME).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
     private static User getDbUser(String login) {                                                                                           //instantiate User by getting it's data from db
         Session session = ServerMain.sessionFactory.openSession();
         Transaction tx = session.beginTransaction();
-        Query<User> query = session.createQuery("select u from User u inner join u.params pr where key(pr) = 'login' and lower(pr) = :login", User.class).setParameter("login", login);
+        Query<User> query = session.createQuery("select u from User u where lower(u.params.login) = lower(:login)", User.class).setParameter("login", login);
         User user;
         try {
             user = query.uniqueResult();
@@ -127,32 +129,32 @@ public class UserManager {                                                      
             ch.close();
             return;
         }
-        logger.info("phase 2 checking user '%s' credentials", user.getParam("login"));
-        String userClearPass = user.getParam("password");                                                                                   //user clear password from database
+        logger.info("phase 2 checking user '%s' credentials", user.getParam(User.Params.LOGIN));
+        String userClearPass = user.getParam(User.Params.PASSWORD);                                                                         //user clear password from database
         String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);                                                //encrypt user password using the same algorithm as a client does
         if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
-            logger.info("wrong password for user '%s'", user.getParam("login"));
+            logger.info("wrong password for user '%s'", user.getParam(User.Params.LOGIN));
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_PASSWORD);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
-        if (!user.getParam("dismiss").isBlank()) {                                                                                          //user is blocked (dismiss is not empty)
-            logger.info("user '%s' is banned, reason: '%s'", user.getParam("login"), user.getParam("dismiss"));
-            String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam("dismiss"));
+        if (!user.getParam(User.Params.DISMISS).isBlank()) {                                                                                //user is blocked (dismiss is not empty)
+            logger.info("user '%s' is banned, reason: '%s'", user.getParam(User.Params.LOGIN), user.getParam(User.Params.DISMISS));
+            String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam(User.Params.DISMISS));
             ch.writeAndFlush(errMsg);
             ch.close();
         }
-        logger.info("phase 3 checking if user '%s' is already online", user.getParam("login"));
+        logger.info("phase 3 checking if user '%s' is already online", user.getParam(User.Params.LOGIN));
         if (user.isOnline()) {                                                                                                              //user is already online
             logger.info("user '%s' is already online, disconnecting user from %s", user.getGameChannel().attr(ServerMain.sockAddrStr).get());
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION)).syncUninterruptibly();
             user.setOffline();
         }
         user.setOnline(ch);
-        logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam("login"), ch.attr(ServerMain.sockAddrStr).get());
+        logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.sockAddrStr).get());
 
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam("login"), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));
         ch.writeAndFlush(resultMsg);
         return;
     }

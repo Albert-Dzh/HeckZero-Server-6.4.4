@@ -6,6 +6,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserManager;
 
 import java.nio.charset.Charset;
 
