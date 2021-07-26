@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <!--common hibernate setting-->
+        <!--  Echo all executed SQL to stdout  -->
+        <property name="show_sql">true</property>
+
+        <!--        <property name="hibernate.generate_statistics">true</property>-->
+        <property name="dialect">org.hibernate.dialect.PostgreSQL10Dialect</property>
+        <property name="hibernate.default_entity_mode">dynamic-map</property>
+
+        <!--  Database connection settings  -->
+        <property name="hibernate.hikari.dataSourceClassName">org.postgresql.ds.PGSimpleDataSource</property>
+        <property name="hibernate.hikari.dataSource.serverName">heckzero.adlernet.ru</property>
+        <property name="hibernate.hikari.dataSource.portNumber">5432</property>
+        <property name="hibernate.hikari.dataSource.databaseName">test</property>
+        <property name="hibernate.hikari.dataSource.user">heckzero</property>
+        <property name="hibernate.hikari.dataSource.password">3yJ6A9qjaQaH</property>
+        <property name="hibernate.hikari.maximumPoolSize">30</property>
+        <property name="hibernate.hikari.minimumIdle">5</property>
+
+        <!--  L2 Cache connection settings  -->
+        <property name="hibernate.cache.use_second_level_cache">true</property>
+        <property name="hibernate.cache.use_query_cache">true</property>
+        <property name="hibernate.cache.region.factory_class">org.hibernate.cache.jcache.internal.JCacheRegionFactory</property>
+        <property name="hibernate.cache.provider_class">org.ehcache.jsr107.EhcacheCachingProvider</property>
+
+
+<!--        <mapping resource = "META-INF/client.hbm.xml"/>-->
+
+<!--        <mapping class="org.heckzero.test.Book"/>-->
+    </session-factory>
+</hibernate-configuration>

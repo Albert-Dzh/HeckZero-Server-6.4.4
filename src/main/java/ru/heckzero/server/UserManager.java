@@ -3,16 +3,17 @@ package ru.heckzero.server;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.util.internal.StringUtil;
-import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,32 +32,31 @@ public class UserManager {                                                      
     public static final int ERROR_CODE_WRONG_KEY = 7;
     public static final int ERROR_CODE_SRV_FAIL = 9;
 
-    private enum inGameUserType {CACHED, ONLINE, IN_BATTLE, IN_GAME, CHAT_ON, NPC, HUMAN, POLICE}
+    private enum userType {INGAME, ONLINE, IN_BATTLE, CHAT_ON, NPC, HUMAN, POLICE}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final CopyOnWriteArrayList<User> inGameUsers = new CopyOnWriteArrayList<>();
 
-    private boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                          //validate if a user provided password conforms the requirements
+    private boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                          //check if a user provided password conforms the requirements
     public boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                           //validate a string as a valid SHA1 hash
 
     public UserManager() { }
 
-    private static List<User> findInGameUsers(inGameUserType type) {
+    private static List<User> findInGameUsers(userType type) {
         Predicate<User> isOnline = User::isOnline;
         Predicate<User> isChatOn = User::isChatOn;
         Predicate<User> isNPC = User::isBot;
         Predicate<User> isHuman = isNPC.negate();
         Predicate<User> isCop = User::isCop;
         Predicate<User> isInBattle = User::isInBattle;
-        Predicate<User> isInGame = isOnline.or(isInBattle);
 
         switch (type) {
+            case INGAME:                                                                                                                    //all cached users (online and offline that are in a battle)
+                return inGameUsers;
             case ONLINE:																							                        //all online users
                 return inGameUsers.stream().filter(isOnline).collect(Collectors.toList());
             case IN_BATTLE:																							                        //users that are in a battle
                 return inGameUsers.stream().filter(isInBattle).collect(Collectors.toList());
-            case IN_GAME:
-                return inGameUsers.stream().filter(isInGame).collect(Collectors.toList());
             case CHAT_ON:																							                        //all users having their chats on
                 return inGameUsers.stream().filter(isChatOn).collect(Collectors.toList());
             case NPC:																							                            //NPC only
@@ -69,27 +69,32 @@ public class UserManager {                                                      
         return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
-    public static User getUser(Channel ch) {                                                                                                //do only online users search
-        return findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
+    public static User getUser(Channel ch) {                                                                                                //search cached online users by a channel
+        return findInGameUsers(userType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
     }
 
-    public static User getUser(String login) {                                                                                              //try to find a user from the cached inGame, then from db
-        User user = findInGameUsers(inGameUserType.ONLINE).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
+    public static User getUser(String login) {                                                                                              //search cached users by login
+        User user = findInGameUsers(userType.INGAME).stream().filter(u -> u.getParam("login").equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
     private static User getDbUser(String login) {                                                                                           //instantiate User by getting it's data from db
-        String sql = "select * from users where login ILIKE ?";
+        Session session = ServerMain.sessionFactory.openSession();
+        Transaction tx = session.beginTransaction();
+        Query<User> query = session.createQuery("select u from User u inner join u.params pr where key(pr) = 'login' and lower(pr) = :login", User.class).setParameter("login", login);
+        User user;
         try {
-            Map<String, Object> userDbParams = DbUtil.query(sql, new MapHandler(), login);
-            if (userDbParams == null)                                                                                                       //user was not found in db
-                return new User();                                                                                                          //return a stub - empty User instance
-            logger.info("userDbParams: %s", userDbParams);
-            return new User(userDbParams);                                                                                                  //return an existing User having params set from db
-        } catch (SQLException e) {                                                                                                          //some db problem
-            logger.error("can't execute query %s: %s", sql, e.getMessage());
+            user = query.uniqueResult();
+            if (user == null)
+                return new User();                                                                                                          //return an existing User having params set from db
+        } catch (Exception e) {                                                                                                             //some db problem
+            logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
+            tx.rollback();
             return null;                                                                                                                    //return null in case of SQL exception
+        }finally {
+            session.close();
         }
+        return user;
     }
 
     public void loginUser(Channel ch, String login, String userCryptedPass) {                                                               //check if the user can login and set it online
@@ -109,7 +114,7 @@ public class UserManager {                                                      
         logger.info("phase 1 checking if a user '%s' exists", login);
         User user = getUser(login);
         if (user == null) {                                                                                                                 //SQL Exception was thrown while getting user data from a db
-            logger.error("can't get user data from database by login '%s' due to DB error", login);
+            logger.error("can't get user data from database by login '%s' due to a DB error", login);
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_SRV_FAIL);
             ch.writeAndFlush(errMsg);
             ch.close();
@@ -117,7 +122,7 @@ public class UserManager {                                                      
         }
         if (user.isEmpty()) {                                                                                                               //this an empty User instance, which means the user has not been found in a database
             logger.info("user with login '%s' does not exist", login);
-            String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_USER);
+            String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_USER);                                                //user does not exist
             ch.writeAndFlush(errMsg);
             ch.close();
             return;

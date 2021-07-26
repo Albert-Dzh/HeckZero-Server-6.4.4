@@ -23,20 +23,20 @@ public class CommandProcessor extends DefaultHandler {
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {                       //this will be called for the every XML element received from the client
         logger.debug("got XML element uri: %s, localName: %s, qname:%s", uri, localName, qName);
         String handleMethodName = String.format("com_%s", qName);			            													//handler method name to process a command
-        logger.debug("trying to find and executed method %s in this class", handleMethodName);
+        logger.debug("trying to find and execute method %s" , handleMethodName);
 
         try {
             Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class);	                                //get a handler method reference
             handlerMethod.invoke(CommandProcessor.this, attributes);
-        } catch (NoSuchMethodException e) {
+        }catch (NoSuchMethodException e) {                                                                                                  //method was not found
             logger.warn("cannot process command %s, a method void %s(Attributes) is not yet implemented", qName, handleMethodName);
-        }catch (Exception e) {																						                        //handler is not defined or method invocation error occurred
+        }catch (Exception e) {																						                        //method invocation error occurred while executing the handler method
             logger.error("cannot execute method %s: %s", handleMethodName, e.getMessage());
         }
         return;
     }
 
-    private void com_ROOT(Attributes attrs) {                                                                                               //silently ignore a <ROOT> element
+    private void com_ROOT(Attributes attrs) {                                                                                               //silently ignore <ROOT> element
         logger.debug("silently ignoring a <ROOT> element");
         return;
     }
