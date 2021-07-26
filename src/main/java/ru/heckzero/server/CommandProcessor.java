@@ -7,6 +7,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
+import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
 
 import java.lang.reflect.Method;
@@ -42,11 +43,24 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_LOGIN(Attributes attrs) {                                                                                              //<LOGIN> handler
-        logger.info("authenticating user from %s", ch.attr(ServerMain.sockAddrStr).get());
+    private void com_LOGIN(Attributes attrs) {                                                                                              //<LOGIN /> handler
+        logger.info("processing <LOGIN/> command from %s", ch.attr(ServerMain.sockAddrStr).get());
         String login = attrs.getValue("l");                                                                                                 //login attribute
         String password = attrs.getValue("p");                                                                                              //password attribute
         userManager.loginUser(ch, login, password);                                                                                         //try to set a new user online
+        return;
+    }
+
+    private void com_GETME(Attributes attrs) {                                                                                              //<GETME /> handler
+        logger.info("processing <GETME/> command from %s", ch.attr(ServerMain.sockAddrStr).get());
+        User user = UserManager.getUser(ch);
+        if (user.isEmpty()) {
+            logger.warn("user is unknown!!!! Closing the channel");
+            ch.writeAndFlush("fuck off, fucking fucker");
+            ch.close();
+            return;
+        }
+        user.execCommand(User.Commands.MYPARAM);
         return;
     }
 

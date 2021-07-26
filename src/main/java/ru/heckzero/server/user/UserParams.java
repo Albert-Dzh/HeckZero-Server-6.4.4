@@ -13,6 +13,7 @@ class UserParams {
     private String login;
     private String password;
     private String exp;
+    private String dismiss;
 
     void setParam(String paramName, String paramValue) {
         try {
@@ -24,17 +25,9 @@ class UserParams {
         return;
     }
 
-    String getParam(String paramName) throws Exception{
+    String getParam(String paramName) throws Exception {
         Field field = this.getClass().getDeclaredField(paramName);
         return (String) field.get(this);
     }
 
-
-    @Override
-    public String toString() {
-        return "PersonParams{" +
-                "login='" + login + '\'' +
-                ", password='" + password + '\'' +
-                '}';
-    }
 }

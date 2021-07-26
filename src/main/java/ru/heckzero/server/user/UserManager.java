@@ -152,6 +152,7 @@ public class UserManager {                                                      
             user.setOffline();
         }
         user.setOnline(ch);
+        inGameUsers.addIfAbsent(user);
         logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.sockAddrStr).get());
 
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));

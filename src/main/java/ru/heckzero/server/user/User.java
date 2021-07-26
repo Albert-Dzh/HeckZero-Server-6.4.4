@@ -9,18 +9,22 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Entity(name = "User")
 @Table(name = "users")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
     public enum Params {LOGIN, PASSWORD, DISMISS, BOT, CLAN}
+    public enum Commands {MYPARAM}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static List<String> attrsDb ;//= ((ArrayList<DataRow>)db.executeQuery("select column_name from information_schema.columns where table_name='users'")).stream().map(row -> ((Map<String,String>)row.getDataAsMap()).get("column_name")).collect(Collectors.toList());
@@ -33,13 +37,14 @@ public class User {
 
     @Transient private Channel gameChannel = null;                                                                                          //user's game socket
     @Transient private Channel chatChannel = null;                                                                                          //user's chat socket
+    @Transient private ExecutorService mainExecutor;
 
     public Channel getGameChannel() { return this.gameChannel;}
     public Channel getChatChannel() { return this.chatChannel;}
 
     public User() { }                                                                                                                       //default constructor
 
-    public boolean isEmpty() {return getParam(Params.LOGIN).isEmpty();}                                                                     //user is empty (having empty params)
+    public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
     public boolean isOnline() {return gameChannel != null && gameChannel.isActive();}                                                       //this user is online and it's game channel is up and running
     public boolean isChatOn() {return chatChannel != null && chatChannel.isActive();}                                                       //this user is online and it's game channel is up and running
     public boolean isBot() {return !getParam(Params.BOT).isEmpty();}
@@ -69,29 +74,9 @@ public class User {
         this.params.setParam(param.name().toLowerCase(), value);
     }
 
-
-    /*
-    public String getParam(String param) {
-        if (params.containsKey(param)) 																		                             	//requested param exists in userParams
-            return String.valueOf(params.get(param));			    													                    //simply return param value
-
-        String handlerMethodName = String.format("getParam_%s", param);																		//handler method name to compute a param which doesn't exit in userParams
-        try {
-            Method handlerMethod = this.getClass().getDeclaredMethod(handlerMethodName);	            							    	//find a method with name handlerMethodName
-//            Method handlerMethod = this.getClass().getDeclaredMethod(handlerMethodName, new Class[0]);								    	//find a method with name handlerMethodName
-            return (String)handlerMethod.invoke(this);																			            //try to call this method
-        } catch (Exception e) {logger.error("getParam: can't call method %s: %s ", handlerMethodName, e.getMessage()); }	                //such method was not found or got wrong arguments
-        return StringUtils.EMPTY;														                    								//returns an empty string if the param is not set and no getParam_% method exists
-    }
-*/
-    private void setGameChannel(Channel ch) {
-        this.gameChannel = ch;
-    }
-    private void setChatChannel(Channel ch) {
-        this.chatChannel = ch;
-    }
     public void setOnline(Channel ch) {
-        setGameChannel(ch);
+        this.gameChannel = ch;
+        mainExecutor = Executors.newSingleThreadExecutor();
         return;
     }
     public void setOffline() {
@@ -100,15 +85,24 @@ public class User {
             this.gameChannel = null;
         }
     }
-/*
-    public void dbsync() {												                    												//sync (update) user with a database. Sync only attrsDb params
-        StringJoiner sj = new StringJoiner(", ", "update users set ", " where id = " + getParam("id"));
-        attrsDb.forEach(attr -> sj.add("\"" + attr + "\"='" + getParam(attr) + "'"));
-//        db.executeCommand(sj.toString());
+
+    public void execCommand(Commands cmdName, Object...params) {
+        try {
+            Method method = this.getClass().getDeclaredMethod(String.format("com_%s", cmdName));
+            mainExecutor.execute(() -> {
+                try { method.invoke(this, params); }
+                catch (IllegalAccessException | InvocationTargetException e) { e.printStackTrace(); }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void com_MYPARAM() {
+        String xml = String.format("<MYPARAM login=\"%s\" />", getParam(Params.LOGIN));
+        sendMsg(xml);
         return;
     }
-*/
-
 
     public ChannelFuture sendMsg(String msg) {
         return gameChannel.writeAndFlush(msg);

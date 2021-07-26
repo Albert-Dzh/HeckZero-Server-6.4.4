@@ -21,6 +21,7 @@ import org.hibernate.boot.MetadataBuilder;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.ServiceRegistry;
+import ru.heckzero.server.user.User;
 
 import java.io.File;
 
@@ -86,9 +87,8 @@ public class ServerMain {
         standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfgUri.toURI().toString());                         //add ehcache config file name to settings
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();
 
-        MetadataSources sources = new MetadataSources(serviceRegistry);
-//                addAnnotatedClass(Person.class).
-//                addAnnotatedClass(Phone.class);
+        MetadataSources sources = new MetadataSources(serviceRegistry).
+                addAnnotatedClass(User.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();

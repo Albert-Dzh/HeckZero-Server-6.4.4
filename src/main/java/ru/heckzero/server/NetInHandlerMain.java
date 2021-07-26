@@ -43,7 +43,6 @@ class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(ServerMain.encKey).set(genKey);                                                                                  //store generated encryption key as a channel attribute
 
-        logger.info("writing the key %s", genKey);
         ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a reply message containing the encryption key to the client
         return;
     }
@@ -54,7 +53,7 @@ class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         rcvd = rcvd.replace("\r", "&#xD;").trim();                                                                                          //replace CR with the corresponding XML code
 
         User user = UserManager.getUser(ctx.channel());                                                                                     //try to get a User by Channel
-        String fromStr = user.isEmpty() ? ctx.channel().attr(ServerMain.sockAddrStr).get() : "user " + user.getParam("login");              //set sender from string - login or socket address if a User is unknown
+        String fromStr = user.isEmpty() ? ctx.channel().attr(ServerMain.sockAddrStr).get() : "user " + user.getParam(User.Params.LOGIN);    //set sender from string - login or socket address if a User is unknown
         logger.info("received %s from %s, length = %d", rcvd, fromStr, rcvd.length());                                                      //log the received message
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
@@ -68,7 +67,7 @@ class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         logger.error("Houston, we've had a problem");
         User user = UserManager.getUser(ctx.channel());                                                                                     //try to get a User by Channel
-        String fromStr = user.isEmpty() ? ctx.channel().attr(ServerMain.sockAddrStr).get() : "user " + user.getParam("login");              //set a from string - login or socket address if a User is unknown
+        String fromStr = user.isEmpty() ? ctx.channel().attr(ServerMain.sockAddrStr).get() : "user " + user.getParam(User.Params.LOGIN);    //set a from string - login or socket address if a User is unknown
 
         if (cause instanceof ReadTimeoutException) {                                                                                        //read timeout has happened
             logger.warn("read timeout from %s", fromStr);
@@ -82,5 +81,10 @@ class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         logger.info("closing the connection with %s", fromStr);
         ctx.close();
         return;
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        logger.info("chanell inactive. User login.... logged out");
     }
 }

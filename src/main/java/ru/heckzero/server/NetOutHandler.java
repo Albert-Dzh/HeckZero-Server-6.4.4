@@ -18,7 +18,7 @@ public class NetOutHandler extends MessageToByteEncoder<String> {               
     @Override
     protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
         User user = UserManager.getUser(ctx.channel());                                                                                     //try to get a User by a Channel
-        String rcptStr = user.isEmpty() ? ctx.channel().attr(ServerMain.sockAddrStr).get() : "user " + user.getParam("login");              //set a "from" string  for the logging purpose - user login or a socket address if a User is unknown
+        String rcptStr = user.isEmpty() ? ctx.channel().attr(ServerMain.sockAddrStr).get() : "user " + user.getParam(User.Params.LOGIN);    //set a "from" string  for the logging purpose - user login or a socket address if a User is unknown
 
         logger.info("sending %s to %s", msg, rcptStr);                                                                                      //log the outbound message
         out.writeCharSequence(msg, Charset.defaultCharset());                                                                               //write the source message to a allocated ByteBuf
@@ -29,10 +29,5 @@ public class NetOutHandler extends MessageToByteEncoder<String> {               
     @Override
     protected ByteBuf allocateBuffer(ChannelHandlerContext ctx, String msg, boolean preferDirect) throws Exception {                        //allocate ByteBuff for the outgoing message with a capacity enough to hold one additional byte for the null terminator
         return super.allocateBuffer(ctx, msg, preferDirect).capacity(msg.length() + 1);
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        super.exceptionCaught(ctx, cause);
     }
 }

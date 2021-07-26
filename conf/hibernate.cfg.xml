@@ -17,7 +17,7 @@
         <property name="hibernate.hikari.dataSourceClassName">org.postgresql.ds.PGSimpleDataSource</property>
         <property name="hibernate.hikari.dataSource.serverName">heckzero.adlernet.ru</property>
         <property name="hibernate.hikari.dataSource.portNumber">5432</property>
-        <property name="hibernate.hikari.dataSource.databaseName">test</property>
+        <property name="hibernate.hikari.dataSource.databaseName">heckzero6</property>
         <property name="hibernate.hikari.dataSource.user">heckzero</property>
         <property name="hibernate.hikari.dataSource.password">3yJ6A9qjaQaH</property>
         <property name="hibernate.hikari.maximumPoolSize">30</property>
