@@ -12,7 +12,6 @@ import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
-import ru.heckzero.server.user.User;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -34,7 +33,8 @@ public class UserManager {                                                      
     public static final int ERROR_CODE_WRONG_KEY = 7;
     public static final int ERROR_CODE_SRV_FAIL = 9;
 
-    private enum userType {INGAME, ONLINE, IN_BATTLE, CHAT_ON, NPC, HUMAN, POLICE}
+    private enum UserType {INGAME, ONLINE, IN_BATTLE, CHAT_ON, NPC, HUMAN, POLICE}
+    private enum ChannelType {GAME, CHAT}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final CopyOnWriteArrayList<User> inGameUsers = new CopyOnWriteArrayList<>();
@@ -44,7 +44,7 @@ public class UserManager {                                                      
 
     public UserManager() { }
 
-    private static List<User> findInGameUsers(userType type) {
+    private static List<User> findInGameUsers(UserType type) {
         Predicate<User> isOnline = User::isOnline;
         Predicate<User> isChatOn = User::isChatOn;
         Predicate<User> isNPC = User::isBot;
@@ -71,12 +71,12 @@ public class UserManager {                                                      
         return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
-    public static User getUser(Channel ch) {                                                                                                //search cached online users by a channel
-        return findInGameUsers(userType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch)).findFirst().orElseGet(User::new);
+    public static User getUser(Channel ch) {                                                                                                //search cached online users by a game channel
+        return findInGameUsers(UserType.ONLINE).stream().filter(u -> ch.equals(u.getGameChannel()) || ch.equals(u.getChatChannel())).findFirst().orElseGet(User::new);
     }
 
     public static User getUser(String login) {                                                                                              //search cached users by login
-        User user = findInGameUsers(userType.INGAME).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
+        User user = findInGameUsers(UserType.INGAME).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
@@ -99,17 +99,39 @@ public class UserManager {                                                      
         return user;
     }
 
-    public void loginUser(Channel ch, String login, String userCryptedPass) {                                                               //check if the user can login and set it online
-        logger.info("phase 0 validating received user credentials");
-        if (login == null || userCryptedPass == null) {                                                                                     //login or password attributes are missed, this is abnormal. close the channel silently
+    public void loginUserChat(Channel ch, String ses, String login) {
+        logger.info("processing <CHAT/> command from %s", ch.attr(ServerMain.userStr).get());
+        logger.info("phase 0 validating received chat user credentials");
+        if (ses == null || login == null) {                                                                                                 //login or sess attributes are missed, this is abnormal. closing the channel
+            logger.warn("no ses or login attribute in <CHAT/> command, closing socket");
             ch.close();
-            logger.warn("no valid login or password attributes exist in a received message, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
+            return;
+        }
+        logger.info("phase 1 checking if a user with login '%s' is online and ses key is valid", login);
+        User user = findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
+        if (!(ses.equals(user.getGameChannel().attr(ServerMain.encKey).get()) && login.equals(user.getParam(User.Params.LOGIN)))) {
+            logger.warn("can't find an online user to associate with the chat channel, closing the channel");
+            ch.close();
+            return;
+        }
+        logger.info("phase 2 found user %s to associate the chat channel with, turning it's chat on", user.getParam(User.Params.LOGIN));
+        user.chatOn(ch);
+        ch.attr(ServerMain.userStr).set("chat user " + user.getParam(User.Params.LOGIN));
+        return;
+    }
+
+    public void loginUser(Channel ch, String login, String userCryptedPass) {                                                               //check if the user can login and set it online
+        logger.info("processing <LOGIN/> command from %s", ch.attr(ServerMain.userStr).get());
+        logger.info("phase 0 validating received user credentials");
+        if (login == null || userCryptedPass == null) {                                                                                     //login or password attributes are missed, this is abnormal. closing the channel
+            ch.close();
+            logger.warn("no valid login or password attributes exist in a received message, closing connection with %s", ch.attr(ServerMain.userStr).get());
             return;
         }
 
         if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid, this is illegal
             ch.close();
-            logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.sockAddrStr).get());
+            logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.userStr).get());
             return;
         }
 
@@ -147,15 +169,16 @@ public class UserManager {                                                      
         }
         logger.info("phase 3 checking if user '%s' is already online", user.getParam(User.Params.LOGIN));
         if (user.isOnline()) {                                                                                                              //user is already online
-            logger.info("user '%s' is already online, disconnecting user from %s", user.getGameChannel().attr(ServerMain.sockAddrStr).get());
+            logger.info("user '%s' is already online, disconnecting user from %s", user.getGameChannel().attr(ServerMain.userStr).get());
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION)).syncUninterruptibly();
             user.setOffline();
         }
         user.setOnline(ch);
         inGameUsers.addIfAbsent(user);
-        logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.sockAddrStr).get());
+        logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.userStr).get());
 
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE));
+        ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());
         ch.writeAndFlush(resultMsg);
         return;
     }

@@ -21,24 +21,26 @@ import org.hibernate.boot.MetadataBuilder;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.ServiceRegistry;
+import ru.heckzero.server.net.NetInHandlerMain;
+import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
 
 import java.io.File;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final XMLConfiguration config = null;
+    private static final XMLConfiguration hzConfiguration = null;
     public static final AttributeKey<String> encKey = AttributeKey.valueOf("encKey");                                                       //channel attr holding an encryption key
-    public static final AttributeKey<String> sockAddrStr = AttributeKey.valueOf("sockAddStr");                                              //channel attr holding a string representation of the channel
-    public static SessionFactory sessionFactory;
-    private final static File log4jCfgUri = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "log4j2.xml");
-    private final static File hbCfgUri = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
-    private final static File ehcacheCfgUri = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "ehcache.xml");
+    public static final AttributeKey<String> userStr = AttributeKey.valueOf("sockAddStr");                                                  //channel attr holding a string representation of the channel
+    private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "log4j2.xml");
+    private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
+    private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "ehcache.xml");
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //get the OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
+    public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
 
     static {
-        ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfgUri.toURI());                                              //set and read log4j configuration file name
+        ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
     }
 
 
@@ -47,17 +49,17 @@ public class ServerMain {
         return;
     }
 
-    public void startOperation() {
+    public void startOperation() {                                                                                                          //mainly bootstrapping the netty stuff
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", Defines.VERSION);
-        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache
+        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create the SessionFactory
 
-        EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels
+        EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
         try {
-            NetInHandlerMain netInHandlerMain = new NetInHandlerMain();                                                                     //create an inbound handler
-            NetOutHandler netOutHandler = new NetOutHandler();                                                                              //create an outbound handler
+            NetInHandlerMain netInHandlerMain = new NetInHandlerMain();                                                                     //an inbound handler (will do client command processing)
+            NetOutHandler netOutHandler = new NetOutHandler();                                                                              //an outbound handler (server response massage)
 
-            ServerBootstrap b = new ServerBootstrap();                                                                                      //start a server bootstrapping procedure
-            b.group(group).                                                                                                                 //specify an event loop group for the server and the client
+            ServerBootstrap b = new ServerBootstrap();                                                                                      //TCP server bootstrapping procedure (netty)
+            b.group(group).                                                                                                                 //an event loop group used by server and client threads
                     channel(IS_UNIX ? EpollServerSocketChannel.class : NioServerSocketChannel.class).
                     option(ChannelOption.SO_BACKLOG, 128).childOption(ChannelOption.SO_KEEPALIVE, true).
                     childHandler(new ChannelInitializer<SocketChannel>() {
@@ -74,7 +76,7 @@ public class ServerMain {
                     });
             ChannelFuture f = b.bind(Defines.PORT).syncUninterruptibly();                                                                   //bind and start to accept incoming connections
             logger.info("server has been started and is listening on %s", f.channel().localAddress().toString());
-            f.channel().closeFuture().sync();                                                                                               //wait for the server to stop completely
+            f.channel().closeFuture().sync();                                                                                               //wait for the server channel to close. (when???) but we have to wait to keep application running
         } catch (Exception e) {
             logger.error(e);
         }
@@ -83,9 +85,9 @@ public class ServerMain {
     }
 
     private SessionFactory dbInit() {
-        StandardServiceRegistryBuilder standardServiceRegistryBuilder = new StandardServiceRegistryBuilder().configure(hbCfgUri);           //read hibernate configuration from file
-        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfgUri.toURI().toString());                         //add ehcache config file name to settings
-        ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();
+        StandardServiceRegistryBuilder standardServiceRegistryBuilder = new StandardServiceRegistryBuilder().configure(hbnateCfg);          //read hibernate configuration from file
+        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to ehcache config file name)
+        ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
                 addAnnotatedClass(User.class);

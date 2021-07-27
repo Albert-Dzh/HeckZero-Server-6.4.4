@@ -3,19 +3,15 @@ package ru.heckzero.server.user;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.util.internal.StringUtil;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -33,7 +29,7 @@ public class User {
     private Integer id;
 
     @Embedded
-    private UserParams params = new UserParams();
+    private final UserParams params = new UserParams();
 
     @Transient private Channel gameChannel = null;                                                                                          //user's game socket
     @Transient private Channel chatChannel = null;                                                                                          //user's chat socket
@@ -42,11 +38,12 @@ public class User {
     public Channel getGameChannel() { return this.gameChannel;}
     public Channel getChatChannel() { return this.chatChannel;}
 
+
     public User() { }                                                                                                                       //default constructor
 
     public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
     public boolean isOnline() {return gameChannel != null && gameChannel.isActive();}                                                       //this user is online and it's game channel is up and running
-    public boolean isChatOn() {return chatChannel != null && chatChannel.isActive();}                                                       //this user is online and it's game channel is up and running
+    public boolean isChatOn() {return isOnline() && chatChannel != null && chatChannel.isActive();}                                         //this user is online and it's game channel is up and running
     public boolean isBot() {return !getParam(Params.BOT).isEmpty();}
     public boolean isCop() {return getParam(Params.CLAN).equals("police");}                                                                 //user is a cop
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet
@@ -75,8 +72,8 @@ public class User {
     }
 
     public void setOnline(Channel ch) {
-        this.gameChannel = ch;
-        mainExecutor = Executors.newSingleThreadExecutor();
+        this.gameChannel = ch;                                                                                                              //set user's game socket (channel)
+        mainExecutor = Executors.newSingleThreadExecutor();                                                                                 //create an executor service for this user
         return;
     }
     public void setOffline() {
@@ -86,25 +83,37 @@ public class User {
         }
     }
 
-    public void execCommand(Commands cmdName, Object...params) {
+    public void chatOn(Channel ch) {
+        chatChannel = ch;
+        sendChatMsg("<R t=\"jopa\" />");
+        return;
+    }
+
+    public void execCommand(Commands cmdName, Object...params) {                                                                            //find and execute client command processing method
+        String methodName = String.format("com_%s", cmdName);                                                                               //format a method name for e.g void com_MYPARAM()
         try {
-            Method method = this.getClass().getDeclaredMethod(String.format("com_%s", cmdName));
-            mainExecutor.execute(() -> {
+            Method method = this.getClass().getDeclaredMethod(methodName);
+            mainExecutor.execute(() -> {                                                                                                    //execute it in mainExecutor (only one simulations running thread (command))
                 try { method.invoke(this, params); }
-                catch (IllegalAccessException | InvocationTargetException e) { e.printStackTrace(); }
+                catch (IllegalAccessException | InvocationTargetException e) { logger.error("cant execute method %s: %s", methodName, e.getMessage());}
             });
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("can't find method %s, is not implemented, lazy guys!", methodName);
         }
     }
 
     private void com_MYPARAM() {
-        String xml = String.format("<MYPARAM login=\"%s\" />", getParam(Params.LOGIN));
+        logger.info("processing <GETME/> command from %s", gameChannel.attr(ServerMain.userStr).get());
+        String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\" Z=\"0\" hz=\"0\" ROOM=\"0\" ><O id=\"1\" name=\"jopa\" /></MYPARAM>", getParam(Params.LOGIN));
         sendMsg(xml);
         return;
     }
 
     public ChannelFuture sendMsg(String msg) {
+        return gameChannel.writeAndFlush(msg);
+    }
+
+    public ChannelFuture sendChatMsg(String msg) {
         return gameChannel.writeAndFlush(msg);
     }
 }
