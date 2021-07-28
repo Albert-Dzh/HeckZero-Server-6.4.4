@@ -101,12 +101,14 @@ public class UserManager {                                                      
 
     public void loginUserChat(Channel ch, String ses, String login) {
         logger.info("processing <CHAT/> command from %s", ch.attr(ServerMain.userStr).get());
-        logger.info("phase 0 validating received chat user credentials");
+        logger.info("phase 0 validating provided chat user credentials");
         if (ses == null || login == null) {                                                                                                 //login or sess attributes are missed, this is abnormal. closing the channel
-            logger.warn("no ses or login attribute in <CHAT/> command, closing socket");
-            ch.close();
+            logger.info("no credentials provided, seems this is an initial chat session request");
+            ch.writeAndFlush("<CHAT/>");
             return;
         }
+
+
         logger.info("phase 1 checking if a user with login '%s' is online and ses key is valid", login);
         User user = findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
         if (!(ses.equals(user.getGameChannel().attr(ServerMain.encKey).get()) && login.equals(user.getParam(User.Params.LOGIN)))) {

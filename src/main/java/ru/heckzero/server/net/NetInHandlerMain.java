@@ -24,11 +24,14 @@ import java.nio.charset.StandardCharsets;
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
     private final SAXParser parser;                                                                                                         //XML SAX parser
+    private final CommandProcessor commandProcessor;                                                                                        //Shareable command processor for dispatch client commands
 
     public NetInHandlerMain() throws Exception {
         SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                          //create SAX XML parser factory
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
+        saxParserFactory.setNamespaceAware(true);                                                                                           //enable XML namespace parsing, needed for transit channel ID to command processor as a namespace
         parser = saxParserFactory.newSAXParser();                                                                                           //create an XML parser for parsing incoming client data
+        commandProcessor = new CommandProcessor();
         return;
     }
 
@@ -42,7 +45,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
         String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(ServerMain.encKey).set(genKey);                                                                                  //store generated encryption key as a channel attribute
-
+        ServerMain.channelGroup.add(ctx.channel());                                                                                         //add channel to global channel group
         ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a reply message containing the encryption key to the client
         return;
     }
@@ -56,9 +59,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         logger.info("received %s from %s, length = %d", rcvd, fromStr, rcvd.length());                                                      //log the received message
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
-
-        String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ROOT xmlns=\"https://jopa.com\">" + rcvd + "</ROOT>";                //wrap the source message into XML root elements <ROOT>source_message</ROOT>
-        CommandProcessor commandProcessor = new CommandProcessor(ctx.channel());
+        String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT xmlns=\"" + ctx.channel().id().asLongText() + "\">" + rcvd + "</ROOT>";                //wrap the source message into XML root elements <ROOT>source_message</ROOT>
         parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //process the command by a CommandProcessor instance
         return;
     }

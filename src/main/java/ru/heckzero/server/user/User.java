@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 @Entity(name = "User")
 @Table(name = "users")
@@ -99,13 +100,15 @@ public class User {
                 catch (IllegalAccessException | InvocationTargetException e) { logger.error("cant execute method %s: %s", methodName, e.getMessage());}
             });
         } catch (Exception e) {
-            logger.warn("can't find method %s, is not implemented, lazy guys!", methodName);
+            logger.warn("can't find or execute method %s, it's not implemented or user executor service has been shutdown: %s", methodName, e.getMessage());
         }
+
+        return;
     }
 
     private void com_MYPARAM() {
         logger.info("processing <GETME/> command from %s", gameChannel.attr(ServerMain.userStr).get());
-        String xml = String.format("<MYPARAM login=\"%s\"  ></MYPARAM>", getParam(Params.LOGIN));
+        String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\"></MYPARAM>", getParam(Params.LOGIN));
         sendMsg(xml);
         return;
     }
