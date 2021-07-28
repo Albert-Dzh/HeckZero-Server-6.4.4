@@ -1,6 +1,9 @@
 package ru.heckzero.server;
 
 import io.netty.channel.Channel;
+import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.xml.sax.Attributes;
@@ -17,6 +20,7 @@ public class CommandProcessor extends DefaultHandler {
     private final Channel ch;                                                                                                               //the channel we received a command from
     private final String userStr;                                                                                                           //string representation of the client
     private final User user;                                                                                                                //a user witch we got a command from, may be empty if it hasn't passed authorization yet
+    private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
     public CommandProcessor(Channel ch) {
         this.ch = ch;                                                                                                                       //does it need to be commented?
@@ -27,10 +31,13 @@ public class CommandProcessor extends DefaultHandler {
 
     @Override
     public void startElement(String uri, String localName, String qName, Attributes attributes) {                                           //this will be called for the every XML element received from the client
-        logger.debug("got an XML element: uri: %s, localName: %s, qname: %s, atrrs len = %d", uri, localName, qName, attributes.getLength());
+        logger.info("got an XML element: uri: %s, localName: %s, qname: %s, atrrs len = %d", uri, localName, qName, attributes.getLength());
         String handleMethodName = String.format("com_%s", qName);			            													//handler method name to process a command
         logger.debug("trying to find and execute method %s" , handleMethodName);
 
+        String chId = "123";
+        Channel ch1 = channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElseGet(null);
+        logger.info("channel = %s", ch1);
         if (qName.equals("ROOT"))                                                                                                           //silently ignoring <ROOT/> element
             return;
 
