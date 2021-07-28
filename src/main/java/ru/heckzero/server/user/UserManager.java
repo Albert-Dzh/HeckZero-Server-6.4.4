@@ -177,8 +177,8 @@ public class UserManager {                                                      
         inGameUsers.addIfAbsent(user);
         logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.userStr).get());
 
-        ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());
+        ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));                                                        //replace a client representation string to 'user <login>' instead of IP:port
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());  //send OK with a chat auth key in ses attribute (using already existing key)
         ch.writeAndFlush(resultMsg);
         return;
     }

@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
     public enum Params {LOGIN, PASSWORD, DISMISS, BOT, CLAN}
-    public enum Commands {MYPARAM}
+    public enum Commands {MYPARAM, GOLOC}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static List<String> attrsDb ;//= ((ArrayList<DataRow>)db.executeQuery("select column_name from information_schema.columns where table_name='users'")).stream().map(row -> ((Map<String,String>)row.getDataAsMap()).get("column_name")).collect(Collectors.toList());
@@ -85,7 +85,8 @@ public class User {
 
     public void chatOn(Channel ch) {
         chatChannel = ch;
-        sendChatMsg("<R t=\"jopa\" />");
+        sendChatMsg("<Z t=\"jopa\"/>");
+        sendChatMsg("<R t=\"Location[0/0] jopa" + "\t" + "0/0/0/0" + "\"/>");
         return;
     }
 
@@ -104,7 +105,13 @@ public class User {
 
     private void com_MYPARAM() {
         logger.info("processing <GETME/> command from %s", gameChannel.attr(ServerMain.userStr).get());
-        String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\" Z=\"0\" hz=\"0\" ROOM=\"0\" ><O id=\"1\" name=\"jopa\" /></MYPARAM>", getParam(Params.LOGIN));
+        String xml = String.format("<MYPARAM login=\"%s\"  ></MYPARAM>", getParam(Params.LOGIN));
+        sendMsg(xml);
+        return;
+    }
+    private void com_GOLOC() {
+        logger.info("processing <GOLOC/> command from %s", gameChannel.attr(ServerMain.userStr).get());
+        String xml = String.format("<GOLOC><L/></GOLOC>");
         sendMsg(xml);
         return;
     }

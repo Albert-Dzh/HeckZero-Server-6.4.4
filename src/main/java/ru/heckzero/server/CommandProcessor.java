@@ -15,7 +15,7 @@ import java.lang.reflect.Method;
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
     private final Channel ch;                                                                                                               //the channel we received a command from
-    private final String userStr;                                                                                                           //sender string representation
+    private final String userStr;                                                                                                           //string representation of the client
     private final User user;                                                                                                                //a user witch we got a command from, may be empty if it hasn't passed authorization yet
 
     public CommandProcessor(Channel ch) {
@@ -55,16 +55,33 @@ public class CommandProcessor extends DefaultHandler {
         logger.debug("processing <LOGIN/> command from %s", ch.attr(ServerMain.userStr).get());
         String login = attrs.getValue("l");                                                                                                 //login attribute
         String password = attrs.getValue("p");                                                                                              //password attribute
-        new UserManager().loginUser(ch, login, password);                                                                                   //try to set a new user online
+        new UserManager().loginUser(ch, login, password);                                                                                   //set a new user online
         return;
     }
 
-    private void com_GETME(Attributes attrs) {                                                                                              //<GETME/> handler
+    private void com_GETME(Attributes attrs) {
         logger.debug("processing <GETME/> command from %s", ch.attr(ServerMain.userStr).get());
         user.execCommand(User.Commands.MYPARAM);
         return;
     }
 
+    private void com_GOLOC(Attributes attrs) {
+        logger.debug("processing <GOLOC/> command from %s", ch.attr(ServerMain.userStr).get());
+        user.execCommand(User.Commands.GOLOC);
+        return;
+    }
+
+    private void com_CHAT(Attributes attrs) {
+        logger.debug("processing <CHAT/> command from %s", ch.attr(ServerMain.userStr).get());
+        if (attrs.getLength() == 0) {
+            ch.writeAndFlush("<CHAT/>");
+            return;
+        }
+        String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much a registered online user
+        String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in authorization phase in <OK ses=""> response)
+        new UserManager().loginUserChat(ch, ses, login);
+        return;
+    }
     private void com_N(Attributes attrs) {
         logger.debug("processing <N/> command from %s", ch.attr(ServerMain.userStr).get());
         return;
@@ -74,17 +91,6 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_CHAT(Attributes attrs) {                                                                                               //<CHAT/> handler
-        logger.debug("processing <CHAT/> command from %s", ch.attr(ServerMain.userStr).get());
-        if (attrs.getLength() == 0) {
-            ch.writeAndFlush("<CHAT/>");
-            return;
-        }
-        String ses = attrs.getValue("ses");                                                                                                 //chat auth key
-        String login = attrs.getValue("l");                                                                                                 //chat login name for chat auth
-        new UserManager().loginUserChat(ch, ses, login);
-        return;
-    }
 
     @Override
     public void error(SAXParseException e) throws SAXException {                                                                            //this will be called on no-critical errors in XML parsing
