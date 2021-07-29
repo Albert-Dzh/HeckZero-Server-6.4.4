@@ -3,6 +3,7 @@ package ru.heckzero.server.user;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import java.lang.reflect.Field;
 
@@ -10,12 +11,18 @@ import java.lang.reflect.Field;
 class UserParams {
     private static Logger logger = LogManager.getFormatterLogger();
 
-    private String login;
-    private String password;
-    private String exp;
-    private String dismiss;
+    private String login;                                                                                                                   //user login
+    private String password;                                                                                                                //you won't believe
 
-    void setParam(String paramName, String paramValue) {
+//    @Column(name = "\"X\"")
+//    private String X;
+
+//            , Y, Z, hz;                                                                                                             //coordinates, Z - house number on a location, hz - house type
+//    private String exp;                                                                                                                     //experience
+    private String dismiss;                                                                                                                 //user is blocked
+
+    void setParam(String paramName, Integer paramValue) { setParam(paramName, String.valueOf(paramValue));}                                                                                   //set param to value
+    void setParam(String paramName, String paramValue) {                                                                                    //set param to value
         try {
             Field field = this.getClass().getDeclaredField(paramName);
             field.set(this, paramValue);

@@ -89,6 +89,7 @@ public class UserManager {                                                      
             user = query.uniqueResult();
             if (user == null)
                 return new User();                                                                                                          //return an existing User having params set from db
+            tx.commit();
         } catch (Exception e) {                                                                                                             //some db problem
             logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
             tx.rollback();
@@ -182,6 +183,11 @@ public class UserManager {                                                      
         ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));                                                        //replace a client representation string to 'user <login>' instead of IP:port
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());  //send OK with a chat auth key in ses attribute (using already existing key)
         ch.writeAndFlush(resultMsg);
+
+
+
+
+
         return;
     }
 

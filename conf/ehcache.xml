@@ -15,7 +15,7 @@
 
         <resources>
             <heap unit="entries">100000</heap>
-            <offheap unit="MB">1</offheap>
+            <offheap unit="MB">5</offheap>
         </resources>
     </cache-template>
 

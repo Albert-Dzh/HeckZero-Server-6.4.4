@@ -20,13 +20,15 @@ import java.util.concurrent.RejectedExecutionException;
 @Table(name = "users")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
-    public enum Params {LOGIN, PASSWORD, DISMISS, BOT, CLAN}
+    public enum Params {LOGIN, PASSWORD, DISMISS, BOT, CLAN}                                                                                //params that can be queried via getParam()
     public enum Commands {MYPARAM, GOLOC}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static List<String> attrsDb ;//= ((ArrayList<DataRow>)db.executeQuery("select column_name from information_schema.columns where table_name='users'")).stream().map(row -> ((Map<String,String>)row.getDataAsMap()).get("column_name")).collect(Collectors.toList());
 
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "generator_sequence")
+    @SequenceGenerator(name = "generator_sequence", sequenceName = "users_id_seq", allocationSize = 1)
     private Integer id;
 
     @Embedded
@@ -41,29 +43,30 @@ public class User {
 
 
     public User() { }                                                                                                                       //default constructor
+    public void setId(Integer id) {this.id = id;}
 
     public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
     public boolean isOnline() {return gameChannel != null && gameChannel.isActive();}                                                       //this user is online and it's game channel is up and running
     public boolean isChatOn() {return isOnline() && chatChannel != null && chatChannel.isActive();}                                         //this user is online and it's game channel is up and running
-    public boolean isBot() {return !getParam(Params.BOT).isEmpty();}
+    public boolean isBot() {return !getParam(Params.BOT).isEmpty();}                                                                        //user is a bot (no!t a human)
     public boolean isCop() {return getParam(Params.CLAN).equals("police");}                                                                 //user is a cop
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet
 
-    public String getParam(Params param) {
-        String paramName = param.name().toLowerCase();
+    public String getParam(Params param) {                                                                                                  //get user param value (param must be in Params enum)
+        String paramName = param.name().toLowerCase();                                                                                      //convert param to a lowercase string
         String methodName = String.format("getParam_%s", paramName);
 
-        try {
+        try {                                                                                                                               //try to find param in UserParam instance
             return params.getParam(paramName);
         } catch (Exception e) {
-            logger.debug("cannot find param in params");
+            logger.debug("cannot find param in UserParams params");
         }
 
-        try {
+        try {                                                                                                                               //if not found in params. try to compute the param value via the dedicated method
             Method method = this.getClass().getDeclaredMethod(methodName);
             return (String) method.invoke(this);
         } catch (Exception e) {
-            logger.warn("cannot find or compute param %s", paramName);
+            logger.warn("cannot find or compute param %s, neither in params nor by a dedicated method: %s", paramName, e.getMessage());
         }
         return StringUtil.EMPTY_STRING;
     }
@@ -125,5 +128,16 @@ public class User {
 
     public ChannelFuture sendChatMsg(String msg) {
         return gameChannel.writeAndFlush(msg);
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", params=" + params +
+                ", gameChannel=" + gameChannel +
+                ", chatChannel=" + chatChannel +
+                ", mainExecutor=" + mainExecutor +
+                '}';
     }
 }
