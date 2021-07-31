@@ -130,10 +130,9 @@ public class User {
     }
 
     public void com_SILUET(String slt, String set) {
-//        <SILUET slt="1" set="type=1,body=1,body2=1,head=1,rgb=0,hair=18" />
         logger.info("processing <SILUET/> from %s", gameChannel.attr((ServerMain.userStr)));
         logger.info("slt = %s, set = %s", slt, set);
-        String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>",  set);
+        String response = String.format("<SILUET code=\"1\"/><MYPARAM siluet=\"%s\"/>",  set);
         sendMsg(response);
         return;
     }
