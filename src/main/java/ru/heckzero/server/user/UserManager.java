@@ -3,14 +3,12 @@ package ru.heckzero.server.user;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.util.internal.StringUtil;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
-import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
 
 import java.nio.charset.StandardCharsets;
@@ -176,9 +174,9 @@ public class UserManager {                                                      
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION)).syncUninterruptibly();
             user.setOffline();
         }
-        user.setOnline(ch);
+        user.setOnline(ch);                                                                                                                 //perform initial procedures to set user online
         inGameUsers.addIfAbsent(user);
-        logger.info("phase 4 all done, user '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.userStr).get());
+        logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.userStr).get());
 
         ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));                                                        //replace a client representation string to 'user <login>' instead of IP:port
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());  //send OK with a chat auth key in ses attribute (using already existing key)

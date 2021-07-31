@@ -4,46 +4,42 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.persistence.*;
+import javax.persistence.criteria.CriteriaBuilder;
 import java.lang.reflect.Field;
-
-@Converter
-class IntegerToStringConverter implements AttributeConverter<String, Integer> {
-    @Override
-    public String convertToEntityAttribute(Integer value) {return Integer.toString(value); }
-    @Override
-    public Integer convertToDatabaseColumn(String value) {return value.chars().allMatch(Character::isDigit) ? Integer.parseInt(value) : 0;}
-}
 
 @Embeddable
 class UserParams {
     private static Logger logger = LogManager.getFormatterLogger();
 
-    private String login;                                                                                                                   //user login
-    private String password;                                                                                                                //you won't believe
+    private String login, password;                                                                                                         //user login
 
     @Column(name = "\"X\"")
-    @Convert(converter = IntegerToStringConverter.class)
-    private String X;
-
+    private Short X;
     @Column(name = "\"Y\"")
-    @Convert(converter = IntegerToStringConverter.class)
-    private String Y;
+    private Short Y;
+    @Column(name = "\"Z\"")
+    private Short Z;                                                                                                                        //Z - house number on a location
+    private Short hz;                                                                                                                       //hz - house type
+    private Double exp;                                                                                                                     //user experience
+    private String dismiss;                                                                                                                 //user block reason, we treat the user as blocked if it's not empty
 
-//    private String Z, hz;                                                                                                                   //coordinates, Z - house number on a location, hz - house type
+    @Transient
+    private Long lastlogin;                                                                                                                 //last user login time in seconds, needed for computing loc_time
 
-    private String exp;                                                                                                                     //experience
-    private String dismiss;                                                                                                                 //user is blocked
+    @Transient
+    private Integer noChat;                                                                                                                 //user chat status 1,0
 
-    void setParam(String paramName, String paramValue) { setParam(paramName, paramValue, String.class);}                                    //set param to value
-    void setParam(String paramName, Integer paramValue) { setParam(paramName, paramValue, Integer.class);}                                  //set param to value
-    void setParam(String paramName, Double paramValue) { setParam(paramName, paramValue, Double.class);}                                    //set param to value
-
-    private void setParam(String paramName, Object paramValue, Class paramType) {                                                                                    //set param to value
+    void setParam(String paramName, Object paramValue) {                                                                                    //set user param value
         try {
-            Field field = this.getClass().getDeclaredField(paramName);
-            field.set(this, paramValue);
+            Field field = this.getClass().getDeclaredField(paramName);                                                                      //find a field with name paramName
+            String fType = field.getType().getSimpleName();                                                                                 //field type String representation
+            String vType = paramValue.getClass().getSimpleName();                                                                           //value type String representation
+            if (fType.equals(vType))                                                                                                        //field and column type must match
+                field.set(this, paramValue);
+            else
+                logger.warn("cannot set param %s, param type: %s differs from a database column type: %s", paramName, vType, fType);
         } catch (NoSuchFieldException | SecurityException | IllegalAccessException ex) {
-            logger.warn("cannot find field %s to set value", paramName);
+            logger.warn("cannot set param %s to value %s, a corresponding filed is not found or an error occurred: %s", paramName, paramValue, ex.getMessage());
         }
         return;
     }

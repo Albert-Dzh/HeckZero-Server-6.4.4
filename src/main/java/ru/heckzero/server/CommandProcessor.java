@@ -13,7 +13,11 @@ import org.xml.sax.helpers.DefaultHandler;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -65,13 +69,21 @@ public class CommandProcessor extends DefaultHandler {
 
     private void com_GETME(Attributes attrs, Channel ch) {
         logger.debug("processing <GETME/> command from %s", ch.attr(ServerMain.userStr).get());
-        UserManager.getUser(ch).execCommand(User.Commands.MYPARAM);
+        ServerMain.mainExecutor.execute(() ->  UserManager.getUser(ch).com_MYPARAM());
         return;
     }
 
     private void com_GOLOC(Attributes attrs, Channel ch) {
         logger.debug("processing <GOLOC/> command from %s", ch.attr(ServerMain.userStr).get());
-        UserManager.getUser(ch).execCommand(User.Commands.GOLOC);
+        UserManager.getUser(ch).com_GOLOC();
+        return;
+    }
+
+    private void com_SILUET(Attributes attrs, Channel ch) {
+        logger.debug("processing <SILUET/> command from %s", ch.attr(ServerMain.userStr).get());
+        String slt = attrs.getValue("slt");                                                                                                 //login attribute
+        String set = attrs.getValue("set");                                                                                                 //password attribute
+        ServerMain.mainExecutor.execute(() -> UserManager.getUser(ch).com_SILUET(slt, set));
         return;
     }
 

@@ -29,6 +29,8 @@ import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -42,6 +44,7 @@ public class ServerMain {
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
     public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
     public static final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    public static ExecutorService mainExecutor = Executors.newCachedThreadPool();
 
     static {
         ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
@@ -85,6 +88,7 @@ public class ServerMain {
             logger.error(e);
         }
         group.shutdownGracefully().syncUninterruptibly();                                                                                   //shut down the event group
+        mainExecutor.shutdownNow();
         return;
     }
 
