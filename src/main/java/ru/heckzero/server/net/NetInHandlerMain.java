@@ -89,7 +89,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {                                                               //client channel has been disconnected
         String fromStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
         logger.info("channel inactive, %s disconnected", fromStr);
-//        commandProcessor.startElement(ctx.channel().id().asLongText(), "LOGOUT", "LOGOUT", new AttributesImpl());
+
         return;
     }
 }

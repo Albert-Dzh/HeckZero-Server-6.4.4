@@ -69,7 +69,7 @@ public class UserManager {                                                      
     }
 
     public static User getUser(Channel ch) {                                                                                                //search from cached online users by a game channel
-        return findInGameUsers(UserType.ONLINE).stream().filter(u -> ch.equals(u.getGameChannel()) || ch.equals(u.getChatChannel())).findFirst().orElseGet(User::new);
+        return ch != null ? findInGameUsers(UserType.ONLINE).stream().filter(u -> ch.equals(u.getGameChannel()) || ch.equals(u.getChatChannel())).findFirst().orElseGet(User::new) : new User();
     }
 
     public static User getUser(String login) {                                                                                              //search from cached users by login

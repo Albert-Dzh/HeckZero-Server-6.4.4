@@ -31,15 +31,18 @@ public class CommandProcessor extends DefaultHandler {
 
     @Override
     public void startElement(String chId, String localName, String qName, Attributes attributes) throws SAXException {                      //this will be called for the every XML element received from the client, chId as a namespace uri contains channel id
-        logger.debug("got an XML element: uri: %s, localName: %s, qname: %s, atrrs len = %d", chId, localName, qName, attributes.getLength());
-        String handleMethodName = String.format("com_%s", qName);			            													//handler method name to process a command
-        logger.debug("trying to find and execute method %s" , handleMethodName);
+        logger.info("got an XML element: uri: %s, localName: %s, qname: %s, atrrs len = %d", chId, localName, qName, attributes.getLength());
 
         if (qName.equals("ROOT"))                                                                                                           //silently ignoring <ROOT/> element
             return;
 
+        String handleMethodName = String.format("com_%s", qName);			            													//handler method name to process a command
+        logger.debug("trying to find and execute method %s" , handleMethodName);
+
+
         Channel ch = findChannelById(chId);                                                                                                 //XML namespace param (chId) contains a channel ID
         User user = UserManager.getUser(ch);
+
         if (!qName.equals("LOGIN") && !qName.equals("CHAT") && user.isEmpty()) {                                                            //all commands except LOGIN and CHAT must have User associated with the channel
             logger.warn("user is unknown, closing the channel %s", ch.attr(ServerMain.userStr).get());
             ch.close();

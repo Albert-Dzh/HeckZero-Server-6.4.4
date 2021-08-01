@@ -151,7 +151,7 @@ public class User {
 
     public void sendMsg(String msg) {
         if (!gameChannel.isWritable()) {
-            logger.warn("user game channel is not writeable, won't send message to user %s", getParam(Params.LOGIN));
+            logger.warn("user game channel is not writeable, won't send a message to %s", gameChannel.attr(ServerMain.userStr).get());
             return;
         }
         gameChannel.writeAndFlush(msg).syncUninterruptibly();
@@ -160,7 +160,7 @@ public class User {
 
     public void sendChatMsg(String msg) {
         if (!gameChannel.isWritable()) {
-            logger.warn("user chat channel is not writeable, won't send message to user %s", getParam(Params.LOGIN));
+            logger.warn("user chat channel is not writeable, won't send a message to %s", chatChannel.attr(ServerMain.userStr).get());
             return;
         }
         chatChannel.writeAndFlush(msg).syncUninterruptibly();
