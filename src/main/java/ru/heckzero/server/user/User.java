@@ -13,6 +13,7 @@ import javax.persistence.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,7 +24,6 @@ import java.util.concurrent.Executors;
 public class User {
     public enum Params {LOGIN, PASSWORD, EMAIL, REG_TIME, LASTLOGIN, LASTLOGOUT, LASTCLANTIME, LOC_TIME, CURE_TIME, BOT, CLAN, DISMISS, NOCHAT, SILUET}                                                                             //params that can be accessed via get/setParam()
     public enum GetMeParams {TIME, TDT, LOGIN, EMAIL, LOC_TIME, CURE_TIME, GOD, HINT, EXP, PRO, PROPWR, RANK_POINTS, CLAN, CLR, IMG, ALLIANCE, MAN, HP, PSY, MAX_HP, MAX_PSY, STAMINA, STR, DEX, INT, POW, ACC, INTEL, X, Y, Z}
-    public enum Commands {MYPARAM, GOLOC, SILUET}                                                                                                   //client commands that can be executed by execCommand(), must have corresponding com_COMMAND() method
 
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -47,8 +47,8 @@ public class User {
     public void setId(Integer id) {this.id = id;}
 
     public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
-    public boolean isOnline() {return gameChannel != null && gameChannel.isActive();}                                                       //this user is online and it's game channel is up and running
-    public boolean isChatOn() {return isOnline() && chatChannel != null && chatChannel.isActive();}                                         //this user is online and it's game channel is up and running
+    public boolean isOnline() {return gameChannel != null;}                                                                                 //this user is online and it's game channel is up and running
+    public boolean isChatOn() {return isOnline() && chatChannel != null;}                                                                   //this user is online and it's game channel is up and running
     public boolean isBot() {return !getParam(Params.BOT).isEmpty();}                                                                        //user is a bot (no!t a human)
     public boolean isCop() {return getParam(Params.CLAN).equals("police");}                                                                 //user is a cop (member of police clan)
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet
@@ -94,25 +94,32 @@ public class User {
     }
 
     public Long getParamTime() {return Instant.now().getEpochSecond();}                                                                     //always return epoch time is seconds
+    public Integer getParamTdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}           //user time zone, used in history log
 
-    public void setOnline(Channel ch) {
+
+    void setOnline(Channel ch) {
         this.gameChannel = ch;                                                                                                              //set user's game socket (channel)
         setParam(Params.LASTLOGIN, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.NOCHAT, 1);                                                                                                         //set initial user chat status to off, until 2nd chat connection completed
         mainExecutor = Executors.newSingleThreadExecutor();                                                                                 //create an executor service for this user
         return;
     }
-    public void setOffline() {
+    void setOffline() {
         if(isOnline()) {
-            this.gameChannel.close();
+            this.gameChannel.close().syncUninterruptibly();
             this.gameChannel = null;
         }
     }
 
-    public void chatOn(Channel ch) {
-        chatChannel = ch;
-        sendChatMsg("<Z t=\"jopa\"/>");
-        sendChatMsg("<R t=\"Location[0/0] jopa" + "\t" + "0/0/0/0" + "\"/>");
+    void chatOn(Channel ch) {
+        this.chatChannel = ch;
+        return;
+    }
+    void chatOff() {
+        if (isChatOn()) {
+            this.chatChannel.close().syncUninterruptibly();
+            this.chatChannel = null;
+        }
         return;
     }
 
@@ -132,10 +139,12 @@ public class User {
     public void com_SILUET(String slt, String set) {
         logger.info("processing <SILUET/> from %s", gameChannel.attr((ServerMain.userStr)));
         logger.info("slt = %s, set = %s", slt, set);
+        setParam(Params.SILUET, set);
         String response = String.format("<SILUET code=\"1\"/><MYPARAM siluet=\"%s\"/>",  set);
         sendMsg(response);
         return;
     }
+
     public ChannelFuture sendMsg(String msg) {
         return gameChannel.writeAndFlush(msg);
     }

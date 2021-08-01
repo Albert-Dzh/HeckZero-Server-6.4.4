@@ -31,8 +31,7 @@ public class UserManager {                                                      
     public static final int ERROR_CODE_WRONG_KEY = 7;
     public static final int ERROR_CODE_SRV_FAIL = 9;
 
-    private enum UserType {INGAME, ONLINE, IN_BATTLE, CHAT_ON, NPC, HUMAN, POLICE}
-    private enum ChannelType {GAME, CHAT}
+    public enum UserType {INGAME, ONLINE, IN_BATTLE, CHAT_ON, NPC, HUMAN, POLICE}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final CopyOnWriteArrayList<User> inGameUsers = new CopyOnWriteArrayList<>();
@@ -42,7 +41,7 @@ public class UserManager {                                                      
 
     public UserManager() { }
 
-    private static List<User> findInGameUsers(UserType type) {
+    public static List<User> findInGameUsers(UserType type) {
         Predicate<User> isOnline = User::isOnline;
         Predicate<User> isChatOn = User::isChatOn;
         Predicate<User> isNPC = User::isBot;
@@ -69,16 +68,16 @@ public class UserManager {                                                      
         return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
     }
 
-    public static User getUser(Channel ch) {                                                                                                //search cached online users by a game channel
-        return findInGameUsers(UserType.ONLINE).stream().filter(u -> ch.equals(u.getGameChannel()) || ch.equals(u.getChatChannel())).findFirst().orElseGet(User::new);
+    public static User getUser(Channel ch) {                                                                                                //search from cached online users by a game channel
+        return findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch) || u.getChatChannel().equals(ch)).findFirst().orElseGet(User::new);
     }
 
-    public static User getUser(String login) {                                                                                              //search cached users by login
+    public static User getUser(String login) {                                                                                              //search from cached users by login
         User user = findInGameUsers(UserType.INGAME).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
-    private static User getDbUser(String login) {                                                                                           //instantiate User by getting it's data from db
+    private static User getDbUser(String login) {                                                                                           //instantiate User from database
         Session session = ServerMain.sessionFactory.openSession();
         Transaction tx = session.beginTransaction();
         Query<User> query = session.createQuery("select u from User u where lower(u.params.login) = lower(:login)", User.class).setParameter("login", login);
@@ -102,11 +101,10 @@ public class UserManager {                                                      
         logger.info("processing <CHAT/> command from %s", ch.attr(ServerMain.userStr).get());
         logger.info("phase 0 validating provided chat user credentials");
         if (ses == null || login == null) {                                                                                                 //login or sess attributes are missed, this is abnormal. closing the channel
-            logger.info("no credentials provided, seems this is an initial chat session request");
+            logger.info("no credentials are provided, seems this is an initial chat session request");
             ch.writeAndFlush("<CHAT/>");
             return;
         }
-
 
         logger.info("phase 1 checking if a user with login '%s' is online and ses key is valid", login);
         User user = findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
@@ -115,7 +113,7 @@ public class UserManager {                                                      
             ch.close();
             return;
         }
-        logger.info("phase 2 found user %s to associate the chat channel with, turning it's chat on", user.getParam(User.Params.LOGIN));
+        logger.info("phase 2 found user %s to associate the chat channel with, switching it's chat on", user.getParam(User.Params.LOGIN));
         user.chatOn(ch);
         ch.attr(ServerMain.userStr).set("chat user " + user.getParam(User.Params.LOGIN));
         return;
@@ -181,6 +179,11 @@ public class UserManager {                                                      
         ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));                                                        //replace a client representation string to 'user <login>' instead of IP:port
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());  //send OK with a chat auth key in ses attribute (using already existing key)
         ch.writeAndFlush(resultMsg);
+        return;
+    }
+
+    public void logoutUser(User u) {
+
         return;
     }
 

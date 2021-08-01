@@ -10,6 +10,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.AttributesImpl;
 import ru.heckzero.server.CommandProcessor;
 import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
@@ -86,7 +87,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {                                                               //client channel has been disconnected
         String fromStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
-        logger.info("channel inactive. User %s.... logged out", fromStr);
+        logger.info("channel inactive, %s logged out", fromStr);
+        commandProcessor.startElement(ctx.channel().id().asLongText(), "LOGOUT", "LOGOUT", new AttributesImpl());
         return;
     }
 }

@@ -42,9 +42,9 @@ public class ServerMain {
     private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "ehcache.xml");
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //get the OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
+    public static final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);                                  //netty's channel group to store all active channels in
+    public static final ExecutorService mainExecutor = Executors.newCachedThreadPool();                                                     //main client command executor service
     public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
-    public static final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-    public static ExecutorService mainExecutor = Executors.newCachedThreadPool();
 
     static {
         ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
@@ -88,7 +88,7 @@ public class ServerMain {
             logger.error(e);
         }
         group.shutdownGracefully().syncUninterruptibly();                                                                                   //shut down the event group
-        mainExecutor.shutdownNow();
+        mainExecutor.shutdownNow();                                                                                                         //shut down the main executor service
         return;
     }
 
