@@ -77,6 +77,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
                     logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", fromStr, cause.getMessage());                              //XML govnoy vonyaet
                 } else {                                                                                                                    //all other exceptions
                     logger.error("an exception caught from %s: %s", fromStr, cause.getMessage());
+                    cause.printStackTrace();
                 }
             }
         logger.info("closing the connection with %s", fromStr);
@@ -87,8 +88,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {                                                               //client channel has been disconnected
         String fromStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
-        logger.info("channel inactive, %s logged out", fromStr);
-        commandProcessor.startElement(ctx.channel().id().asLongText(), "LOGOUT", "LOGOUT", new AttributesImpl());
+        logger.info("channel inactive, %s disconnected", fromStr);
+//        commandProcessor.startElement(ctx.channel().id().asLongText(), "LOGOUT", "LOGOUT", new AttributesImpl());
         return;
     }
 }

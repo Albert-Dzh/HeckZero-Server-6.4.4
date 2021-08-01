@@ -105,6 +105,7 @@ public class User {
         return;
     }
     void setOffline() {
+        logger.info("setting user %s offline", getParam(Params.LOGIN));
         if(isOnline()) {
             this.gameChannel.close().syncUninterruptibly();
             this.gameChannel = null;
@@ -145,22 +146,22 @@ public class User {
         return;
     }
 
-    public ChannelFuture sendMsg(String msg) {
-        return gameChannel.writeAndFlush(msg);
+    public void sendMsg(String msg) {
+        if (!gameChannel.isWritable()) {
+            logger.warn("user game channel is not writeable, won't send message to user %s", getParam(Params.LOGIN));
+            return;
+        }
+        gameChannel.writeAndFlush(msg).syncUninterruptibly();
+        return;
     }
 
-    public ChannelFuture sendChatMsg(String msg) {
-        return gameChannel.writeAndFlush(msg);
+    public void sendChatMsg(String msg) {
+        if (!gameChannel.isWritable()) {
+            logger.warn("user chat channel is not writeable, won't send message to user %s", getParam(Params.LOGIN));
+            return;
+        }
+        chatChannel.writeAndFlush(msg).syncUninterruptibly();
+        return;
     }
 
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", params=" + params +
-                ", gameChannel=" + gameChannel +
-                ", chatChannel=" + chatChannel +
-                ", mainExecutor=" + mainExecutor +
-                '}';
-    }
 }

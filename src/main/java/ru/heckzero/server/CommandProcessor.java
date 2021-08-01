@@ -28,9 +28,6 @@ public class CommandProcessor extends DefaultHandler {
     private Channel findChannelById(String chId) {                                                                                          //find a channel by ID in a ServerMain.ChannelGroup
         return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElse(null);                   //the channel might be already closed
     }
-    private User findUserByChId(String chId) {                                                                                              //find a channel by ID in a ServerMain.ChannelGroup
-        return UserManager.findInGameUsers(UserManager.UserType.ONLINE).stream().filter(u -> u.getGameChannel().id().asLongText().equals(chId) || u.getChatChannel().id().asLongText().equals(chId)).findFirst().orElseGet(User::new);
-    }
 
     @Override
     public void startElement(String chId, String localName, String qName, Attributes attributes) throws SAXException {                      //this will be called for the every XML element received from the client, chId as a namespace uri contains channel id
@@ -56,6 +53,7 @@ public class CommandProcessor extends DefaultHandler {
             logger.warn("cannot process command %s, a method void %s(Attribute, Channel) is not yet implemented", qName, handleMethodName);
         }catch (Exception e) {																						                        //method invocation error occurred while executing the handler method
             logger.error("cannot execute method %s: %s", handleMethodName, e.getMessage());
+            e.printStackTrace();
         }
         return;
     }

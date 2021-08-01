@@ -69,7 +69,7 @@ public class UserManager {                                                      
     }
 
     public static User getUser(Channel ch) {                                                                                                //search from cached online users by a game channel
-        return findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getGameChannel().equals(ch) || u.getChatChannel().equals(ch)).findFirst().orElseGet(User::new);
+        return findInGameUsers(UserType.ONLINE).stream().filter(u -> ch.equals(u.getGameChannel()) || ch.equals(u.getChatChannel())).findFirst().orElseGet(User::new);
     }
 
     public static User getUser(String login) {                                                                                              //search from cached users by login
@@ -168,8 +168,8 @@ public class UserManager {                                                      
         }
         logger.info("phase 3 checking if user '%s' is already online", user.getParam(User.Params.LOGIN));
         if (user.isOnline()) {                                                                                                              //user is already online
-            logger.info("user '%s' is already online, disconnecting user from %s", user.getGameChannel().attr(ServerMain.userStr).get());
-            user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION)).syncUninterruptibly();
+            logger.info("user '%s' is already online, disconnecting it", user.getParam(User.Params.LOGIN));
+            user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION));
             user.setOffline();
         }
         user.setOnline(ch);                                                                                                                 //perform initial procedures to set user online
