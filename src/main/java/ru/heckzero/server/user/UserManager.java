@@ -170,9 +170,9 @@ public class UserManager {                                                      
         if (user.isOnline()) {                                                                                                              //user is already online
             logger.info("user '%s' is already online, disconnecting it", user.getParam(User.Params.LOGIN));
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION));
-            user.setOffline();
+            user.offline();
         }
-        user.setOnline(ch);                                                                                                                 //perform initial procedures to set user online
+        user.online(ch);                                                                                                                    //perform initial procedures to set user online
         inGameUsers.addIfAbsent(user);
         logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.userStr).get());
 

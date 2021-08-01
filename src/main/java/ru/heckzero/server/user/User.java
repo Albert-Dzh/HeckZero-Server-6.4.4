@@ -97,22 +97,25 @@ public class User {
     public Integer getParamTdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}           //user time zone, used in history log
 
 
-    void setOnline(Channel ch) {
+    void online(Channel ch) {
         this.gameChannel = ch;                                                                                                              //set user's game socket (channel)
         setParam(Params.LASTLOGIN, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.NOCHAT, 1);                                                                                                         //set initial user chat status to off, until 2nd chat connection completed
         mainExecutor = Executors.newSingleThreadExecutor();                                                                                 //create an executor service for this user
         return;
     }
-    void setOffline() {
+    void offline() {
         logger.info("setting user %s offline", getParam(Params.LOGIN));
         if(isOnline()) {
             this.gameChannel.close().syncUninterruptibly();
             this.gameChannel = null;
+            chatOff();
         }
     }
 
     void chatOn(Channel ch) {
+        if (isChatOn())
+            chatOff();
         this.chatChannel = ch;
         return;
     }
