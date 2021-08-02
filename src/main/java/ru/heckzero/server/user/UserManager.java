@@ -73,7 +73,7 @@ public class UserManager {                                                      
     }
 
     public static User getUser(String login) {                                                                                              //search from cached users by login
-        User user = findInGameUsers(UserType.INGAME).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
+        User user = findInGameUsers(UserType.INGAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
         return user.isEmpty() ? getDbUser(login) : user;
     }
 
@@ -106,16 +106,16 @@ public class UserManager {                                                      
             return;
         }
 
-        logger.info("phase 1 checking if a user with login '%s' is online and ses key is valid", login);
-        User user = findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getParam(User.Params.LOGIN).equals(login)).findFirst().orElseGet(User::new);
-        if (!(ses.equals(user.getGameChannel().attr(ServerMain.encKey).get()) && login.equals(user.getParam(User.Params.LOGIN)))) {
-            logger.warn("can't find an online user to associate with the chat channel, closing the channel");
+        logger.info("phase 1 checking if a corresponding user with login '%s' is online and ses key is valid", login);
+        User user = findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
+        if (!(ses.equals(user.getGameChannel().attr(ServerMain.encKey).get()) && login.equals(user.getLogin()))) {
+            logger.warn("can't find an online user to associate the chat channel with, closing the channel");
             ch.close();
             return;
         }
-        logger.info("phase 2 found user %s to associate the chat channel with, switching it's chat on", user.getParam(User.Params.LOGIN));
+        logger.info("phase 2 found user %s to associate the chat channel with, switching it's chat on", user.getLogin());
         user.chatOn(ch);
-        ch.attr(ServerMain.userStr).set("chat user " + user.getParam(User.Params.LOGIN));
+        ch.attr(ServerMain.userStr).set("user " + user.getLogin() + " (chat)");
         return;
     }
 
@@ -134,7 +134,7 @@ public class UserManager {                                                      
             return;
         }
 
-        logger.info("phase 1 checking if a user '%s' exists", login);
+        logger.info("phase 1 checking if a user '%s' exists and can be set online", login);
         User user = getUser(login);
         if (user == null) {                                                                                                                 //SQL Exception was thrown while getting user data from a db
             logger.error("can't get user data from database by login '%s' due to a DB error", login);
@@ -150,39 +150,40 @@ public class UserManager {                                                      
             ch.close();
             return;
         }
-        logger.info("phase 2 checking user '%s' credentials", user.getParam(User.Params.LOGIN));
+        logger.info("phase 2 checking user '%s' credentials", user.getLogin());
         String userClearPass = user.getParam(User.Params.PASSWORD);                                                                         //user clear password from database
         String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);                                                //encrypt user password using the same algorithm as a client does
         if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
-            logger.info("wrong password for user '%s'", user.getParam(User.Params.LOGIN));
+            logger.info("wrong password for user '%s'", user.getLogin());
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_PASSWORD);
             ch.writeAndFlush(errMsg);
             ch.close();
             return;
         }
         if (!user.getParam(User.Params.DISMISS).isBlank()) {                                                                                //user is blocked (dismiss is not empty)
-            logger.info("user '%s' is banned, reason: '%s'", user.getParam(User.Params.LOGIN), user.getParam(User.Params.DISMISS));
+            logger.info("user '%s' is banned, reason: '%s'", user.getLogin(), user.getParam(User.Params.DISMISS));
             String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam(User.Params.DISMISS));
             ch.writeAndFlush(errMsg);
             ch.close();
         }
-        logger.info("phase 3 checking if user '%s' is already online", user.getParam(User.Params.LOGIN));
+        logger.info("phase 3 checking if user '%s' is already online", user.getLogin());
         if (user.isOnline()) {                                                                                                              //user is already online
-            logger.info("user '%s' is already online, disconnecting it", user.getParam(User.Params.LOGIN));
+            logger.info("user '%s' is already online, disconnecting it", user.getLogin());
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ERROR_CODE_ANOTHER_CONNECTION));
             user.offline();
         }
         user.online(ch);                                                                                                                    //perform initial procedures to set user online
         inGameUsers.addIfAbsent(user);
-        logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.userStr).get());
+        logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getLogin(), ch.attr(ServerMain.userStr).get());
 
-        ch.attr(ServerMain.userStr).set("user " + user.getParam(User.Params.LOGIN));                                                        //replace a client representation string to 'user <login>' instead of IP:port
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getParam(User.Params.LOGIN), ch.attr(ServerMain.encKey).get());  //send OK with a chat auth key in ses attribute (using already existing key)
-        ch.writeAndFlush(resultMsg);
+        ch.attr(ServerMain.userStr).set("user " + user.getLogin());                                                                         //replace a client representation string to 'user <login>' instead of IP:port
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getLogin(), ch.attr(ServerMain.encKey).get());                   //send OK with a chat auth key in ses attribute (using already existing key)
+        user.sendMsg(resultMsg);                                                                                                            //now we can use user native send function
         return;
     }
 
     public void logoutUser(User u) {
+
 
         return;
     }

@@ -30,18 +30,19 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     public NetInHandlerMain() throws Exception {
         SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                          //create SAX XML parser factory
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
-        saxParserFactory.setNamespaceAware(true);                                                                                           //enable XML namespace parsing, needed for transit channel ID to command processor as a namespace
-        parser = saxParserFactory.newSAXParser();                                                                                           //create an XML parser for parsing incoming client data
+        saxParserFactory.setNamespaceAware(true);                                                                                           //enable XML namespace parsing, needed for transit channel ID to command processor within a namespace
+        parser = saxParserFactory.newSAXParser();                                                                                           //create a SAX XML parser for parsing incoming client data
         commandProcessor = new CommandProcessor();
         return;
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {                                                                 //new client has just connected
-        InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client's socket address
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {                                                                 //a new client has connected
+        InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client socket address
 
         String fromStr = String.format("%s:%d", sa.getHostString(), sa.getPort());                                                          //format socket address to a string
-        ctx.channel().attr(ServerMain.userStr).set(fromStr);                                                                                //and store it as a channel attribute for a login usage
+        ctx.channel().attr(ServerMain.sockStr).set(fromStr);                                                                                //and store it as a channel attribute for login purpose
+        ctx.channel().attr(ServerMain.userStr).set(fromStr);                                                                                //and store it as a channel attribute for login purpose
         logger.info("client connected from %s", fromStr);
 
         String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate a random string - an encryption key for the future user authentication
@@ -57,7 +58,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         rcvd = rcvd.replace("\r", "&#xD;").trim();                                                                                          //replace CR with the corresponding XML code
 
         String fromStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
-        logger.info("received %s from %s, length = %d", rcvd, fromStr, rcvd.length());                                                      //log the received message
+        logger.info("received %s from %s", rcvd, fromStr);                                                                                  //log the received message
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT xmlns=\"" + ctx.channel().id().asLongText() + "\">" + rcvd + "</ROOT>";                //wrap the source message into XML root elements <ROOT>source_message</ROOT>
@@ -76,8 +77,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
                 if (cause instanceof SAXException) {                                                                                        //malformed XML was received from a client
                     logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", fromStr, cause.getMessage());                              //XML govnoy vonyaet
                 } else {                                                                                                                    //all other exceptions
-                    logger.error("an exception caught from %s: %s", fromStr, cause.getMessage());
-                    cause.printStackTrace();
+                    logger.error("an exception while processing a command from %s: %s", fromStr, cause.getMessage());
                 }
             }
         logger.info("closing the connection with %s", fromStr);
@@ -87,8 +87,10 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {                                                               //client channel has been disconnected
-        String fromStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
-        logger.info("channel inactive, %s disconnected", fromStr);
+        String sockStr = ctx.channel().attr(ServerMain.sockStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
+        String userStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
+        String chType = ctx.channel().attr(ServerMain.chType).get().name();                                                                 //set sender from string - login or socket address if a User is unknown
+        logger.info("channel inactive, %s disconnected from %s socket %s", userStr, chType, sockStr);
 
         return;
     }

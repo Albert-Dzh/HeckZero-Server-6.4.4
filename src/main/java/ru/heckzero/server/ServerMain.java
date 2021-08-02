@@ -27,6 +27,7 @@ import org.hibernate.service.ServiceRegistry;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserManager;
 
 import java.io.File;
 import java.util.concurrent.ExecutorService;
@@ -35,8 +36,12 @@ import java.util.concurrent.Executors;
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final XMLConfiguration hzConfiguration = null;
+
     public static final AttributeKey<String> encKey = AttributeKey.valueOf("encKey");                                                       //channel attr holding an encryption key
-    public static final AttributeKey<String> userStr = AttributeKey.valueOf("sockAddStr");                                                  //channel attr holding a string representation of the channel
+    public static final AttributeKey<String> sockStr = AttributeKey.valueOf("sockStr");                                                     //channel attr holding a string representation of the channel
+    public static final AttributeKey<String> userStr = AttributeKey.valueOf("userStr");                                                     //channel attr holding a string representation of the channel
+    public static final AttributeKey<User.ChannelType> chType = AttributeKey.valueOf("chType");                                             //channel type (GAME, CHAT)
+
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
     private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "ehcache.xml");

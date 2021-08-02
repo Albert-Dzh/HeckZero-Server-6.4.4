@@ -18,8 +18,8 @@ public class NetOutHandler extends MessageToByteEncoder<String> {               
                                                                                                                                             //2)add 0x00 byte the the end of the outbound message to conform flash XML socket requests
     @Override
     protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
-        String fromStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
-        logger.info("sending %s to %s", msg, fromStr);                                                                                      //log the outbound message
+        String userStr = ctx.channel().attr(ServerMain.userStr).get();                                                                      //set sender from string - login or socket address if a User is unknown
+        logger.info("sending %s to %s", msg, userStr);                                                                                      //log the outbound message
 
         out.writeCharSequence(msg, Charset.defaultCharset());                                                                               //write the source message to a allocated ByteBuf
         out.writeZero(1);                                                                                                                   //add a terminating 0x00 byte to the end of the ByteBuf

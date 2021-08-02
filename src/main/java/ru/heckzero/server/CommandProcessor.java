@@ -15,6 +15,7 @@ import ru.heckzero.server.user.UserManager;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -22,48 +23,61 @@ import java.util.function.Predicate;
 
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
-
+    public enum ChatCommands {POST, N}
     public CommandProcessor() {}                                                                                                            //default constructor
 
-    private Channel findChannelById(String chId) {                                                                                          //find a channel by ID in a ServerMain.ChannelGroup
-        return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElse(null);                   //the channel might be already closed
+    private Channel findChannelById(String chId) {                                                                                          //search for a channel by ID in a ServerMain.ChannelGroup
+        return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElseThrow(() -> new NoSuchElementException("can't find channel id " + chId));                   //the channel might be already closed
+    }
+    private boolean sanityCheck(Channel ch, String command) {
+        User user = UserManager.getUser(ch);
+        if ((command.equals("LOGIN") || command.equals("CHAT")) && !user.isEmpty()) {
+            logger.error("found online user %s which has channel Id %s set as %s channel. This is abnormal for %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ch.attr(ServerMain.chType).get().name(), command);
+            ch.close();
+            return false;
+        }
+        if (!(command.equals("LOGIN") || command.equals("CHAT")) && user.isEmpty()) {
+            logger.error("cannot find an online user which has channel Id %s set. This is abnormal for regular command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText());
+            ch.close();
+            return false;
+        }
+        return true;
     }
 
     @Override
     public void startElement(String chId, String localName, String qName, Attributes attributes) throws SAXException {                      //this will be called for the every XML element received from the client, chId as a namespace uri contains channel id
-        logger.info("got an XML element: uri: %s, localName: %s, qname: %s, atrrs len = %d", chId, localName, qName, attributes.getLength());
+        logger.debug("got an XML element: uri: %s, localName: %s, qname: %s, atrrs len = %d", chId, localName, qName, attributes.getLength());
 
         if (qName.equals("ROOT"))                                                                                                           //silently ignoring <ROOT/> element
             return;
 
-        String handleMethodName = String.format("com_%s", qName);			            													//handler method name to process a command
-        logger.debug("trying to find and execute method %s" , handleMethodName);
-
-
         Channel ch = findChannelById(chId);                                                                                                 //XML namespace param (chId) contains a channel ID
+        if (!sanityCheck(ch, qName))
+            return;
         User user = UserManager.getUser(ch);
 
-        if (!qName.equals("LOGIN") && !qName.equals("CHAT") && user.isEmpty()) {                                                            //all commands except LOGIN and CHAT must have User associated with the channel
-            logger.warn("user is unknown, closing the channel %s", ch.attr(ServerMain.userStr).get());
-            ch.close();
-            return;
+        String handleMethodName = String.format("com_%s", qName);			            													//handler method name to process a user command
+        logger.debug("trying to find and execute method %s" , handleMethodName);
+
+        switch (qName) {                                                                                                                    //CHAT and LOGIN are special case, they need a Channel, not a User as a second argument
+            case "LOGIN" -> {com_LOGIN(attributes, ch); return;}
+            case "CHAT" -> {com_CHAT(attributes, ch); return;}
         }
 
         try {
-            Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class, Channel.class);	                //get a handler method reference
-            handlerMethod.invoke(this, attributes, ch);
+            Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class, User.class);	                    //get a handler method reference
+            handlerMethod.invoke(this, attributes, user);
         }catch (NoSuchMethodException e) {                                                                                                  //method is not found
             logger.warn("cannot process command %s, a method void %s(Attribute, Channel) is not yet implemented", qName, handleMethodName);
         }catch (Exception e) {																						                        //method invocation error occurred while executing the handler method
             logger.error("cannot execute method %s: %s", handleMethodName, e.getMessage());
-            e.printStackTrace();
         }
         return;
     }
 
-    private void com_GETME(Attributes attrs, Channel ch) {
-        logger.debug("processing <GETME/> command from %s", ch.attr(ServerMain.userStr).get());
-        ServerMain.mainExecutor.execute(() ->  UserManager.getUser(ch).com_MYPARAM());
+    private void com_GETME(Attributes attrs, User u) {
+        logger.debug("processing <GETME/> command from %s", u.getLogin());
+        ServerMain.mainExecutor.execute(() -> u.com_MYPARAM());
         return;
     }
 

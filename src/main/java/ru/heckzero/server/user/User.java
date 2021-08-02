@@ -22,6 +22,7 @@ import java.util.concurrent.Executors;
 @Table(name = "users")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
+    public enum ChannelType {GAME, CHAT}
     public enum Params {LOGIN, PASSWORD, EMAIL, REG_TIME, LASTLOGIN, LASTLOGOUT, LASTCLANTIME, LOC_TIME, CURE_TIME, BOT, CLAN, DISMISS, NOCHAT, SILUET}                                                                             //params that can be accessed via get/setParam()
     public enum GetMeParams {TIME, TDT, LOGIN, EMAIL, LOC_TIME, CURE_TIME, GOD, HINT, EXP, PRO, PROPWR, RANK_POINTS, CLAN, CLR, IMG, ALLIANCE, MAN, HP, PSY, MAX_HP, MAX_PSY, STAMINA, STR, DEX, INT, POW, ACC, INTEL, X, Y, Z}
 
@@ -63,6 +64,8 @@ public class User {
         this.params.setParam(param.name().toLowerCase(), value);
     }
 
+    public String getLogin() {return getParam(Params.LOGIN);}
+
     private Integer getParamInteger(Params param) {
         String val = getParam(param);
         return val.chars().allMatch(Character::isDigit) ? Integer.parseInt(val) : 0;
@@ -99,6 +102,7 @@ public class User {
 
     void online(Channel ch) {
         this.gameChannel = ch;                                                                                                              //set user's game socket (channel)
+        this.gameChannel.attr(ServerMain.chType).set(ChannelType.GAME);
         setParam(Params.LASTLOGIN, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.NOCHAT, 1);                                                                                                         //set initial user chat status to off, until 2nd chat connection completed
         mainExecutor = Executors.newSingleThreadExecutor();                                                                                 //create an executor service for this user
@@ -117,6 +121,7 @@ public class User {
         if (isChatOn())
             chatOff();
         this.chatChannel = ch;
+        this.chatChannel.attr(ServerMain.chType).set(ChannelType.CHAT);
         return;
     }
     void chatOff() {
@@ -129,7 +134,7 @@ public class User {
 
     public void com_MYPARAM() {
         logger.info("processing <GETME/> from %s", gameChannel.attr(ServerMain.userStr).get());
-        String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\"></MYPARAM>", getParam(Params.LOGIN));
+        String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\" Z=\"0\"></MYPARAM>", getParam(Params.LOGIN));
         sendMsg(xml);
         return;
     }
@@ -151,19 +156,19 @@ public class User {
 
     public void sendMsg(String msg) {
         if (!gameChannel.isWritable()) {
-            logger.warn("user game channel is not writeable, won't send a message to %s", gameChannel.attr(ServerMain.userStr).get());
+            logger.warn("user game channel is not writeable, won't send a message %s to %s", msg, gameChannel.attr(ServerMain.userStr).get());
             return;
         }
-        gameChannel.writeAndFlush(msg).syncUninterruptibly();
+        gameChannel.writeAndFlush(msg);
         return;
     }
 
     public void sendChatMsg(String msg) {
         if (!gameChannel.isWritable()) {
-            logger.warn("user chat channel is not writeable, won't send a message to %s", chatChannel.attr(ServerMain.userStr).get());
+            logger.warn("user chat channel is not writeable, won't send a message %s to %s", msg, chatChannel.attr(ServerMain.userStr).get());
             return;
         }
-        chatChannel.writeAndFlush(msg).syncUninterruptibly();
+        chatChannel.writeAndFlush(msg);
         return;
     }
 
