@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.persistence.*;
-import javax.persistence.criteria.CriteriaBuilder;
 import java.lang.reflect.Field;
 
 @Embeddable
@@ -27,7 +26,7 @@ class UserParams {
     private Long lastlogin;                                                                                                                 //last user login time in seconds, needed for computing loc_time
 
     @Transient
-    private Integer noChat;                                                                                                                 //user chat status 1,0
+    private Integer nochat;                                                                                                                 //user chat status 1,0
 
     void setParam(String paramName, Object paramValue) {                                                                                    //set user param value
         try {
@@ -39,14 +38,15 @@ class UserParams {
             else
                 logger.warn("cannot set param %s, param type: %s differs from a database column type: %s", paramName, vType, fType);
         } catch (NoSuchFieldException | SecurityException | IllegalAccessException ex) {
-            logger.warn("cannot set param %s to value %s, a corresponding filed is not found or an error occurred: %s", paramName, paramValue, ex.getMessage());
+            logger.warn("cannot set param %s to value %s, a corresponding field is not found or an error occurred: %s", paramName, paramValue, ex.getMessage());
         }
+
         return;
     }
 
-    String getParam(String paramName) throws Exception {
+    Object getParam(String paramName) throws NoSuchFieldException, IllegalAccessException {
         Field field = this.getClass().getDeclaredField(paramName);
-        return (String) field.get(this);
+        return field.get(this);
     }
 
 }

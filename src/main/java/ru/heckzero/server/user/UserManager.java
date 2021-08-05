@@ -2,6 +2,7 @@ package ru.heckzero.server.user;
 
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
+import io.netty.util.AttributeKey;
 import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -90,7 +91,7 @@ public class UserManager {                                                      
         } catch (Exception e) {                                                                                                             //some db problem
             logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
             tx.rollback();
-            return null;                                                                                                                    //return null in case of SQL exception
+            return new User();                                                                                                              //return null in case of SQL exception
         }finally {
             session.close();
         }
@@ -98,7 +99,7 @@ public class UserManager {                                                      
     }
 
     public void loginUserChat(Channel ch, String ses, String login) {
-        logger.info("processing <CHAT/> command from %s", ch.attr(ServerMain.userStr).get());
+        logger.info("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         logger.info("phase 0 validating provided chat user credentials");
         if (ses == null || login == null) {                                                                                                 //login or sess attributes are missed, this is abnormal. closing the channel
             logger.info("no credentials are provided, seems this is an initial chat session request");
@@ -108,29 +109,29 @@ public class UserManager {                                                      
 
         logger.info("phase 1 checking if a corresponding user with login '%s' is online and ses key is valid", login);
         User user = findInGameUsers(UserType.ONLINE).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
-        if (!(ses.equals(user.getGameChannel().attr(ServerMain.encKey).get()) && login.equals(user.getLogin()))) {
+        if (!(ses.equals(user.getGameChannel().attr(AttributeKey.valueOf("encKey")).get()) && login.equals(user.getLogin()))) {
             logger.warn("can't find an online user to associate the chat channel with, closing the channel");
             ch.close();
             return;
         }
         logger.info("phase 2 found user %s to associate the chat channel with, switching it's chat on", user.getLogin());
         user.chatOn(ch);
-        ch.attr(ServerMain.userStr).set("user " + user.getLogin() + " (chat)");
+        ch.attr(AttributeKey.valueOf("chStr")).set("user " + user.getLogin() + " (chat)");
         return;
     }
 
     public void loginUser(Channel ch, String login, String userCryptedPass) {                                                               //check if the user can login and set it online
-        logger.info("processing <LOGIN/> command from %s", ch.attr(ServerMain.userStr).get());
+        logger.info("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         logger.info("phase 0 validating received user credentials");
         if (login == null || userCryptedPass == null) {                                                                                     //login or password attributes are missed, this is abnormal. closing the channel
             ch.close();
-            logger.warn("no valid login or password attributes exist in a received message, closing connection with %s", ch.attr(ServerMain.userStr).get());
+            logger.warn("no valid login or password attributes exist in a received message, closing connection with %s", ch.attr(AttributeKey.valueOf("chStr")).get());
             return;
         }
 
         if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid, this is illegal
             ch.close();
-            logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(ServerMain.userStr).get());
+            logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(AttributeKey.valueOf("chStr")).get());
             return;
         }
 
@@ -151,8 +152,8 @@ public class UserManager {                                                      
             return;
         }
         logger.info("phase 2 checking user '%s' credentials", user.getLogin());
-        String userClearPass = user.getParam(User.Params.PASSWORD);                                                                         //user clear password from database
-        String serverCryptedPass = encrypt(ch.attr(ServerMain.encKey).get(), userClearPass);                                                //encrypt user password using the same algorithm as a client does
+        String userClearPass = user.getParamStr(User.Params.password);                                                                      //user clear password from database
+        String serverCryptedPass = encrypt((String)ch.attr(AttributeKey.valueOf("encKey")).get(), userClearPass);                           //encrypt user password using the same algorithm as a client does
         if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
             logger.info("wrong password for user '%s'", user.getLogin());
             String errMsg = String.format("<ERROR code = \"%d\" />", ERROR_CODE_WRONG_PASSWORD);
@@ -160,9 +161,9 @@ public class UserManager {                                                      
             ch.close();
             return;
         }
-        if (!user.getParam(User.Params.DISMISS).isBlank()) {                                                                                //user is blocked (dismiss is not empty)
-            logger.info("user '%s' is banned, reason: '%s'", user.getLogin(), user.getParam(User.Params.DISMISS));
-            String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParam(User.Params.DISMISS));
+        if (!user.getParamStr(User.Params.dismiss).isBlank()) {                                                                             //user is blocked (dismiss is not empty)
+            logger.info("user '%s' is banned, reason: '%s'", user.getLogin(), user.getParamStr(User.Params.dismiss));
+            String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ERROR_CODE_USER_BLOCKED, user.getParamStr(User.Params.dismiss));
             ch.writeAndFlush(errMsg);
             ch.close();
         }
@@ -174,10 +175,9 @@ public class UserManager {                                                      
         }
         user.online(ch);                                                                                                                    //perform initial procedures to set user online
         inGameUsers.addIfAbsent(user);
-        logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getLogin(), ch.attr(ServerMain.userStr).get());
-
-        ch.attr(ServerMain.userStr).set("user " + user.getLogin());                                                                         //replace a client representation string to 'user <login>' instead of IP:port
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getLogin(), ch.attr(ServerMain.encKey).get());                   //send OK with a chat auth key in ses attribute (using already existing key)
+        logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
+        ch.attr(AttributeKey.valueOf("chStr")).set("user " + user.getLogin());                                                              //replace a client representation string to 'user <login>' instead of IP:port
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());      //send OK with a chat auth key in ses attribute (using already existing key)
         user.sendMsg(resultMsg);                                                                                                            //now we can use user native send function
         return;
     }

@@ -37,15 +37,10 @@ public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final XMLConfiguration hzConfiguration = null;
 
-    public static final AttributeKey<String> encKey = AttributeKey.valueOf("encKey");                                                       //channel attr holding an encryption key
-    public static final AttributeKey<String> sockStr = AttributeKey.valueOf("sockStr");                                                     //channel attr holding a string representation of the channel
-    public static final AttributeKey<String> userStr = AttributeKey.valueOf("userStr");                                                     //channel attr holding a string representation of the channel
-    public static final AttributeKey<User.ChannelType> chType = AttributeKey.valueOf("chType");                                             //channel type (GAME, CHAT)
-
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
     private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "ehcache.xml");
-    private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //get the OS type we are running on
+    private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
     public static final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);                                  //netty's channel group to store all active channels in
     public static final ExecutorService mainExecutor = Executors.newCachedThreadPool();                                                     //main client command executor service
@@ -64,7 +59,6 @@ public class ServerMain {
     public void startOperation() {                                                                                                          //mainly bootstrapping the netty stuff
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", Defines.VERSION);
         sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create the SessionFactory
-
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
         try {
             NetInHandlerMain netInHandlerMain = new NetInHandlerMain();                                                                     //an inbound handler (will do client command processing)
