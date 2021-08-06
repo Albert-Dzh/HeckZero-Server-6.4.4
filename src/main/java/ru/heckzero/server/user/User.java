@@ -80,7 +80,7 @@ public class User {
 
 
     void online(Channel ch) {
-        this.gameChannel = ch;                                                                                                              //set user's game socket (channel)
+        this.gameChannel = ch;                                                                                                              //set user's game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.nochat, 1);                                                                                                         //set initial user chat status to off, until 2nd chat connection completed
@@ -149,5 +149,4 @@ public class User {
         chatChannel.writeAndFlush(msg);
         return;
     }
-
 }

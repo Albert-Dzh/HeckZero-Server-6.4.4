@@ -74,8 +74,9 @@ public class UserManager {                                                      
     }
 
     public static User getUser(String login) {                                                                                              //search from cached users by login
-        User user = findInGameUsers(UserType.INGAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
-        return user.isEmpty() ? getDbUser(login) : user;
+//        User user = findInGameUsers(UserType.INGAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
+        return findInGameUsers(UserType.INGAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(() -> getDbUser(login));
+//        return user.isEmpty() ? getDbUser(login) : user;
     }
 
     private static User getDbUser(String login) {                                                                                           //instantiate User from database
@@ -152,7 +153,7 @@ public class UserManager {                                                      
             return;
         }
         logger.info("phase 2 checking user '%s' credentials", user.getLogin());
-        String userClearPass = user.getParamStr(User.Params.password);                                                                      //user clear password from database
+        String userClearPass = user.getParamStr(User.Params.password);                                                                      //the user clear password from database
         String serverCryptedPass = encrypt((String)ch.attr(AttributeKey.valueOf("encKey")).get(), userClearPass);                           //encrypt user password using the same algorithm as a client does
         if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
             logger.info("wrong password for user '%s'", user.getLogin());
@@ -182,8 +183,12 @@ public class UserManager {                                                      
         return;
     }
 
-    public void logoutUser(User u) {
-
+    public static void logoutUser(Channel ch) {
+        User u = getUser(ch);
+        if (u.isEmpty()) {
+            logger.info("cannot find user to logout by channel %s", ch.attr(AttributeKey.valueOf("chStr")));
+            return;
+        }
 
         return;
     }

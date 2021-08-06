@@ -15,6 +15,7 @@ import ru.heckzero.server.CommandProcessor;
 import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserManager;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -96,7 +97,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         String userStr = (String) ctx.channel().attr(AttributeKey.valueOf("chStr")).get();                                                  //set sender from string - login or socket address if a User is unknown
         String chType = ((User.ChannelType)ctx.channel().attr(AttributeKey.valueOf("chType")).get()).name();                                //get Channel type (Game, Chat)
         logger.info("channel %s %s %s disconnected", sockStr, chType, chType.equals(User.ChannelType.NOUSER.name()) ? "" :  userStr);
-
+        UserManager.logoutUser(ctx.channel());
         return;
     }
 }

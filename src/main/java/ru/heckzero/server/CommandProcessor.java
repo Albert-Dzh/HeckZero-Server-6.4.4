@@ -89,8 +89,8 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     public void com_GAME_LOGOUT(Attributes attrs, User u) {                                                                                  //<LOGOUT/> handler
-        logger.info("processing <LOGOUT/> command from %s", u.getLogin());
-
+        logger.debug("processing <LOGOUT/> command from %s", u.getLogin());
+        u.getGameChannel().close();
         return;
     }
     private void com_GAME_SILUET(Attributes attrs, User u) {
