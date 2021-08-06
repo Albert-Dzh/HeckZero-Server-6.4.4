@@ -24,7 +24,7 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private boolean sanityCheck(Channel ch, User user, String command) {
-        if ((command.equals("LOGIN") || command.equals("CHAT")) && !user.isEmpty()) {
+        if ((command.equals("LOGIN") || command.equals("ACHAT")) && !user.isEmpty()) {
             logger.error("found an online user %s which has channel Id %s set as %s channel. This is abnormal for the %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), command);
             return false;
         }
@@ -45,7 +45,7 @@ public class CommandProcessor extends DefaultHandler {
         Channel ch = findChannelById(chId);                                                                                                 //XML namespace param (chId) contains a channel ID
         User user = UserManager.getUser(ch);
         if (!sanityCheck(ch, user, qName)) {
-//            ch.close();
+            ch.close();
             return;
         }
 
@@ -53,7 +53,7 @@ public class CommandProcessor extends DefaultHandler {
             case "LOGIN" -> {com_LOGIN(attributes, ch); return;}
             case "CHAT" -> {com_CHAT(attributes, ch); return;}
         }
-        String handleMethodName = String.format("com_%s_%s", ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), qName);			         													//handler method name to process a user command
+        String handleMethodName = String.format("com_%s_%s", ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), qName); //handler method name to process a user command
         logger.debug("trying to find and execute method %s" , handleMethodName);
 
         try {
@@ -61,11 +61,6 @@ public class CommandProcessor extends DefaultHandler {
             handlerMethod.invoke(this, attributes, user);
         }catch (NoSuchMethodException e) {                                                                                                  //method is not found
             logger.warn("cannot process command %s, a method void %s(Attribute, Channel) is not yet implemented", qName, handleMethodName);
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException ex) {
-                ex.printStackTrace();
-            }
         }catch (Exception e) {																						                        //method invocation error occurred while executing the handler method
             logger.error("cannot execute method %s: %s", handleMethodName, e.getMessage());
         }

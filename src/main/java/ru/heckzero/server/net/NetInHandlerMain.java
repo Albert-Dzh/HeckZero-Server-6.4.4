@@ -16,25 +16,24 @@ import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+
                                                                                                                                             //TODO change class name to NetInHandler (remove 'Main' word)
 @Sharable
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
-//    private final SAXParser parser;                                                                                                       //XML SAX parser
-    private final CommandProcessor commandProcessor;                                                                                        //Shareable command processor for dispatch client commands
     private final SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                //create SAX XML parser factory
+    private final CommandProcessor commandProcessor = new CommandProcessor();                                                               //Shareable command processor for dispatching client commands
+    ThreadLocal<SAXParser> threadLocalParser = ThreadLocal.withInitial(() -> {try { return saxParserFactory.newSAXParser(); } catch (Exception e) {logger.error("cant create parser: %s", e.getMessage()); return null;}});
 
-    public NetInHandlerMain() throws Exception {
-
+    public NetInHandlerMain() {
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
         saxParserFactory.setNamespaceAware(true);                                                                                           //enable XML namespace parsing, needed for transit channel ID to command processor within a namespace
-//        parser = saxParserFactory.newSAXParser();                                                                                           //create a SAX XML parser for parsing incoming client data
-        commandProcessor = new CommandProcessor();
         return;
     }
 
@@ -46,8 +45,6 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         ctx.channel().attr(AttributeKey.valueOf("sockStr")).set(sockStr);                                                                   //and store it as a channel attribute for login purpose
         ctx.channel().attr(AttributeKey.valueOf("chStr")).set(sockStr);                                                                     //initial chStr = sockStr (will be replaced to user login after successful authorization)
         ctx.channel().attr(AttributeKey.valueOf("chType")).set(User.ChannelType.NOUSER);                                                    //initial channel type set to NOUSER
-//        ctx.channel().attr(AttributeKey.valueOf("parser")).set(saxParserFactory.newSAXParser());
-        ctx.channel().attr(AttributeKey.valueOf("parser")).set(saxParserFactory.newSAXParser());
 
         logger.info("client connected from %s", sockStr);
 
@@ -68,7 +65,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT xmlns=\"" + ctx.channel().id().asLongText() + "\">" + rcvd + "</ROOT>";  //wrap the source message into XML root elements <ROOT>source_message</ROOT>
-        ((SAXParser)ctx.channel().attr(AttributeKey.valueOf("parser")).get()).parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //parse and process the received command by a CommandProcessor
+        SAXParser parser = threadLocalParser.get();                                                                                         //one parser per thead is stored in ThreadLocal
+        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //parse and process the received command by a CommandProcessor instance handler
         return;
     }
 
@@ -84,7 +82,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
                     logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", chStr, cause.getMessage());                                //XML govnoy vonyaet
                 } else {                                                                                                                    //all other exceptions
                     logger.error("an exception while processing a command from %s: %s", chStr, cause.getMessage());
-                    cause.printStackTrace();
+//                    cause.printStackTrace();
                 }
             }
         logger.info("closing the connection with %s", chStr);
