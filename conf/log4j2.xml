@@ -6,7 +6,7 @@
   
   <Appenders>
     <Console name="Console" target="SYSTEM_OUT">
-    	 <PatternLayout pattern="%d{YYYY-MM-dd HH:mm:ss.SSS} [%T] %-5level: %logger{1} - %msg %ex{short}%n"/>
+    	 <PatternLayout pattern="%highlight{%d{YYYY-MM-dd HH:mm:ss.SSS} [%T] %-5level: %logger{1} - %msg %ex{short}%n}"/>
     </Console>
 	
 	<RollingFile name="rollFile" fileName = "${logDir}/heckzero-server.log" filePattern="${logDir}/$${date:yyyy-MM}/heckzero-server-%d{yyyy-MM-dd}.log.gz" createOnDemand="false">

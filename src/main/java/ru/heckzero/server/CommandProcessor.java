@@ -17,18 +17,19 @@ import java.util.NoSuchElementException;
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    public CommandProcessor() { }                                                                                                 //default constructor
+    public CommandProcessor() { }                                                                                                           //default constructor
 
     private Channel findChannelById(String chId) {                                                                                          //search for a channel by ID in a ServerMain.ChannelGroup
         return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElseThrow(() -> new NoSuchElementException("can't find channel id " + chId));                   //the channel might be already closed
     }
 
     private boolean sanityCheck(Channel ch, User user, String command) {
-        if ((command.equals("LOGIN") || command.equals("ACHAT")) && !user.isEmpty()) {
+        boolean isSpecialCommand = command.equals("LOGIN") || command.equals("CHAT");
+        if (isSpecialCommand && !user.isEmpty()) {
             logger.error("found an online user %s which has channel Id %s set as %s channel. This is abnormal for the %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), command);
             return false;
         }
-        if (!(command.equals("LOGIN") || command.equals("CHAT") || command.equals("LIST")) && user.isEmpty()) {
+        if (!isSpecialCommand && user.isEmpty()) {
             logger.error("cannot find an online user which has channel Id %s. This is abnormal for a regular command, I'm about to close the channel. Pay attention to it!",  ch.id().asLongText());
             return false;
         }
@@ -73,9 +74,9 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GOLOC(Attributes attrs, Channel ch) {
-        logger.debug("processing <GOLOC/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        UserManager.getUser(ch).com_GOLOC();
+    private void com_GAME_GOLOC(Attributes attrs, User u) {
+        logger.debug("processing <GOLOC/> command from %s", u.getLogin());
+        ServerMain.mainExecutor.execute(u::com_GOLOC);
         return;
     }
 
@@ -87,16 +88,16 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    public void com_LOGOUT(Attributes attrs, Channel ch) {                                                                                  //<LOGOUT/> handler
-        logger.info("processing <LOGOUT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+    public void com_GAME_LOGOUT(Attributes attrs, User u) {                                                                                  //<LOGOUT/> handler
+        logger.info("processing <LOGOUT/> command from %s", u.getLogin());
 
         return;
     }
-    private void com_SILUET(Attributes attrs, Channel ch) {
-        logger.debug("processing <SILUET/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+    private void com_GAME_SILUET(Attributes attrs, User u) {
+        logger.debug("processing <SILUET/> command from %s", u.getLogin());
         String slt = attrs.getValue("slt");                                                                                                 //siluet attributes
         String set = attrs.getValue("set");
-        ServerMain.mainExecutor.execute(() -> UserManager.getUser(ch).com_SILUET(slt, set));
+        ServerMain.mainExecutor.execute(() -> u.com_SILUET(slt, set));
         return;
     }
 
@@ -108,12 +109,18 @@ public class CommandProcessor extends DefaultHandler {
         new UserManager().loginUserChat(ch, ses, login);
         return;
     }
-    private void com_N(Attributes attrs, Channel ch) {
-        logger.debug("processing <N/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+    private void com_GAME_N(Attributes attrs, User u) {
+        logger.debug("processing <N/> command from %s", u.getLogin());
         return;
     }
-    private void com_POST(Attributes attrs, Channel ch) {
-        logger.debug("processing <POST/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+
+    private void com_CHAT_N(Attributes attrs, User u) {
+        logger.debug("processing <N/> command from %s", u.getLogin());
+        return;
+    }
+
+    private void com_CHAT_POST(Attributes attrs, User u) {
+        logger.debug("processing <POST/> command from %s", u.getLogin());
         return;
     }
 

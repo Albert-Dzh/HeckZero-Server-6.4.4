@@ -127,7 +127,7 @@ public class User {
         logger.info("processing <SILUET/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")));
         logger.info("slt = %s, set = %s", slt, set);
         setParam(Params.siluet, set);
-        String response = String.format("<SILUET code=\"1\"/><MYPARAM siluet=\"%s\"/>",  set);
+        String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>",  set);
         sendMsg(response);
         return;
     }
