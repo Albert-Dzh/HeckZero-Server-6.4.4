@@ -20,17 +20,17 @@ public class CommandProcessor extends DefaultHandler {
     public CommandProcessor() { }                                                                                                           //default constructor
 
     private Channel findChannelById(String chId) {                                                                                          //search for a channel by ID in a ServerMain.ChannelGroup
-        return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElseThrow(() -> new NoSuchElementException("can't find channel id " + chId));                   //the channel might be already closed
+        return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElseThrow(() -> new NoSuchElementException("can't find channel with id " + chId + " in ChannelGroup"));                   //the channel might be already closed
     }
 
     private boolean sanityCheck(Channel ch, User user, String command) {
-        boolean isSpecialCommand = command.equals("LOGIN") || command.equals("CHAT");
+        boolean isSpecialCommand = command.equals("LOGIN") || command.equals("CHAT");                                                       //is the command we just received a "special"
         if (isSpecialCommand && !user.isEmpty()) {
-            logger.error("found an online user %s which has channel Id %s set as %s channel. This is abnormal for the %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), command);
+            logger.warn("found an online user %s which has channel Id %s set as %s channel. This is abnormal for the %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), command);
             return false;
         }
         if (!isSpecialCommand && user.isEmpty()) {
-            logger.error("cannot find an online user which has channel Id %s. This is abnormal for a regular command, I'm about to close the channel. Pay attention to it!",  ch.id().asLongText());
+            logger.warn("cannot find an online user which has channel Id %s. This is abnormal for a regular command, I'm about to close the channel. Pay attention to it!",  ch.id().asLongText());
             return false;
         }
         return true;
@@ -44,13 +44,13 @@ public class CommandProcessor extends DefaultHandler {
             return;
 
         Channel ch = findChannelById(chId);                                                                                                 //XML namespace param (chId) contains a channel ID
-        User user = UserManager.getUser(ch);
-        if (!sanityCheck(ch, user, qName)) {
+        User user = UserManager.getOnlineUser(ch);                                                                                          //get an online user having it;s game or chat channel set to ch
+        if (!sanityCheck(ch, user, qName)) {                                                                                                //check if it is a legal for the command to come from this channel
             ch.close();
             return;
         }
 
-        switch (qName) {                                                                                                                    //CHAT and LOGIN are special case, call the corresponding method directly with Channel instead of User
+        switch (qName) {                                                                                                                    //CHAT and LOGIN are special case, call the corresponding method explicitly with Channel instead of User as a param
             case "LOGIN" -> {com_LOGIN(attributes, ch); return;}
             case "CHAT" -> {com_CHAT(attributes, ch); return;}
         }
@@ -88,11 +88,12 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    public void com_GAME_LOGOUT(Attributes attrs, User u) {                                                                                  //<LOGOUT/> handler
+    public void com_GAME_LOGOUT(Attributes attrs, User u) {                                                                                 //<LOGOUT/> handler
         logger.debug("processing <LOGOUT/> command from %s", u.getLogin());
-        u.getGameChannel().close();
+        u.getGameChannel().close();                                                                                                         //just close the channel and let channelInactive in NetInHandler do the job  when the channel gets closed
         return;
     }
+
     private void com_GAME_SILUET(Attributes attrs, User u) {
         logger.debug("processing <SILUET/> command from %s", u.getLogin());
         String slt = attrs.getValue("slt");                                                                                                 //siluet attributes

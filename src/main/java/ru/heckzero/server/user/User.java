@@ -1,6 +1,7 @@
 package ru.heckzero.server.user;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -44,10 +45,11 @@ public class User {
     public void setId(Integer id) {this.id = id;}
 
     public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
-    public boolean isOnline() {return gameChannel != null;}                                                                                 //this user is online and it's game channel is up and running
-    public boolean isChatOn() {return isOnline() && chatChannel != null;}                                                                   //this user is online and it's game channel is up and running
-    public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (no!t a human)
-    public boolean isCop() {return getParam(Params.clan).equals("police");}                                                                 //user is a cop (member of police clan)
+    public boolean isOnlineGame() {return gameChannel != null;}                                                                             //this user has a game channel assigned
+    public boolean isOnlineChat() {return chatChannel != null;}                                                                             //this user has a chat channel assigned
+    public boolean isMuted() {return isOnlineChat() && getParamInt(Params.nochat) == 0;}                                                    //this user is online and having it's chat on
+    public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
+    public boolean isCop() {return getParam(Params.clan).equals("police");}                                                                 //user is a cop (is a member of police clan)
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet
 
     public String getLogin() {return getParamStr(Params.login);}                                                                            //just a shortcut
@@ -80,33 +82,32 @@ public class User {
 
 
     void online(Channel ch) {
-        this.gameChannel = ch;                                                                                                              //set user's game channel
-        this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);
+        this.gameChannel = ch;                                                                                                              //set user game channel
+        this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.nochat, 1);                                                                                                         //set initial user chat status to off, until 2nd chat connection completed
         return;
     }
     void offline() {
-        logger.info("setting user %s offline", getLogin());
-        if(isOnline()) {
-            this.gameChannel.close();
-            this.gameChannel = null;
-            chatOff();
-        }
+        logger.debug("setting user %s offline", getLogin());
+        this.gameChannel = null;
+        try {this.chatChannel.close(); }                                                                                                    //try to disconnect user chat channel
+            catch (Exception e) {logger.error("can't close chat channel of user %s: %s", getLogin(), e.getMessage());}
+
+        logger.info("user %s logged of the game", getLogin());
+        return;
     }
 
     void chatOn(Channel ch) {
-        if (isChatOn())
-            chatOff();
         this.chatChannel = ch;
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
+        setParam(Params.nochat, 0);
         return;
     }
     void chatOff() {
-        if (isChatOn()) {
-            this.chatChannel.close();
-            this.chatChannel = null;
-        }
+        logger.info("turning user %s chat off", getLogin());
+        this.chatChannel = null;
+        setParam(Params.nochat, 1);
         return;
     }
 
@@ -133,20 +134,22 @@ public class User {
     }
 
     public void sendMsg(String msg) {
-        if (!gameChannel.isWritable()) {
-            logger.warn("user game channel is not writeable, won't send a message %s to %s", msg, gameChannel.attr(AttributeKey.valueOf("chStr")).get());
+        try {
+            gameChannel.writeAndFlush(msg);
             return;
+        }catch (Exception e) {
+            logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
         }
-        gameChannel.writeAndFlush(msg);
         return;
     }
 
     public void sendChatMsg(String msg) {
-        if (!gameChannel.isWritable()) {
-            logger.warn("user chat channel is not writeable, won't send a message %s to %s", msg, chatChannel.attr(AttributeKey.valueOf("chStr")).get());
+        try {
+            chatChannel.writeAndFlush(msg);
             return;
+        }catch (Exception e) {
+            logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
         }
-        chatChannel.writeAndFlush(msg);
         return;
     }
 }

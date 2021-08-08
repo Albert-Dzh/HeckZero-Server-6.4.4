@@ -30,7 +30,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
     private final SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                //create SAX XML parser factory
     private final CommandProcessor commandProcessor = new CommandProcessor();                                                               //Shareable command processor for dispatching client commands
-    ThreadLocal<SAXParser> threadLocalParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("cant create parser: %s", e.getMessage()); return null;}});
+    ThreadLocal<SAXParser> threadLocalParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("cant create a parser: %s", e.getMessage()); return null;}});
 
     public NetInHandlerMain() {
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
@@ -92,12 +92,12 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {                                                               //client channel has been disconnected
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {                                                               //client channel has been disconnected, channel become inactive (closed)
         String sockStr = (String) ctx.channel().attr(AttributeKey.valueOf("sockStr")).get();                                                //set sender from string - login or socket address if a User is unknown
         String userStr = (String) ctx.channel().attr(AttributeKey.valueOf("chStr")).get();                                                  //set sender from string - login or socket address if a User is unknown
         String chType = ((User.ChannelType)ctx.channel().attr(AttributeKey.valueOf("chType")).get()).name();                                //get Channel type (Game, Chat)
         logger.info("channel %s %s %s disconnected", sockStr, chType, chType.equals(User.ChannelType.NOUSER.name()) ? "" :  userStr);
-        UserManager.logoutUser(ctx.channel());
+        UserManager.logoutUser(ctx.channel());                                                                                              //do user logout procedures
         return;
     }
 }
