@@ -6,6 +6,7 @@ public class Defines {
     public static final int MAX_PACKET_SIZE = 1500;
     public static final int ENCRYPTION_KEY_SIZE = 32;                                                                                       //password encryption key size (bytes)
     public static final int READ_TIMEOUT = 32;                                                                                              //timeout after witch the client will be disconnected
+    public static final int CACHE_KEEP_TIME = 60;                                                                                           //timeout after witch the client will removed from the cache
     public static final String CONF_DIR = "conf";                                                                                           //directory containing configuration files
     public static final String CONF_FILE = "heckzero.xml";                                                                                  //server configuration files
 }

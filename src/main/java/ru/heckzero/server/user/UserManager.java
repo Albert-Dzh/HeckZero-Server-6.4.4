@@ -2,7 +2,6 @@ package ru.heckzero.server.user;
 
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.StringUtil;
@@ -12,27 +11,28 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
+import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class UserManager {                                                                                                                  //yes, this class name ends in 'er' fuck off, Egor ;)
     public enum ErrCodes {NOERROR, WRONG_USER, WRONG_PASSWORD, ANOTHER_CONNECTION, USER_BLOCKED, OLD_VERSION, NEED_KEY, WRONG_KEY, ANOTHER_WINDOW, SRV_FAIL} //Error codes for the client on unsuccessful login
-    public enum UserType {ONLINE_GAME, ONLINE_CHAT, ONLINE_GAME_OR_CHAT, IN_BATTLE, CHAT_ON, NPC, HUMAN, POLICE}
+    public enum UserType {CACHED, ONLINE_GAME, ONLINE_CHAT, ONLINE_GAME_OR_CHAT, IN_BATTLE, NPC, HUMAN, POLICE}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final CopyOnWriteArrayList<User> cachedUsers = new CopyOnWriteArrayList<>();
 
-    private boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                          //check if a user provided password conforms the requirements
-    public boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                           //validate a string as a valid SHA1 hash
+    private static boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                   //check if a user provided password conforms the requirements
+    public static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                    //validate a string as a valid SHA1 hash
 
     public UserManager() { }
 
@@ -40,31 +40,21 @@ public class UserManager {                                                      
         Predicate<User> isOnlineGame = User::isOnlineGame;
         Predicate<User> isOnlineChat = User::isOnlineChat;
         Predicate<User> isOnlineGameOrChat = isOnlineGame.or(isOnlineChat);
-        Predicate<User> isChatOn = User::isMuted;
         Predicate<User> isNPC = User::isBot;
         Predicate<User> isHuman = isNPC.negate();
         Predicate<User> isCop = User::isCop;
         Predicate<User> isInBattle = User::isInBattle;
 
-        switch (type) {
-            case ONLINE_GAME:																			    		                        //all online users
-                return cachedUsers.stream().filter(isOnlineGame).collect(Collectors.toList());
-            case ONLINE_CHAT:																							                    //all online chat users
-                return cachedUsers.stream().filter(isOnlineChat).collect(Collectors.toList());
-            case ONLINE_GAME_OR_CHAT:																    				                    //all online chat users
-                return cachedUsers.stream().filter(isOnlineGameOrChat).collect(Collectors.toList());
-            case IN_BATTLE:																							                        //users that are in a battle
-                return cachedUsers.stream().filter(isInBattle).collect(Collectors.toList());
-            case CHAT_ON:																							                        //all users having their chats on
-                return cachedUsers.stream().filter(isChatOn).collect(Collectors.toList());
-            case NPC:																							                            //NPC only
-                return cachedUsers.stream().filter(isNPC).collect(Collectors.toList());
-            case HUMAN:																							                            //not NPS users
-                return cachedUsers.stream().filter(isHuman).collect(Collectors.toList());
-            case POLICE:																							                        //cops (clan = police)
-                return cachedUsers.stream().filter(isCop).collect(Collectors.toList());
-        }
-        return new ArrayList<>(0);					        															                	//return an empty list in case of unknown requested user type
+        return switch (type) {
+            case CACHED -> cachedUsers;
+            case ONLINE_GAME -> cachedUsers.stream().filter(isOnlineGame).collect(Collectors.toList());		                                //all online users game
+            case ONLINE_CHAT -> cachedUsers.stream().filter(isOnlineChat).collect(Collectors.toList());					                    //all online users chat
+            case ONLINE_GAME_OR_CHAT -> cachedUsers.stream().filter(isOnlineGameOrChat).collect(Collectors.toList());		                //all online users with game or chat channel
+            case IN_BATTLE -> cachedUsers.stream().filter(isInBattle).collect(Collectors.toList());				                            //users that are in a battle
+            case NPC -> cachedUsers.stream().filter(isNPC).collect(Collectors.toList());												    //NPC only
+            case HUMAN -> cachedUsers.stream().filter(isHuman).collect(Collectors.toList());					                            //not NPS users
+            case POLICE -> cachedUsers.stream().filter(isCop).collect(Collectors.toList());							                        //cops (clan = police)
+        };
     }
 
     public static User getOnlineUserGame(Channel ch) {                                                                                      //search from cached online users by a game channel
@@ -89,23 +79,18 @@ public class UserManager {                                                      
         Session session = ServerMain.sessionFactory.openSession();
         Transaction tx = session.beginTransaction();
         Query<User> query = session.createQuery("select u from User u where lower(u.params.login) = lower(:login)", User.class).setParameter("login", login);
-        User user;
-        try {
-            user = query.uniqueResult();
-            if (user == null)
-                return new User();                                                                                                          //return an existing User having params set from db
+        try (session) {
+            User user = query.uniqueResult();
             tx.commit();
-        } catch (Exception e) {                                                                                                             //some db problem
+            return (user == null) ? new User() : user;                                                                                      //return a user or an empty user if none found
+        } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
             tx.rollback();
-            return new User();                                                                                                              //return null in case of SQL exception
-        }finally {
-            session.close();
         }
-        return user;
+        return null;                                                                                                                        //in case of database error
     }
 
-    public void loginUserChat(Channel ch, String ses, String login) {
+    public static void loginUserChat(Channel ch, String ses, String login) {
         logger.info("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         logger.info("phase 0 validating user chat credentials");
         if (ses == null || login == null) {                                                                                                 //login or sess attributes are missed, this is abnormal. closing the channel
@@ -116,18 +101,27 @@ public class UserManager {                                                      
 
         logger.info("phase 1 checking if a corresponding game user with login '%s' is online and ses key is valid", login);
         User user = getOnlineUserGame(login);
-        if (user.isEmpty() || !(ses.equals(user.getGameChannel().attr(AttributeKey.valueOf("encKey")).get()))) {                            //TODO can a channel here become null?
+        if (user.isEmpty() || !(ses.equals(user.getGameChannel().attr(AttributeKey.valueOf("encKey")).get()))) {
             logger.warn("can't find an online user to associate the chat channel with, closing the channel");
             ch.close();
             return;
         }
-        logger.info("phase 2 found user %s to associate the chat channel with, switching it's chat on", user.getLogin());
+
+        logger.info("phase 2 found user %s to associate chat channel with. checking if it's chat channel is already online", user.getLogin());
+        if (user.isOnlineChat()) {
+            logger.info("user %s chat socket is already online, disconnecting it", user.getLogin());
+            user.getChatChannel().deregister().addListener(ChannelFutureListener.CLOSE);
+            logger.info("user %s chat channel disconnected, continue further processing");
+        }
+
+        logger.info("phase 3 setting a chat channel for user %s and switching it's chat on", user.getLogin());
         ch.attr(AttributeKey.valueOf("chStr")).set("user " + user.getLogin() + " (chat)");
         user.chatOn(ch);
+        logger.info("phase 4 All done! User %s has it chat on", user.getLogin());
         return;
     }
 
-    public void loginUser(Channel ch, String login, String userCryptedPass) {                                                               //check if the user can login and set it online
+    public static void loginUser(Channel ch, String login, String userCryptedPass) {                                                        //check if the user can login and set it online
         logger.info("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         logger.info("phase 0 validating received user credentials");
         if (login == null || userCryptedPass == null) {                                                                                     //login or password attributes are missed, this is abnormal. closing the channel
@@ -135,8 +129,7 @@ public class UserManager {                                                      
             ch.close();
             return;
         }
-
-        if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid, this is illegal
+        if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid
             logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(AttributeKey.valueOf("chStr")).get());
             ch.close();
             return;
@@ -172,10 +165,23 @@ public class UserManager {                                                      
             return;
         }
         logger.info("phase 3 checking if user '%s' is already online", user.getLogin());
-        if (user.isOnlineGame()) {                                                                                                          //user is already online by it's game channel
+        Channel gameChannel = user.getGameChannel();
+        if (gameChannel != null) {                                                                                                          //user is already online by it's game channel
             logger.info("user '%s' is already online, disconnecting it", user.getLogin());
-            user.getGameChannel().deregister();                                                                                             //prevent firing inactive event from the channel upon close
-            kickUser(user, ErrCodes.ANOTHER_CONNECTION);                                                                                    //disconnect the existing online user
+
+            user.sendMsg(String.format("<ERROR code = \"%d\" />", ErrCodes.ANOTHER_CONNECTION.ordinal()));                                  //an error message that will be send to existing online user
+            gameChannel.close();                                                                                                            //close the existing online user game channel
+            try {
+                CountDownLatch disconnectLatch = (CountDownLatch)gameChannel.attr(AttributeKey.valueOf("disconnectLatch")).get();
+                if (!disconnectLatch.await(3000, TimeUnit.MILLISECONDS)) {                                                                  //wait max 3 seconds for the user disconnection
+                    logger.error("timeout waiting for disconnect CountDownLatch, pay attention to it!!!");
+                }
+            } catch (InterruptedException e) {
+                logger.error("waiting for CountDownLatch to release was interrupted: %s", e.getMessage());
+                String errMsg = String.format("<ERROR code = \"%d\" />", ErrCodes.SRV_FAIL.ordinal());
+                ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
+                return;                                                                                                                     //stop further login processing
+            }
         }
 
         user.online(ch);                                                                                                                    //perform initial procedures to set the user online
@@ -192,7 +198,7 @@ public class UserManager {                                                      
 
         User.ChannelType chType = (User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get();                                          //get a channel type (GAME, CHAT)
         if (chType == User.ChannelType.NOUSER) {                                                                                            //this channel is not associated with any online user
-            logger.info("this channel has no user associated with it, so nothing to do");
+            logger.info("this channel is not associated with any user, nothing to do");
             return;
         }
         User user = getOnlineUser(ch);                                                                                                      //get an online user having this channel set as a game or chat
@@ -209,15 +215,14 @@ public class UserManager {                                                      
         return;
     }
 
-    public static void kickUser(User user, ErrCodes errCode) {                                                                              //send a message to user and close all it's channels
-        String errMsg = String.format("<ERROR code = \"%d\" />", errCode.ordinal());                                                        //err message will be send to the user
-        user.sendMsg(errMsg);
-        user.getGameChannel().close().syncUninterruptibly();                                                                                //close the user game channel
-        user.getChatChannel().close();                                                                                                      //you won't believe...
+    private static void cleanCachedUsers() {
+        logger.info("removing rotten users from the cache");
+        Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > Defines.CACHE_KEEP_TIME;
+        cachedUsers.removeIf(isRotten);
         return;
     }
 
-    public boolean isValidLogin(String login) {
+    private static boolean isValidLogin(String login) {
         int len = StringUtils.length(login);																				            	//null safe string length calculation
         String en_c = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
         String ru_c = "абвгдежзийклмнопрстуфхцчшщьыъэюяАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯЁё";
@@ -238,7 +243,7 @@ public class UserManager {                                                      
         return true;
     }
 
-    private String encrypt(String key, String msg) {
+    private static String encrypt(String key, String msg) {
         byte [] s_block = {
                         0, 30, 30, 28, 28, 37, 37,  9,  9, 18, 18, 34, 34, 35,                                                              // the 1st chain of pairs' transpositions
                         1, 26, 26, 32, 32, 22, 22, 23, 23, 21, 21, 14, 14, 33, 33, 16,                                                      // the 2nd chain of pairs' transpositions
@@ -265,7 +270,6 @@ public class UserManager {                                                      
         catch (NoSuchAlgorithmException e) {
             logger.error("encrypt: %s", e.getMessage());
         }
-
         return result;
     }
 }

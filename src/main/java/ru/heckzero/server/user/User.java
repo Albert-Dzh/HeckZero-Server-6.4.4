@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,7 +48,7 @@ public class User {
     public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
     public boolean isOnlineGame() {return gameChannel != null;}                                                                             //this user has a game channel assigned
     public boolean isOnlineChat() {return chatChannel != null;}                                                                             //this user has a chat channel assigned
-    public boolean isMuted() {return isOnlineChat() && getParamInt(Params.nochat) == 0;}                                                    //this user is online and having it's chat on
+    public boolean isOffline() {return !(isOnlineGame() || isOnlineChat());}                                                                //user is offline
     public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
     public boolean isCop() {return getParam(Params.clan).equals("police");}                                                                 //user is a cop (is a member of police clan)
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet
@@ -82,32 +83,38 @@ public class User {
 
 
     void online(Channel ch) {
+        logger.debug("setting user %s online", getLogin());
+
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
-        setParam(Params.nochat, 1);                                                                                                         //set initial user chat status to off, until 2nd chat connection completed
         return;
     }
+
     void offline() {
         logger.debug("setting user %s offline", getLogin());
         this.gameChannel = null;
-        try {this.chatChannel.close(); }                                                                                                    //try to disconnect user chat channel
-            catch (Exception e) {logger.error("can't close chat channel of user %s: %s", getLogin(), e.getMessage());}
+        try {
+            if (chatChannel.isActive())
+                chatChannel.close();
+        }catch (Exception e){logger.warn("can't close user chat channel, it might be already closed");}
 
         logger.info("user %s logged of the game", getLogin());
+        CountDownLatch disconnectLatch = (CountDownLatch) gameChannel.attr(AttributeKey.valueOf("disconnectLatch")).get();
+        disconnectLatch.countDown();
         return;
     }
 
     void chatOn(Channel ch) {
+        logger.debug("turning user %s chat on", getLogin());
+
         this.chatChannel = ch;
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
-        setParam(Params.nochat, 0);
         return;
     }
     void chatOff() {
         logger.info("turning user %s chat off", getLogin());
         this.chatChannel = null;
-        setParam(Params.nochat, 1);
         return;
     }
 

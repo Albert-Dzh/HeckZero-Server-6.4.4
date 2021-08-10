@@ -23,8 +23,9 @@ import javax.xml.parsers.SAXParserFactory;
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 
-                                                                                                                                            //TODO change class name to NetInHandler (remove 'Main' word)
+//TODO change class name to NetInHandler (remove 'Main' word)
 @Sharable
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -46,6 +47,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         ctx.channel().attr(AttributeKey.valueOf("sockStr")).set(sockStr);                                                                   //and store it as a channel attribute for login purpose
         ctx.channel().attr(AttributeKey.valueOf("chStr")).set(sockStr);                                                                     //initial chStr = sockStr (will be replaced to user login after successful authorization)
         ctx.channel().attr(AttributeKey.valueOf("chType")).set(User.ChannelType.NOUSER);                                                    //initial channel type set to NOUSER
+        ctx.channel().attr(AttributeKey.valueOf("disconnectLatch")).set(new CountDownLatch(1));                                                         //set the latch to user game channel
 
         logger.info("client connected from %s", sockStr);
 
@@ -73,12 +75,12 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        logger.error("Houston, we've had a problem");
         String chStr = (String) ctx.channel().attr(AttributeKey.valueOf("chStr")).get();                                                    //set sender from string - login or socket address if a User is unknown
 
         if (cause instanceof ReadTimeoutException) {                                                                                        //read timeout has happened
             logger.warn("read timeout from %s", chStr);
         } else {
+                logger.error("Houston, we've had a problem");
                 if (cause instanceof SAXException) {                                                                                        //malformed XML was received from a client
                     logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", chStr, cause.getMessage());                                //XML govnoy vonyaet
                 } else {                                                                                                                    //all other exceptions

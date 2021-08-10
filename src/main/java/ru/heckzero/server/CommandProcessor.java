@@ -29,8 +29,8 @@ public class CommandProcessor extends DefaultHandler {
             logger.warn("found an online user %s which has channel Id %s set as %s channel. This is abnormal for the %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), command);
             return false;
         }
-        if (!isSpecialCommand && user.isEmpty()) {
-            logger.warn("cannot find an online user which has channel Id %s. This is abnormal for a regular command, I'm about to close the channel. Pay attention to it!",  ch.id().asLongText());
+        if (!isSpecialCommand && !user.isOnlineGame()) {                                                                                    //user must have this (ch) channel associated with him (not empty) and also must have online game channel to send a regular commands
+            logger.warn("cannot find a user which has channel Id %s and online game channel. This is abnormal for a regular command, I'm about to close the channel. Pay attention to it!",  ch.id().asLongText());
             return false;
         }
         return true;
@@ -44,7 +44,7 @@ public class CommandProcessor extends DefaultHandler {
             return;
 
         Channel ch = findChannelById(chId);                                                                                                 //XML namespace param (chId) contains a channel ID
-        User user = UserManager.getOnlineUser(ch);                                                                                          //get an online user having it;s game or chat channel set to ch
+        User user = UserManager.getOnlineUser(ch);                                                                                          //get an online user having it's game or chat channel set to ch
         if (!sanityCheck(ch, user, qName)) {                                                                                                //check if it is a legal for the command to come from this channel
             ch.close();
             return;
@@ -55,7 +55,7 @@ public class CommandProcessor extends DefaultHandler {
             case "CHAT" -> {com_CHAT(attributes, ch); return;}
         }
         String handleMethodName = String.format("com_%s_%s", ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), qName); //handler method name to process a user command
-        logger.debug("trying to find and execute method %s" , handleMethodName);
+        logger.debug("trying to find and execute method %s", handleMethodName);
 
         try {
             Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class, User.class);	                    //get a handler method reference
@@ -84,7 +84,7 @@ public class CommandProcessor extends DefaultHandler {
         logger.debug("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         String login = attrs.getValue("l");                                                                                                 //login attribute
         String password = attrs.getValue("p");                                                                                              //password attribute
-        new UserManager().loginUser(ch, login, password);                                                                                   //set a new user online
+        UserManager.loginUser(ch, login, password);                                                                                         //set a new user online
         return;
     }
 
@@ -107,7 +107,7 @@ public class CommandProcessor extends DefaultHandler {
         logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much a registered online user
         String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in authorization phase in <OK ses=""> response)
-        new UserManager().loginUserChat(ch, ses, login);
+        UserManager.loginUserChat(ch, ses, login);
         return;
     }
     private void com_GAME_N(Attributes attrs, User u) {
