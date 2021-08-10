@@ -108,16 +108,24 @@ public class UserManager {                                                      
         }
 
         logger.info("phase 2 found user %s to associate chat channel with. checking if it's chat channel is already online", user.getLogin());
-        if (user.isOnlineChat()) {
+        Channel chatChannel = user.getChatChannel();
+        if (chatChannel != null) {
             logger.info("user %s chat socket is already online, disconnecting it", user.getLogin());
-            user.getChatChannel().deregister().addListener(ChannelFutureListener.CLOSE);
+            chatChannel.close();
+            try {
+                CountDownLatch disconnectLatchChat = (CountDownLatch)chatChannel.attr(AttributeKey.valueOf("disconnectLatchChat")).get();
+                if (!disconnectLatchChat.await(3000, TimeUnit.MILLISECONDS))                                                                //wait max 3 seconds for the user disconnection
+                    logger.error("timeout waiting for disconnect CountDownLatch, pay attention to it!!!");
+            } catch (InterruptedException e) {
+                logger.error("waiting for CountDownLatch to release was interrupted: %s", e.getMessage());
+                ch.close();
+                return;                                                                                                                     //stop further login processing
+            }
             logger.info("user %s chat channel disconnected, continue further processing");
         }
 
-        logger.info("phase 3 setting a chat channel for user %s and switching it's chat on", user.getLogin());
-        ch.attr(AttributeKey.valueOf("chStr")).set("user " + user.getLogin() + " (chat)");
         user.chatOn(ch);
-        logger.info("phase 4 All done! User %s has it chat on", user.getLogin());
+        logger.info("phase 3 All done! Setting user %s chat on", user.getLogin());
         return;
     }
 
@@ -172,8 +180,8 @@ public class UserManager {                                                      
             user.sendMsg(String.format("<ERROR code = \"%d\" />", ErrCodes.ANOTHER_CONNECTION.ordinal()));                                  //an error message that will be send to existing online user
             gameChannel.close();                                                                                                            //close the existing online user game channel
             try {
-                CountDownLatch disconnectLatch = (CountDownLatch)gameChannel.attr(AttributeKey.valueOf("disconnectLatch")).get();
-                if (!disconnectLatch.await(3000, TimeUnit.MILLISECONDS)) {                                                                  //wait max 3 seconds for the user disconnection
+                CountDownLatch disconnectLatchGame = (CountDownLatch)gameChannel.attr(AttributeKey.valueOf("disconnectLatchGame")).get();
+                if (!disconnectLatchGame.await(3000, TimeUnit.MILLISECONDS)) {                                                              //wait max 3 seconds for the user disconnection
                     logger.error("timeout waiting for disconnect CountDownLatch, pay attention to it!!!");
                 }
             } catch (InterruptedException e) {
@@ -187,7 +195,6 @@ public class UserManager {                                                      
         user.online(ch);                                                                                                                    //perform initial procedures to set the user online
         cachedUsers.addIfAbsent(user);
         logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
-        ch.attr(AttributeKey.valueOf("chStr")).set("user " + user.getLogin());                                                              //replace a client representation string to 'user <login>' instead of IP:port
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());      //send OK with a chat auth key in ses attribute (using already existing key)
         user.sendMsg(resultMsg);                                                                                                            //now we can use user native send function
         return;

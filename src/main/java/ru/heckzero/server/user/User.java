@@ -36,8 +36,8 @@ public class User {
     @Embedded
     private final UserParams params = new UserParams();
 
-    @Transient private Channel gameChannel = null;                                                                                          //user game socket
-    @Transient private Channel chatChannel = null;                                                                                          //user chat socket
+    @Transient volatile private Channel gameChannel = null;                                                                                 //user game socket
+    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat socket
 
     public Channel getGameChannel() { return this.gameChannel;}
     public Channel getChatChannel() { return this.chatChannel;}
@@ -87,21 +87,22 @@ public class User {
 
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
+        this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin());                                                     //replace a client representation string to 'user <login>' instead of IP:port
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         return;
     }
 
     void offline() {
         logger.debug("setting user %s offline", getLogin());
-        this.gameChannel = null;
         try {
-            if (chatChannel.isActive())
+            if (chatChannel != null)
                 chatChannel.close();
         }catch (Exception e){logger.warn("can't close user chat channel, it might be already closed");}
 
-        logger.info("user %s logged of the game", getLogin());
-        CountDownLatch disconnectLatch = (CountDownLatch) gameChannel.attr(AttributeKey.valueOf("disconnectLatch")).get();
+        CountDownLatch disconnectLatch = (CountDownLatch)gameChannel.attr(AttributeKey.valueOf("disconnectLatchGame")).get();
+        this.gameChannel = null;
         disconnectLatch.countDown();
+        logger.info("user %s logged of the game", getLogin());
         return;
     }
 
@@ -110,11 +111,14 @@ public class User {
 
         this.chatChannel = ch;
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
+        this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin() + " (chat)");
         return;
     }
     void chatOff() {
         logger.info("turning user %s chat off", getLogin());
+        CountDownLatch disconnectLatch = (CountDownLatch)chatChannel.attr(AttributeKey.valueOf("disconnectLatchChat")).get();
         this.chatChannel = null;
+        disconnectLatch.countDown();
         return;
     }
 

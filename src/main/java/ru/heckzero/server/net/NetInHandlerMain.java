@@ -47,7 +47,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         ctx.channel().attr(AttributeKey.valueOf("sockStr")).set(sockStr);                                                                   //and store it as a channel attribute for login purpose
         ctx.channel().attr(AttributeKey.valueOf("chStr")).set(sockStr);                                                                     //initial chStr = sockStr (will be replaced to user login after successful authorization)
         ctx.channel().attr(AttributeKey.valueOf("chType")).set(User.ChannelType.NOUSER);                                                    //initial channel type set to NOUSER
-        ctx.channel().attr(AttributeKey.valueOf("disconnectLatch")).set(new CountDownLatch(1));                                                         //set the latch to user game channel
+        ctx.channel().attr(AttributeKey.valueOf("disconnectLatchGame")).set(new CountDownLatch(1));                                         //set the latch to user game channel
+        ctx.channel().attr(AttributeKey.valueOf("disconnectLatchChat")).set(new CountDownLatch(1));                                         //set the latch to user game channel
 
         logger.info("client connected from %s", sockStr);
 
