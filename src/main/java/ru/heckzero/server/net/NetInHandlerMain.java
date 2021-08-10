@@ -25,7 +25,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 
-//TODO change class name to NetInHandler (remove 'Main' word)
+                                                                                                                                            //TODO change class name to NetInHandler (remove 'Main' word)
 @Sharable
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
