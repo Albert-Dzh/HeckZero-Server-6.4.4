@@ -94,7 +94,7 @@ public class User {
         logger.debug("setting user %s game channel offline", getLogin());
         sendErrMsgChat(StringUtil.EMPTY_STRING);
         this.gameChannel = null;
-        notify();
+        notifyAll();
         logger.info("user %s logged of the game", getLogin());
         return;
     }
@@ -110,7 +110,7 @@ public class User {
     synchronized void offlineChat() {
         logger.info("turning user %s chat off", getLogin());
         this.chatChannel = null;
-        notify();
+        notifyAll();
         return;
     }
 
