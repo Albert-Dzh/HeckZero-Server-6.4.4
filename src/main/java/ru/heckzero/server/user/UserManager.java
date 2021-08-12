@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.function.Predicate;
@@ -91,7 +93,7 @@ public class UserManager {                                                      
 
     public static void loginUserChat(Channel ch, String ses, String login) {
         logger.info("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        logger.info("phase 0 validating user chat credentials");
+        logger.info("phase 0 validating provided chat credentials");
         if (ses == null || login == null) {                                                                                                 //login or sess attributes are missed, this is abnormal. closing the channel
             logger.info("no credentials are provided, seems this is an initial chat request");
             ch.writeAndFlush("<CHAT/>");
@@ -106,16 +108,16 @@ public class UserManager {                                                      
             return;
         }
 
-        logger.info("phase 2 found user %s to associate chat channel with, checking if it's chat channel is already online", user.getLogin());
+        logger.info("phase 2 found user '%s' to associate chat channel with, checking if it's chat channel is already online", user.getLogin());
         synchronized (user) {
             while (user.isOnlineChat()) {
                 if (user.getChatChannel().isActive()) {
-                    logger.info("user %s already has his chat channel online and active, disconnecting it", user.getLogin());
+                    logger.info("user '%s' already has his chat channel online and active, disconnecting it", user.getLogin());
                     user.sendErrMsgChat(StringUtil.EMPTY_STRING);                                                                           //send error message and close the connection
                 }else
-                    logger.info("user %s still has his chat channel online but inactive", user.getLogin());
+                    logger.info("user '%s' still has his chat channel online but inactive", user.getLogin());
 
-                logger.info("waiting for the user %s chat channel to get offline", user.getLogin());
+                logger.info("waiting for the user '%s' chat channel to get offline", user.getLogin());
                 try {
                     user.wait();
                 } catch (InterruptedException e) {
@@ -125,8 +127,8 @@ public class UserManager {                                                      
                 }
             }
             user.onlineChat(ch);
+            logger.info("phase 3 All done! User '%s' chat channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
         }
-        logger.info("phase 3 All done! User '%s' chat channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
         return;
     }
 
@@ -158,6 +160,7 @@ public class UserManager {                                                      
             ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
             return;
         }
+
         logger.info("phase 2 checking user '%s' credentials", user.getLogin());
         String userClearPass = user.getParamStr(User.Params.password);                                                                      //the user clear password from database
         String serverCryptedPass = encrypt((String)ch.attr(AttributeKey.valueOf("encKey")).get(), userClearPass);                           //encrypt user password using the same algorithm as a client does
@@ -181,23 +184,21 @@ public class UserManager {                                                      
                     logger.info("user %s is already online with game channel online and active, disconnecting it", user.getLogin());
                     user.sendErrMsgGame(String.format("<ERROR code = \"%d\" />", ErrCodes.ANOTHER_CONNECTION.ordinal()));                   //send error message and close the connection
                 }else                                                                                                                       //channel is inactive (closed)
-                    logger.info("user %s still has his game channel online but inactive", user.getLogin());                                 //just wait for the offline to finish
-                logger.info("waiting for the user %s game channel to get offline", user.getLogin());
+                    logger.info("user '%s' still has his game channel online but inactive", user.getLogin());
+
+                logger.info("waiting for the user '%s' game channel to get offline", user.getLogin());                                      //wait for the offlineGame() to finish and sends notifyAll() to awake us
                 try {
-                    user.wait();                                                                                                            //wait for the notify() from offline)
+                    user.wait();                                                                                                            //wait for the notify() from offlineGame(), releasing monitor
                 } catch (InterruptedException e) {
-                    logger.error("exception while waiting for user %s to get offline, stopping this login attempt, and closing incoming channel", user.getLogin());
+                    logger.error("exception while waiting for user '%s' to get offline, stopping this login attempt, and closing incoming channel", user.getLogin());
                     ch.close();
                     return;
                 }
             }
-            user.onlineGame(ch);                                                                                                            //perform initial procedures to set the user online
+            user.onlineGame(ch);                                                                                                            //perform initial procedures to set the user game channel online
+            cachedUsers.addIfAbsent(user);
+            logger.info("phase 4 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
         }
-
-        cachedUsers.addIfAbsent(user);
-        logger.info("phase 4 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());      //send OK with a chat auth key in ses attribute (using already existing key)
-        user.sendMsgGame(resultMsg);                                                                                                        //now we can use user native send function
         return;
     }
 
@@ -214,8 +215,7 @@ public class UserManager {                                                      
             logger.error("%s is a %s channel but I can't find an online user associated with it. tis is an abnormal situation. Take a look at it!", ch.attr(AttributeKey.valueOf("sockStr")).get(), chType.name());
             return;
         }
-        logger.debug("found online user %s which has this channel set as a %s channel, disconnecting the channel from the user", user.getLogin(), chType);
-
+        logger.debug("found online user '%s' which has this channel set as a %s channel, disconnecting the channel", user.getLogin(), chType);
         switch (chType) {
             case GAME -> user.offlineGame();                                                                                                //perform user game channel logout procedure
             case CHAT -> user.offlineChat();                                                                                                //perform user chat channel logout procedure
@@ -227,6 +227,7 @@ public class UserManager {                                                      
         logger.info("removing rotten users from the cache");
         Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > Defines.CACHE_KEEP_TIME;
         cachedUsers.removeIf(isRotten);
+
         return;
     }
 

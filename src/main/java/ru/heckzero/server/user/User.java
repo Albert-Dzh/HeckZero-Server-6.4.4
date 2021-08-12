@@ -87,6 +87,8 @@ public class User {
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
         this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin());                                                     //replace a client representation string to 'user <login>' instead of IP:port
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
+        sendMsgGame(resultMsg);
         return;
     }
 
@@ -94,8 +96,8 @@ public class User {
         logger.debug("setting user %s game channel offline", getLogin());
         sendErrMsgChat(StringUtil.EMPTY_STRING);
         this.gameChannel = null;
-        notifyAll();
-        logger.info("user %s logged of the game", getLogin());
+        notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
+        logger.info("user %s game channel logged of the game", getLogin());
         return;
     }
 
