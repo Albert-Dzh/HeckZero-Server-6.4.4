@@ -126,8 +126,7 @@ public class UserManager {                                                      
             }
             user.onlineChat(ch);
         }
-
-        logger.info("phase 3 All done! Setting user %s chat on", user.getLogin());
+        logger.info("phase 3 All done! User '%s' chat channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
         return;
     }
 
@@ -177,15 +176,15 @@ public class UserManager {                                                      
 
         logger.info("phase 3 checking if user '%s' is already online", user.getLogin());
         synchronized (user) {
-            while (user.isOnlineGame()) {
-                if (user.getGameChannel().isActive()) {
+            while (user.isOnlineGame()) {                                                                                                   //gameChannel != null, we might receive notify from offlineChat() instead of offlineGame(), so we have to wait again
+                if (user.getGameChannel().isActive()) {                                                                                     //channel is active, we have to send an error message and close the channel
                     logger.info("user %s is already online with game channel online and active, disconnecting it", user.getLogin());
                     user.sendErrMsgGame(String.format("<ERROR code = \"%d\" />", ErrCodes.ANOTHER_CONNECTION.ordinal()));                   //send error message and close the connection
-                }else
-                    logger.info("user %s still has his game channel online but inactive", user.getLogin());
+                }else                                                                                                                       //channel is inactive (closed)
+                    logger.info("user %s still has his game channel online but inactive", user.getLogin());                                 //just wait for the offline to finish
                 logger.info("waiting for the user %s game channel to get offline", user.getLogin());
                 try {
-                    user.wait();
+                    user.wait();                                                                                                            //wait for the notify() from offline)
                 } catch (InterruptedException e) {
                     logger.error("exception while waiting for user %s to get offline, stopping this login attempt, and closing incoming channel", user.getLogin());
                     ch.close();
@@ -196,9 +195,9 @@ public class UserManager {                                                      
         }
 
         cachedUsers.addIfAbsent(user);
-        logger.info("phase 4 All done! User '%s' has been set online with socket address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
+        logger.info("phase 4 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", user.getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());      //send OK with a chat auth key in ses attribute (using already existing key)
-        user.sendMsgGame(resultMsg);                                                                                                            //now we can use user native send function
+        user.sendMsgGame(resultMsg);                                                                                                        //now we can use user native send function
         return;
     }
 
@@ -218,8 +217,8 @@ public class UserManager {                                                      
         logger.debug("found online user %s which has this channel set as a %s channel, disconnecting the channel from the user", user.getLogin(), chType);
 
         switch (chType) {
-            case GAME -> user.offlineGame();                                                                                                    //detach user game socket
-            case CHAT -> user.offlineChat();                                                                                                    //detach user chat socket
+            case GAME -> user.offlineGame();                                                                                                //perform user game channel logout procedure
+            case CHAT -> user.offlineChat();                                                                                                //perform user chat channel logout procedure
         }
         return;
     }

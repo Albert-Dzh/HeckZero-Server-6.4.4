@@ -144,7 +144,7 @@ public class User {
     private void sendMsg(Channel ch, String msg, boolean close) {
         try {
             ChannelFuture cf = gameChannel.writeAndFlush(msg);
-            if (close)                                                                                                                      //closing the channel
+            if (close)                                                                                                                      //closing the channel after sending a message
                 cf.addListener(ChannelFutureListener.CLOSE).await();                                                                        //wait for the channel to be closed
         }catch (Exception e) {
             logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
