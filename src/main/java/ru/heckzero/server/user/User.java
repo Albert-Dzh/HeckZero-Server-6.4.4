@@ -1,6 +1,7 @@
 package ru.heckzero.server.user;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.StringUtil;
@@ -13,10 +14,7 @@ import javax.persistence.*;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Entity(name = "User")
 @Table(name = "users")
@@ -82,8 +80,8 @@ public class User {
     private void setParam(Params param, Object value) {this.params.setParam(param.name(), value);}                                          //universal method to set a param
 
 
-    void online(Channel ch) {
-        logger.debug("setting user %s online", getLogin());
+    synchronized void onlineGame(Channel ch) {
+        logger.debug("setting user %s game channel online", getLogin());
 
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
@@ -92,21 +90,16 @@ public class User {
         return;
     }
 
-    void offline() {
-        logger.debug("setting user %s offline", getLogin());
-        try {
-            if (chatChannel != null)
-                chatChannel.close();
-        }catch (Exception e){logger.warn("can't close user chat channel, it might be already closed");}
-
-        CountDownLatch disconnectLatch = (CountDownLatch)gameChannel.attr(AttributeKey.valueOf("disconnectLatchGame")).get();
+    synchronized void offlineGame() {
+        logger.debug("setting user %s game channel offline", getLogin());
+        sendErrMsgChat(StringUtil.EMPTY_STRING);
         this.gameChannel = null;
-        disconnectLatch.countDown();
+        notify();
         logger.info("user %s logged of the game", getLogin());
         return;
     }
 
-    void chatOn(Channel ch) {
+    synchronized void onlineChat(Channel ch) {
         logger.debug("turning user %s chat on", getLogin());
 
         this.chatChannel = ch;
@@ -114,24 +107,23 @@ public class User {
         this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin() + " (chat)");
         return;
     }
-    void chatOff() {
+    synchronized void offlineChat() {
         logger.info("turning user %s chat off", getLogin());
-        CountDownLatch disconnectLatch = (CountDownLatch)chatChannel.attr(AttributeKey.valueOf("disconnectLatchChat")).get();
         this.chatChannel = null;
-        disconnectLatch.countDown();
+        notify();
         return;
     }
 
     public void com_MYPARAM() {
         logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\" Z=\"0\"></MYPARAM>", getParam(Params.login));
-        sendMsg(xml);
+        sendMsgGame(xml);
         return;
     }
     public void com_GOLOC() {
         logger.info("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         String xml = String.format("<GOLOC><L/></GOLOC>");
-        sendMsg(xml);
+        sendMsgGame(xml);
         return;
     }
 
@@ -140,27 +132,24 @@ public class User {
         logger.info("slt = %s, set = %s", slt, set);
         setParam(Params.siluet, set);
         String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>",  set);
-        sendMsg(response);
+        sendMsgGame(response);
         return;
     }
 
-    public void sendMsg(String msg) {
-        try {
-            gameChannel.writeAndFlush(msg);
-            return;
-        }catch (Exception e) {
-            logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
-        }
-        return;
-    }
 
-    public void sendChatMsg(String msg) {
+    public void sendMsgGame(String msg) {sendMsg(gameChannel, msg, false);}
+    public void sendErrMsgGame(String msg) {sendMsg(gameChannel, msg, true);}                                                               //sendErr will disconnect a corresponding channel
+    public void sendMsgChat(String msg) { sendMsg(chatChannel, msg, false);}
+    public void sendErrMsgChat(String msg) {sendMsg(chatChannel, msg, true);}
+    private void sendMsg(Channel ch, String msg, boolean close) {
         try {
-            chatChannel.writeAndFlush(msg);
-            return;
+            ChannelFuture cf = gameChannel.writeAndFlush(msg);
+            if (close)                                                                                                                      //closing the channel
+                cf.addListener(ChannelFutureListener.CLOSE).await();                                                                        //wait for the channel to be closed
         }catch (Exception e) {
             logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
         }
         return;
     }
 }
+

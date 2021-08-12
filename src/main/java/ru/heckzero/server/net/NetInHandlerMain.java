@@ -44,13 +44,11 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client socket address
 
         String sockStr = String.format("%s:%d", sa.getHostString(), sa.getPort());                                                          //socket address as a string
+        logger.info("client connected from %s", sockStr);
+
         ctx.channel().attr(AttributeKey.valueOf("sockStr")).set(sockStr);                                                                   //and store it as a channel attribute for login purpose
         ctx.channel().attr(AttributeKey.valueOf("chStr")).set(sockStr);                                                                     //initial chStr = sockStr (will be replaced to user login after successful authorization)
         ctx.channel().attr(AttributeKey.valueOf("chType")).set(User.ChannelType.NOUSER);                                                    //initial channel type set to NOUSER
-        ctx.channel().attr(AttributeKey.valueOf("disconnectLatchGame")).set(new CountDownLatch(1));                                         //set the latch to user game channel
-        ctx.channel().attr(AttributeKey.valueOf("disconnectLatchChat")).set(new CountDownLatch(1));                                         //set the latch to user game channel
-
-        logger.info("client connected from %s", sockStr);
 
         String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(AttributeKey.valueOf("encKey")).set(genKey);                                                                     //store generated encryption key as a channel attribute
