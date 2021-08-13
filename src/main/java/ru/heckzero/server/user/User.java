@@ -81,7 +81,7 @@ public class User {
 
 
     synchronized void onlineGame(Channel ch) {
-        logger.debug("setting user %s game channel online", getLogin());
+        logger.debug("setting user '%s' game channel online", getLogin());
 
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
@@ -93,26 +93,26 @@ public class User {
     }
 
     synchronized void offlineGame() {
-        logger.debug("setting user %s game channel offline", getLogin());
+        logger.debug("setting user '%s' game channel offline", getLogin());
         sendErrMsgChat(StringUtil.EMPTY_STRING);
         this.gameChannel = null;
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
-        logger.info("user %s game channel logged of the game", getLogin());
+        logger.debug("user '%s' game channel logged of the game", getLogin());
         return;
     }
 
     synchronized void onlineChat(Channel ch) {
-        logger.debug("turning user %s chat on", getLogin());
-
+        logger.debug("turning user '%s' chat on", getLogin());
         this.chatChannel = ch;
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
         this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin() + " (chat)");
         return;
     }
     synchronized void offlineChat() {
-        logger.info("turning user %s chat off", getLogin());
+        logger.debug("turning user '%s' chat off", getLogin());
         this.chatChannel = null;
         notifyAll();
+        logger.debug("user '%s' chat channel logged of the game", getLogin());
         return;
     }
 
@@ -143,11 +143,17 @@ public class User {
     public void sendErrMsgGame(String msg) {sendMsg(gameChannel, msg, true);}                                                               //sendErr will disconnect a corresponding channel
     public void sendMsgChat(String msg) { sendMsg(chatChannel, msg, false);}
     public void sendErrMsgChat(String msg) {sendMsg(chatChannel, msg, true);}
-    private void sendMsg(Channel ch, String msg, boolean close) {
+    private void sendMsg(Channel ch, String msg, boolean close) {                                                                           //TODO check if ch != null
         try {
-            ChannelFuture cf = gameChannel.writeAndFlush(msg);
-            if (close)                                                                                                                      //closing the channel after sending a message
+            logger.debug("sending '%s' to %s", msg, ch.attr(AttributeKey.valueOf("chStr")).get());
+            ChannelFuture cf = ch.writeAndFlush(msg);
+            logger.debug("sending done");
+            if (close) {                                                                                                                     //closing the channel after sending a message
+                logger.debug("waiting for socket close");
                 cf.addListener(ChannelFutureListener.CLOSE).await();                                                                        //wait for the channel to be closed
+                cf.addListener(ChannelFutureListener.CLOSE);                                                                                //wait for the channel to be closed
+                logger.debug("waiting done");
+            }
         }catch (Exception e) {
             logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
         }

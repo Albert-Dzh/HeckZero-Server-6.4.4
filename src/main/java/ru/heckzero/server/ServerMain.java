@@ -42,7 +42,6 @@ public class ServerMain {
     private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + Defines.CONF_DIR + File.separatorChar + "ehcache.xml");
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
-    public static final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);                                  //netty's channel group to store all active channels in
     public static final ExecutorService mainExecutor = Executors.newCachedThreadPool();                                                     //main client command executor service
     public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
 

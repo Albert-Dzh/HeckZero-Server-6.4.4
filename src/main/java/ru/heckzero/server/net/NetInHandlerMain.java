@@ -1,6 +1,7 @@
 package ru.heckzero.server.net;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -17,25 +18,24 @@ import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
 
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.ByteArrayInputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CountDownLatch;
 
                                                                                                                                             //TODO change class name to NetInHandler (remove 'Main' word)
+
 @Sharable
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
     private final SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                //create SAX XML parser factory
-    private final CommandProcessor commandProcessor = new CommandProcessor();                                                               //Shareable command processor for dispatching client commands
-    ThreadLocal<SAXParser> threadLocalParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("cant create a parser: %s", e.getMessage()); return null;}});
+    private final ThreadLocal<SAXParser> tlParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("cant create a parser: %s", e.getMessage()); return null;}});
+    private final ThreadLocal<Channel> tlChannel = new ThreadLocal<>();
+    private final CommandProcessor commandProcessor = new CommandProcessor(tlChannel);                                                      //Shareable command processor for dispatching client commands
 
     public NetInHandlerMain() {
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
-        saxParserFactory.setNamespaceAware(true);                                                                                           //enable XML namespace parsing, needed for transit channel ID to command processor within a namespace
         return;
     }
 
@@ -52,7 +52,6 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
         String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(AttributeKey.valueOf("encKey")).set(genKey);                                                                     //store generated encryption key as a channel attribute
-        ServerMain.channelGroup.add(ctx.channel());                                                                                         //add channel to global channel group to make it available in CommandProcessor via channel id, it will be removed from group automatically when get inactive
         ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a reply message to the client containing the encryption key
         return;
     }
@@ -66,10 +65,11 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         logger.info("received %s from %s", rcvd, chStr);                                                                                    //log the received message
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
-        String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT xmlns=\"" + ctx.channel().id().asLongText() + "\">" + rcvd + "</ROOT>";  //wrap the source message into XML root elements <ROOT>source_message</ROOT>
-        SAXParser parser = threadLocalParser.get();                                                                                         //one parser per thead is stored in ThreadLocal
-
+        String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT>" + rcvd + "</ROOT>";                                          //wrap the source message into XML root elements <ROOT>source_message</ROOT>
+        tlChannel.set(ctx.channel());
+        SAXParser parser = tlParser.get();                                                                                                  //one parser per thead is stored in ThreadLocal
         parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //parse and process the received command by a CommandProcessor instance
+        tlChannel.remove();
         return;
     }
 

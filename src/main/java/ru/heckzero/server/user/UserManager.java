@@ -215,7 +215,7 @@ public class UserManager {                                                      
             logger.error("%s is a %s channel but I can't find an online user associated with it. tis is an abnormal situation. Take a look at it!", ch.attr(AttributeKey.valueOf("sockStr")).get(), chType.name());
             return;
         }
-        logger.debug("found online user '%s' which has this channel set as a %s channel, disconnecting the channel", user.getLogin(), chType);
+        logger.info("found online user '%s' which has this channel set as a %s channel, disconnecting the channel", user.getLogin(), chType);
         switch (chType) {
             case GAME -> user.offlineGame();                                                                                                //perform user game channel logout procedure
             case CHAT -> user.offlineChat();                                                                                                //perform user chat channel logout procedure

@@ -16,15 +16,16 @@ import java.util.NoSuchElementException;
 
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
+    private final ThreadLocal<Channel> tlChannel;                                                                                           //ThreadLocal that will be hold the current channel the thread is working with
 
-    public CommandProcessor() { }                                                                                                           //default constructor
-
-    private Channel findChannelById(String chId) {                                                                                          //search for a channel by ID in a ServerMain.ChannelGroup
-        return ServerMain.channelGroup.stream().filter(ch -> ch.id().asLongText().equals(chId)).findFirst().orElseThrow(() -> new NoSuchElementException("can't find channel with id " + chId + " in ChannelGroup"));                   //the channel might be already closed
+    public CommandProcessor(ThreadLocal<Channel> tlChannel) {
+        this.tlChannel = tlChannel;                                                                                                         //make tlChannel visible from any method to get the channel from
     }
 
-    private boolean sanityCheck(Channel ch, User user, String command) {
+    private boolean sanityCheck(User user, String command) {
+        Channel ch = tlChannel.get();                                                                                                       //the channel id the thread is working with
         boolean isSpecialCommand = command.equals("LOGIN") || command.equals("CHAT");                                                       //is the command we just received a "special"
+
         if (isSpecialCommand && !user.isEmpty()) {
             logger.warn("found an online user %s which has channel Id %s set as %s channel. This is abnormal for the %s command, I'm about to close the channel. Pay attention to it!", user.getLogin(), ch.id().asLongText(), ((User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get()).name(), command);
             return false;
@@ -43,9 +44,9 @@ public class CommandProcessor extends DefaultHandler {
         if (qName.equals("ROOT"))                                                                                                           //silently ignoring <ROOT/> element
             return;
 
-        Channel ch = findChannelById(chId);                                                                                                 //XML namespace param (chId) contains a channel ID
+        Channel ch = tlChannel.get();                                                                                                       //the channel id the thread is working with
         User user = UserManager.getOnlineUser(ch);                                                                                          //get an online user having it's game or chat channel set to ch
-        if (!sanityCheck(ch, user, qName)) {                                                                                                //check if it is a legal for the command to come from this channel
+        if (!sanityCheck(user, qName)) {                                                                                                    //check if it is a legal for the command to come from this channel
             ch.close();
             return;
         }
