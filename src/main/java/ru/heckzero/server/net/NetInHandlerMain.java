@@ -68,7 +68,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT xmlns=\"" + ctx.channel().id().asLongText() + "\">" + rcvd + "</ROOT>";  //wrap the source message into XML root elements <ROOT>source_message</ROOT>
         SAXParser parser = threadLocalParser.get();                                                                                         //one parser per thead is stored in ThreadLocal
-        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //parse and process the received command by a CommandProcessor instance handler
+
+        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //parse and process the received command by a CommandProcessor instance
         return;
     }
 
