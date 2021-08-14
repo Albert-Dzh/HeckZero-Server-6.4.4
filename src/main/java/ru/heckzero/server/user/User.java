@@ -90,9 +90,8 @@ public class User {
 
     synchronized void offlineGame() {
         logger.debug("setting user '%s' game channel offline", getLogin());
-        if (chatChannel != null)
-            chatChannel.close();
-        this.gameChannel = null;
+        disconnectChat();                                                                                                                   //chat without a game is ridiculous
+        this.gameChannel = null;                                                                                                            //a marker that user is offline now
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
         logger.info("user '%s' game channel logged of the game", getLogin());
         return;

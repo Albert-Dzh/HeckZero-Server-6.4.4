@@ -22,8 +22,8 @@ class UserParams {
     private Double exp;                                                                                                                     //user experience
     private String dismiss;                                                                                                                 //user block reason, we treat the user as blocked if it's not empty
 
-    @Transient
     private Long lastlogin;                                                                                                                 //last user login time in seconds, needed for computing loc_time
+    private Long lastlogout;                                                                                                                //last user logout time in epoch seconds
 
     @Transient
     private Integer nochat;                                                                                                                 //user chat status 1,0

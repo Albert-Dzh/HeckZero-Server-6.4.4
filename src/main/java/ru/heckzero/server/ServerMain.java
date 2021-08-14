@@ -32,6 +32,7 @@ import ru.heckzero.server.user.UserManager;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -43,6 +44,8 @@ public class ServerMain {
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
     public static final ExecutorService mainExecutor = Executors.newCachedThreadPool();                                                     //main client command executor service
+    public static final ScheduledExecutorService mainScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                      //scheduled executor used in various classes
+
     public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
 
     static {
@@ -87,6 +90,7 @@ public class ServerMain {
         }
         group.shutdownGracefully().syncUninterruptibly();                                                                                   //shut down the event group
         mainExecutor.shutdownNow();                                                                                                         //shut down the main executor service
+        mainScheduledExecutor.shutdownNow();
         return;
     }
 

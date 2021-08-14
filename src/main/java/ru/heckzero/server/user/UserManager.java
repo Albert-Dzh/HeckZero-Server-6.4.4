@@ -18,8 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.function.Predicate;
@@ -35,6 +33,9 @@ public class UserManager {                                                      
     private static boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                   //check if a user provided password conforms the requirements
     public static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                    //validate a string as a valid SHA1 hash
 
+    static {
+        ServerMain.mainScheduledExecutor.scheduleWithFixedDelay(() -> purgeCachedUsers(), 60L, 60L, TimeUnit.SECONDS);                      //purging offline users from the cachedUsers
+    }
     public UserManager() { }
 
     public static List<User> getCachedUsers(UserType type) {
@@ -223,11 +224,10 @@ public class UserManager {                                                      
         return;
     }
 
-    private static void cleanCachedUsers() {
-        logger.info("removing rotten users from the cache");
-        Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > Defines.CACHE_KEEP_TIME;
+    private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. user must not be offline for a defined time not in battle
+        logger.debug("purging rotten users from the cache");
+        Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > Defines.USER_CACHE_PURGE_TIME;
         cachedUsers.removeIf(isRotten);
-
         return;
     }
 
