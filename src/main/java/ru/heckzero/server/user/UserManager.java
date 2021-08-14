@@ -113,7 +113,7 @@ public class UserManager {                                                      
             while (user.isOnlineChat()) {
                 if (user.getChatChannel().isActive()) {
                     logger.info("user '%s' already has his chat channel online and active, disconnecting it", user.getLogin());
-                    user.sendErrMsgChat(StringUtil.EMPTY_STRING);                                                                           //send error message and close the connection
+                    user.disconnectChat();                                                                                                  //send error message and close the connection
                 }else
                     logger.info("user '%s' still has his chat channel online but inactive", user.getLogin());
 
@@ -182,7 +182,7 @@ public class UserManager {                                                      
             while (user.isOnlineGame()) {                                                                                                   //gameChannel != null, we might receive notify from offlineChat() instead of offlineGame(), so we have to wait again
                 if (user.getGameChannel().isActive()) {                                                                                     //channel is active, we have to send an error message and close the channel
                     logger.info("user %s is already online with game channel online and active, disconnecting it", user.getLogin());
-                    user.sendErrMsgGame(String.format("<ERROR code = \"%d\" />", ErrCodes.ANOTHER_CONNECTION.ordinal()));                   //send error message and close the connection
+                    user.disconnect(String.format("<ERROR code = \"%d\" />", ErrCodes.ANOTHER_CONNECTION.ordinal()));                       //send error message and close the game channel connection
                 }else                                                                                                                       //channel is inactive (closed)
                     logger.info("user '%s' still has his game channel online but inactive", user.getLogin());
 
@@ -203,7 +203,7 @@ public class UserManager {                                                      
     }
 
     public static void logoutUser(Channel ch) {
-        logger.info("processing channel inactive event from %s", ch.attr(AttributeKey.valueOf("sockStr")).get());
+        logger.debug("processing channel inactive event from %s", ch.attr(AttributeKey.valueOf("sockStr")).get());
 
         User.ChannelType chType = (User.ChannelType)ch.attr(AttributeKey.valueOf("chType")).get();                                          //get a channel type (GAME, CHAT)
         if (chType == User.ChannelType.NOUSER) {                                                                                            //this channel is not associated with any online user
@@ -215,7 +215,7 @@ public class UserManager {                                                      
             logger.error("%s is a %s channel but I can't find an online user associated with it. tis is an abnormal situation. Take a look at it!", ch.attr(AttributeKey.valueOf("sockStr")).get(), chType.name());
             return;
         }
-        logger.info("found online user '%s' which has this channel set as a %s channel, disconnecting the channel", user.getLogin(), chType);
+        logger.debug("found online user '%s' which has this channel set as a %s channel, disconnecting the channel", user.getLogin(), chType);
         switch (chType) {
             case GAME -> user.offlineGame();                                                                                                //perform user game channel logout procedure
             case CHAT -> user.offlineChat();                                                                                                //perform user chat channel logout procedure

@@ -1,10 +1,7 @@
 package ru.heckzero.server.user;
 
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.util.AttributeKey;
-import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,7 +11,6 @@ import javax.persistence.*;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Calendar;
-import java.util.concurrent.CountDownLatch;
 
 @Entity(name = "User")
 @Table(name = "users")
@@ -88,16 +84,17 @@ public class User {
         this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin());                                                     //replace a client representation string to 'user <login>' instead of IP:port
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
-        sendMsgGame(resultMsg);
+        sendMsg(resultMsg);
         return;
     }
 
     synchronized void offlineGame() {
         logger.debug("setting user '%s' game channel offline", getLogin());
-        sendErrMsgChat(StringUtil.EMPTY_STRING);
+        if (chatChannel != null)
+            chatChannel.close();
         this.gameChannel = null;
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
-        logger.debug("user '%s' game channel logged of the game", getLogin());
+        logger.info("user '%s' game channel logged of the game", getLogin());
         return;
     }
 
@@ -112,20 +109,20 @@ public class User {
         logger.debug("turning user '%s' chat off", getLogin());
         this.chatChannel = null;
         notifyAll();
-        logger.debug("user '%s' chat channel logged of the game", getLogin());
+        logger.info("user '%s' chat channel logged of the game", getLogin());
         return;
     }
 
     public void com_MYPARAM() {
         logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\" Z=\"0\"></MYPARAM>", getParam(Params.login));
-        sendMsgGame(xml);
+        sendMsg(xml);
         return;
     }
     public void com_GOLOC() {
         logger.info("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         String xml = String.format("<GOLOC><L/></GOLOC>");
-        sendMsgGame(xml);
+        sendMsg(xml);
         return;
     }
 
@@ -134,29 +131,28 @@ public class User {
         logger.info("slt = %s, set = %s", slt, set);
         setParam(Params.siluet, set);
         String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>",  set);
-        sendMsgGame(response);
+        sendMsg(response);
         return;
     }
 
 
-    public void sendMsgGame(String msg) {sendMsg(gameChannel, msg, false);}
-    public void sendErrMsgGame(String msg) {sendMsg(gameChannel, msg, true);}                                                               //sendErr will disconnect a corresponding channel
-    public void sendMsgChat(String msg) { sendMsg(chatChannel, msg, false);}
-    public void sendErrMsgChat(String msg) {sendMsg(chatChannel, msg, true);}
-    private void sendMsg(Channel ch, String msg, boolean close) {                                                                           //TODO check if ch != null
-        try {
-            logger.debug("sending '%s' to %s", msg, ch.attr(AttributeKey.valueOf("chStr")).get());
-            ChannelFuture cf = ch.writeAndFlush(msg);
-            logger.debug("sending done");
-            if (close) {                                                                                                                     //closing the channel after sending a message
-                logger.debug("waiting for socket close");
-                cf.addListener(ChannelFutureListener.CLOSE).await();                                                                        //wait for the channel to be closed
-                cf.addListener(ChannelFutureListener.CLOSE);                                                                                //wait for the channel to be closed
-                logger.debug("waiting done");
-            }
-        }catch (Exception e) {
-            logger.warn("cant send message %s to %s: %s", msg, getLogin(), e.getMessage());
-        }
+    public void sendMsg(String msg) {sendMsg(gameChannel, msg);}
+    public void sendMsgChat(String msg) {sendMsg(chatChannel, msg);}
+    private void sendMsg(Channel ch, String msg) {
+        if (ch == null || !ch.isActive())
+            return;
+        ch.writeAndFlush(msg);
+        return;
+    }
+
+    public void disconnect() {disconnect(gameChannel);}
+    public void disconnect(String msg) {sendMsg(msg); disconnect();}
+    public void disconnectChat() {disconnect(chatChannel);}
+    public void disconnectChat(String msg) {sendMsgChat(msg); disconnectChat();}
+    private void disconnect(Channel ch) {
+        if (ch == null || !ch.isActive())
+            return;
+        ch.close();
         return;
     }
 }

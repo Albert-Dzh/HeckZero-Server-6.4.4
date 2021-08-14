@@ -31,8 +31,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
     private final SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                //create SAX XML parser factory
     private final ThreadLocal<SAXParser> tlParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("cant create a parser: %s", e.getMessage()); return null;}});
-    private final ThreadLocal<Channel> tlChannel = new ThreadLocal<>();
-    private final CommandProcessor commandProcessor = new CommandProcessor(tlChannel);                                                      //Shareable command processor for dispatching client commands
+    private final ThreadLocal<Channel> tlChannel = new ThreadLocal<>();                                                                     //ThreadLocal containing a channel the current thread working with, needed for CommandProcessor
+    private final CommandProcessor commandProcessor = new CommandProcessor(tlChannel);                                                      //shareable CommandProcessor for dispatching client commands
 
     public NetInHandlerMain() {
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
