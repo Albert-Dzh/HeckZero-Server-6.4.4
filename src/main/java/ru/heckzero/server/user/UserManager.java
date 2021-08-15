@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
-import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
 
 import java.nio.charset.StandardCharsets;
@@ -34,7 +33,7 @@ public class UserManager {                                                      
     public static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                    //validate a string as a valid SHA1 hash
 
     static {
-        ServerMain.mainScheduledExecutor.scheduleWithFixedDelay(() -> purgeCachedUsers(), 60L, 60L, TimeUnit.SECONDS);                      //purging offline users from the cachedUsers
+        ServerMain.mainScheduledExecutor.scheduleWithFixedDelay(() -> purgeCachedUsers(), 60L, 60L , TimeUnit.SECONDS);                     //purging offline users from the cachedUsers
     }
     public UserManager() { }
 
@@ -232,7 +231,7 @@ public class UserManager {                                                      
 
     private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. user must not be offline for a defined time not in battle
         logger.debug("purging rotten users from the cache");
-        Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > Defines.USER_CACHE_PURGE_TIME;
+        Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
         cachedUsers.removeIf(isRotten);
         return;
     }

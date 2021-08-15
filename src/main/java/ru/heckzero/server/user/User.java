@@ -1,11 +1,13 @@
 package ru.heckzero.server.user;
 
 import io.netty.channel.Channel;
+import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 import java.lang.reflect.Method;
@@ -17,7 +19,7 @@ import java.util.Calendar;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
-    public enum Params {login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, bot, clan, dismiss, nochat, siluet}  //all available params that can be accessed via get/setParam()
+    public enum Params {login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, bot, clan, dismiss, nochat, siluet}  //all possible params that can be accessed via get/setParam()
     public enum GetMeParams {time, tdt, login, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, INT, pow, acc, intel, X, Y, Z, hz}
 
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -82,7 +84,8 @@ public class User {
 
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
-        this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "'");                                                     //replace a client representation string to 'user <login>' instead of IP:port
+        this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "'");                                              //replace a client representation string to 'user <login>' instead of IP:port
+        this.gameChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME))); //replace read timeout handler to a new one with a longer timeout defined for authorized user
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);
@@ -103,6 +106,7 @@ public class User {
         this.chatChannel = ch;
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
         this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "' (chat)");
+        this.chatChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME)));
         return;
     }
     synchronized void offlineChat() {
@@ -136,8 +140,8 @@ public class User {
     }
 
 
-    public void sendMsg(String msg) {sendMsg(gameChannel, msg);}
-    public void sendMsgChat(String msg) {sendMsg(chatChannel, msg);}
+    public void sendMsg(String msg) {sendMsg(gameChannel, msg);}                                                                            //send a message to the game socket
+    public void sendMsgChat(String msg) {sendMsg(chatChannel, msg);}                                                                        //send a message to the chat socket
     private void sendMsg(Channel ch, String msg) {
         if (ch == null || !ch.isActive())
             return;
@@ -145,12 +149,12 @@ public class User {
         return;
     }
 
-    public void disconnect() {disconnect(gameChannel);}
-    public void disconnect(String msg) {sendMsg(msg); disconnect();}
+    public void disconnect() {disconnect(gameChannel);}                                                                                     //disconnect (close) the game channel
+    public void disconnect(String msg) {sendMsg(msg); disconnect();}                                                                        //send message and disconnect the channel
     public void disconnectChat() {disconnect(chatChannel);}
     public void disconnectChat(String msg) {sendMsgChat(msg); disconnectChat();}
     private void disconnect(Channel ch) {
-        if (ch == null || !ch.isActive())
+        if (ch == null || !ch.isActive())                                                                                                   //nothing to do
             return;
         ch.close();
         return;

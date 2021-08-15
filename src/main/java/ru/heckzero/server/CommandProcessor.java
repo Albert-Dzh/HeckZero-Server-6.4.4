@@ -41,6 +41,7 @@ public class CommandProcessor extends DefaultHandler {
             logger.warn("can't process command %s: method void %s(Attribute, Channel) is not yet implemented", qName, handleMethodName);
         }catch (Exception e) {																						                        //method invocation error occurred while executing the handler method
             logger.error("can't execute method %s: %s", handleMethodName, e.getMessage());
+            e.printStackTrace();
         }
         return;
     }

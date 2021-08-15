@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MB-DUP-CHECK>
-	<SMTP>
-		<Host>mail.nic.ru</Host>
-		<Port>587</Port>
-		<Username>mbilling@adlernet.net</Username>
-		<Password>top_secret</Password>
-		<From>mbilling@adlernet.net</From>
-		<FromName>Mbilling</FromName>
-	</SMTP>
+<HZServerConfig>
+	<ServerSetup>
+		<ServerIP>*</ServerIP>
+		<ServerPort>5190</ServerPort>
+		<MaxSocketIdleTime>5</MaxSocketIdleTime>
+		<MaxUserIdleTime>32</MaxUserIdleTime>
+		<EncryptionKeySize>32</EncryptionKeySize>
+		<UsersCacheTimeout>600</UsersCacheTimeout>
+	</ServerSetup>
 
-	<Email>
-		<Address>mmzagr@gmail.com</Address>
-	</Email>
 
-</MB-DUP-CHECK>
+</HZServerConfig>

@@ -13,7 +13,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.xml.sax.SAXException;
 import ru.heckzero.server.CommandProcessor;
-import ru.heckzero.server.Defines;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
@@ -48,7 +47,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         ctx.channel().attr(AttributeKey.valueOf("chStr")).set(sockStr);                                                                     //initial chStr = sockStr (will be replaced to user login after successful authorization)
         ctx.channel().attr(AttributeKey.valueOf("chType")).set(User.ChannelType.NOUSER);                                                    //initial channel type set to NOUSER
 
-        String genKey = RandomStringUtils.randomAlphanumeric(Defines.ENCRYPTION_KEY_SIZE);                                                  //generate a random string - an encryption key for the future user authentication
+        String genKey = RandomStringUtils.randomAlphanumeric(ServerMain.hzConfiguration.getInt("ServerSetup.EncryptionKeySize", ServerMain.DEF_ENCRYPTION_KEY_SIZE));  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(AttributeKey.valueOf("encKey")).set(genKey);                                                                     //store generated encryption key as a channel attribute
         ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a reply message to the client containing the encryption key
         return;
