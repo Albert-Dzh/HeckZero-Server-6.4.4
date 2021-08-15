@@ -109,7 +109,7 @@ public class UserManager {                                                      
             return;
         }
 
-        logger.info("phase 2 found user '%s' to associate chat channel with, checking if it's chat channel is already online", user.getLogin());
+        logger.info("phase 2 found online user '%s' to associate chat channel with, checking if it's chat channel is already online", user.getLogin());
         synchronized (user) {
             while (user.isOnlineChat()) {
                 if (user.getChatChannel().isActive()) {
@@ -127,8 +127,14 @@ public class UserManager {                                                      
                     return;
                 }
             }
-            user.onlineChat(ch);
-            logger.info("phase 3 All done! User '%s' chat channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
+            logger.info("phase 3 checking if user '%s' is still online by it's game channel", user.getLogin());                             //the user might be disconnected by game channel before we locked the monitor
+            if (!user.isOnlineGame()) {
+                logger.warn("user %s seemed already disconnected from it's game channel, won't continue chat registration, closing the channel");
+                ch.close();
+                return;
+            }
+            user.onlineChat(ch);                                                                                                            //associate the channel as user chat channel
+            logger.info("phase 4 All done! User '%s' chat channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("sockStr")).get());
         }
         return;
     }
@@ -198,7 +204,7 @@ public class UserManager {                                                      
             }
             user.onlineGame(ch);                                                                                                            //perform initial procedures to set the user game channel online
             cachedUsers.addIfAbsent(user);
-            logger.info("phase 4 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("chStr")).get());
+            logger.info("phase 4 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("sockStr")).get());
         }
         return;
     }

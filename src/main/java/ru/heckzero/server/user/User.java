@@ -45,11 +45,12 @@ public class User {
     public boolean isOffline() {return !(isOnlineGame() || isOnlineChat());}                                                                //user is offline
     public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
     public boolean isCop() {return getParam(Params.clan).equals("police");}                                                                 //user is a cop (is a member of police clan)
-    public boolean isInBattle() {return false;}                                                                                             //just a stub yet
+    public boolean isInBattle() {return false;}                                                                                             //just a stub yet, take some cognac when you are about to change this method
 
     public String getLogin() {return getParamStr(Params.login);}                                                                            //just a shortcut
     private Long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
     private Integer getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}         //user time zone, used in user history log
+
     public Integer getParamInt(Params param) {return NumberUtils.toInt(getParamStr(param));}
     public Long getParamLong(Params param) {return NumberUtils.toLong(getParamStr(param));}
     public Double getParamDouble(Params param) {return NumberUtils.toDouble(getParamStr(param));}
@@ -81,7 +82,7 @@ public class User {
 
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
-        this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin());                                                     //replace a client representation string to 'user <login>' instead of IP:port
+        this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "'");                                                     //replace a client representation string to 'user <login>' instead of IP:port
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);
@@ -90,10 +91,10 @@ public class User {
 
     synchronized void offlineGame() {
         logger.debug("setting user '%s' game channel offline", getLogin());
-        disconnectChat();                                                                                                                   //chat without a game is ridiculous
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
+        disconnectChat();                                                                                                                   //chat without a game is ridiculous
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
-        logger.info("user '%s' game channel logged of the game", getLogin());
+        logger.info("user '%s' game channel logged out", getLogin());
         return;
     }
 
@@ -101,14 +102,14 @@ public class User {
         logger.debug("turning user '%s' chat on", getLogin());
         this.chatChannel = ch;
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
-        this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user " + getLogin() + " (chat)");
+        this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "' (chat)");
         return;
     }
     synchronized void offlineChat() {
         logger.debug("turning user '%s' chat off", getLogin());
         this.chatChannel = null;
         notifyAll();
-        logger.info("user '%s' chat channel logged of the game", getLogin());
+        logger.info("user '%s' chat channel logged out", getLogin());
         return;
     }
 

@@ -30,9 +30,7 @@ import java.nio.charset.StandardCharsets;
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
     private final SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                //create SAX XML parser factory
-    private final ThreadLocal<SAXParser> tlParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("cant create a parser: %s", e.getMessage()); return null;}});
-    private final ThreadLocal<Channel> tlChannel = new ThreadLocal<>();                                                                     //ThreadLocal containing a channel the current thread working with, needed for CommandProcessor
-    private final CommandProcessor commandProcessor = new CommandProcessor(tlChannel);                                                      //shareable CommandProcessor for dispatching client commands
+    private final ThreadLocal<SAXParser> tlParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("can't create SAX parser: %s", e.getMessage()); return null;}});
 
     public NetInHandlerMain() {
         saxParserFactory.setValidating(false);                                                                                              //disable XML validation, will cause the parser to give a fuck to malformed XML
@@ -66,10 +64,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
         ReferenceCountUtil.release(msg);                                                                                                    //we don't need the source ByteBuf anymore, releasing it
         String xmlString = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?><ROOT>" + rcvd + "</ROOT>";                                          //wrap the source message into XML root elements <ROOT>source_message</ROOT>
-        tlChannel.set(ctx.channel());
-        SAXParser parser = tlParser.get();                                                                                                  //one parser per thead is stored in ThreadLocal
-        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), commandProcessor);                               //parse and process the received command by a CommandProcessor instance
-        tlChannel.remove();
+        SAXParser parser = tlParser.get();                                                                                                  //parser per each thead is stored in ThreadLocal
+        parser.parse(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)), new CommandProcessor(ctx.channel()));            //parse and process the received command by a CommandProcessor instance
         return;
     }
 
@@ -88,7 +84,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 //                    cause.printStackTrace();
                 }
             }
-        logger.info("closing the connection with %s", chStr);
+        logger.info("closing connection with %s", chStr);
         ctx.close();
         return;
     }
