@@ -3,6 +3,7 @@ package ru.heckzero.server.user;
 import io.netty.channel.Channel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
+import io.netty.util.internal.StringUtil;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,8 +20,8 @@ import java.util.Calendar;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
-    public enum Params {login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, bot, clan, dismiss, nochat, siluet}  //all possible params that can be accessed via get/setParam()
-    public enum GetMeParams {time, tdt, login, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, INT, pow, acc, intel, X, Y, Z, hz}
+    public enum Params {login, password, dismiss, lastlogin, lastlogout, siluet, bot, intu, time, tdt, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, pow, acc, intel, X, Y, Z, hz}  //all possible params that can be accessed via get/setParam()
+    public enum GetMeParams {login, password, dismiss, lastlogin, lastlogout, siluet, bot, intu, time, tdt, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, pow, acc, intel, X, Y, Z, hz}
 
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -46,7 +47,7 @@ public class User {
     public boolean isOnlineChat() {return chatChannel != null;}                                                                             //this user has a chat channel assigned
     public boolean isOffline() {return !(isOnlineGame() || isOnlineChat());}                                                                //user is offline
     public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
-    public boolean isCop() {return getParam(Params.clan).equals("police");}                                                                 //user is a cop (is a member of police clan)
+    public boolean isCop() {return getParamStr(Params.clan).equals("police");}                                                              //user is a cop (is a member of police clan)
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet, take some cognac when you are about to change this method
 
     public String getLogin() {return getParamStr(Params.login);}                                                                            //just a shortcut
@@ -56,27 +57,29 @@ public class User {
     public Integer getParamInt(Params param) {return NumberUtils.toInt(getParamStr(param));}
     public Long getParamLong(Params param) {return NumberUtils.toLong(getParamStr(param));}
     public Double getParamDouble(Params param) {return NumberUtils.toDouble(getParamStr(param));}
-    public String getParamStr(Params param) {return getParam(param).toString();}
-    private Object getParam(Params param) {                                                                                                 //get user param value (param must be in Params enum)
-        String paramName = param.name();                                                                                                    //param name as a String
+    public String getParamXml(Params param, boolean appendEmpty) {
+        String paramValue = getParamStr(param);
+        return !paramValue.isEmpty() || appendEmpty ? String.format("%s=\"%s\"", param == Params.intu ? "int" : param.toString(), paramValue) : StringUtil.EMPTY_STRING;
+    }
+    public String getParamStr(Params param) {                                                                                               //get user param value (param must be in Params enum)
         try {                                                                                                                               //try to find param in UserParam instance
-            return params.getParam(paramName);
+            return params.getParam(param);
         } catch (Exception e) {logger.debug("cannot find param in UserParams params, gonna look for a special method to compute that param");}
 
+        String paramName = param.toString();                                                                                                //param name as a String
         String methodName = String.format("getParam_%s", paramName);
         try {                                                                                                                               //if not found in params. try to compute the param value via the dedicated method
             Method method = this.getClass().getDeclaredMethod(methodName);
-            return (method.invoke(this));                                                                                                   //always return string value
+            return method.invoke(this).toString();
         } catch (Exception e) {
             logger.warn("cannot find or compute param %s, neither in User params nor by a dedicated method: %s", paramName, e.getMessage());
         }
-        return new Object();
+        return StringUtil.EMPTY_STRING;                                                                                                     //return an empty string as a default value
     }
-    public void setParam(Params paramName, String paramValue) {setParam(paramName, (Object)paramValue);}                                    //set param to String value
-    public void setParam(Params paramName, Integer paramValue) {setParam(paramName, (Object)paramValue);}                                   //set param to Integer value
-    public void setParam(Params paramName, Long paramValue) {setParam(paramName, (Object)paramValue);}                                      //set param to Long value
-    public void setParam(Params paramName, Double paramValue) {setParam(paramName, (Object)paramValue);}                                    //set param to Double value
-    private void setParam(Params param, Object value) {this.params.setParam(param.name(), value);}                                          //universal method to set a param
+    public void setParam(Params paramName, Integer paramValue) {setParam(paramName, paramValue.toString());}                                //set param to Integer value
+    public void setParam(Params paramName, Long paramValue) {setParam(paramName, paramValue.toString());}                                   //set param to Long value
+    public void setParam(Params paramName, Double paramValue) {setParam(paramName, paramValue.toString());}                                 //set param to Double value
+    public void setParam(Params paramName, String paramValue) {this.params.setParam(paramName, paramValue);}                                //set param to String value
 
 
     synchronized void onlineGame(Channel ch) {
@@ -119,8 +122,9 @@ public class User {
 
     public void com_MYPARAM() {
         logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
-        String xml = String.format("<MYPARAM login=\"%s\" X=\"0\" Y=\"0\" Z=\"0\"></MYPARAM>", getParam(Params.login));
-        sendMsg(xml);
+        StringJoiner xmlGetme = new StringJoiner(" ", "<MYPARAM ",   "></MYPARAM>");
+        Arrays.stream(GetMeParams.values()).map(p -> getParamXml(Params.valueOf(p.toString()), false)).filter(s -> !s.isEmpty()).forEach(xmlGetme::add);
+        sendMsg(xmlGetme.toString());
         return;
     }
     public void com_GOLOC() {

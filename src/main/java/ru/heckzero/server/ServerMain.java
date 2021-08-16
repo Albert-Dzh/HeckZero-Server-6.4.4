@@ -41,7 +41,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
-    public static final String VERSION = "0.3";
+    private static final String VERSION = "0.4";
     private static final String CONF_DIR = "conf";                                                                                          //configuration directory
     private static final String CONF_FILE = "heckzero.xml";                                                                                 //server configuration file
 
@@ -55,9 +55,10 @@ public class ServerMain {
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
     private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "ehcache.xml");
+    private final static File confFile = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + CONF_FILE);
+
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
-    public static final ExecutorService mainExecutor = Executors.newCachedThreadPool();                                                     //main client command executor service
     public static final ScheduledExecutorService mainScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                      //scheduled executor used in various classes
 
     public static XMLConfiguration hzConfiguration = null;
@@ -75,11 +76,11 @@ public class ServerMain {
 
     public void startOperation() {                                                                                                          //mainly bootstrapping the netty stuff
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", VERSION);
-        if (!readServerConfig())
+        if (!readServerConfig())                                                                                                            //can't read config file
             return;
-        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create the SessionFactory
+        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create a SessionFactory
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
-        EventExecutorGroup execGroup = new DefaultEventExecutorGroup(16);                                                                   //DefaultEventLoopGroup will offload the operation from the EventLoop
+        EventExecutorGroup execGroup = new DefaultEventExecutorGroup(8);                                                                    //DefaultEventLoopGroup will offload the operation from the EventLoop
 
         int listenPort = hzConfiguration.getInt("ServerSetup.ServerPort", DEF_PORT);                                                        //port the server will be listening on
 
@@ -96,7 +97,7 @@ public class ServerMain {
                         public void initChannel(SocketChannel ch) {                                                                         //add client channel handlers
                             ChannelPipeline pl = ch.pipeline();                                                                             //get the channel pipeline
 
-                            pl.addLast("socketIdleHandler", new ReadTimeoutHandler(hzConfiguration.getInt("ServerSetup.MaxSocketIdleTime", DEF_MAX_SOCKET_IDLE_TIME)));                                                       //set a read timeout handler
+                            pl.addLast("socketIdleHandler", new ReadTimeoutHandler(hzConfiguration.getInt("ServerSetup.MaxSocketIdleTime", DEF_MAX_SOCKET_IDLE_TIME)));  //set a read timeout handler
                             pl.addLast(netOutHandler);                                                                                      //adding 0x00 byte terminator to an outbound XML string for the sake of XML Flash requirements
 
                             pl.addLast(new DelimiterBasedFrameDecoder(DEF_MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                     //Flash XML Socket 0x0 byte terminator detection
@@ -109,8 +110,8 @@ public class ServerMain {
         } catch (Exception e) {
             logger.error(e);
         }
-        group.shutdownGracefully().syncUninterruptibly();                                                                                   //shut down the event group
-        mainExecutor.shutdownNow();                                                                                                         //shut down the main executor service
+        group.shutdownGracefully();                                                                                                         //shut down the event group
+        execGroup.shutdownGracefully();
         mainScheduledExecutor.shutdownNow();
         return;
     }
@@ -129,10 +130,9 @@ public class ServerMain {
     }
 
     private boolean readServerConfig() {                                                                                                    //read properties from a configuration file
-        File confFile = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + CONF_FILE);
-        logger.info("reading server settings from %s", confFile.getPath());
+        logger.info("reading server settings from %s%s%s", CONF_DIR, File.separatorChar, CONF_FILE);
         try {
-            hzConfiguration = new Configurations().xml(new File(CONF_DIR, CONF_FILE));
+            hzConfiguration = new Configurations().xml(confFile);
             logger.info("server settings have been read ok");
         } catch (ConfigurationException e) {
             logger.error("cant read config file %s, check if the server config file  exists and contains correct settings: %s", confFile.getPath(), e.getMessage());

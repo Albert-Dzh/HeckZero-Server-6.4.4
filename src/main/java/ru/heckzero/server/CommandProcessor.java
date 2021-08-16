@@ -48,13 +48,13 @@ public class CommandProcessor extends DefaultHandler {
 
     private void com_GAME_GETME(Attributes attrs) {
         logger.debug("processing <GETME/> command from %s", user.getLogin());
-        ServerMain.mainExecutor.execute(user::com_MYPARAM);
+        user.com_MYPARAM();
         return;
     }
 
     private void com_GAME_GOLOC(Attributes attrs) {
         logger.debug("processing <GOLOC/> command from %s", user.getLogin());
-        ServerMain.mainExecutor.execute(user::com_GOLOC);
+        user.com_GOLOC();
         return;
     }
 
@@ -76,7 +76,7 @@ public class CommandProcessor extends DefaultHandler {
         logger.debug("processing <SILUET/> command from %s", user.getLogin());
         String slt = attrs.getValue("slt");                                                                                                 //siluet attributes
         String set = attrs.getValue("set");
-        ServerMain.mainExecutor.execute(() -> user.com_SILUET(slt, set));
+        user.com_SILUET(slt, set);
         return;
     }
 

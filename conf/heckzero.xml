@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <HZServerConfig>
+
 	<ServerSetup>
 		<ServerIP>*</ServerIP>
 		<ServerPort>5190</ServerPort>
@@ -8,6 +9,5 @@
 		<EncryptionKeySize>32</EncryptionKeySize>
 		<UsersCacheTimeout>600</UsersCacheTimeout>
 	</ServerSetup>
-
 
 </HZServerConfig>
