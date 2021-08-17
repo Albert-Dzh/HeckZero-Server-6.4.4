@@ -19,7 +19,7 @@ import java.util.Calendar;
 @Table(name = "users")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
-    public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
+    public enum ChannelType  {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
     public enum Params {login, password, dismiss, lastlogin, lastlogout, siluet, bot, intu, time, tdt, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, pow, acc, intel, X, Y, Z, hz}  //all possible params that can be accessed via get/setParam()
     public enum GetMeParams {login, password, dismiss, lastlogin, lastlogout, siluet, bot, intu, time, tdt, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, pow, acc, intel, X, Y, Z, hz}
 
