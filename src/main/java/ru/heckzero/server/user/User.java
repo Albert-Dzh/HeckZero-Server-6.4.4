@@ -4,6 +4,7 @@ import io.netty.channel.Channel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.StringUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,16 +16,20 @@ import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.EnumSet;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Entity(name = "User")
 @Table(name = "users")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
-    public enum ChannelType  {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
-    public enum Params {login, password, dismiss, lastlogin, lastlogout, siluet, bot, intu, time, tdt, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, pow, acc, intel, X, Y, Z, hz}  //all possible params that can be accessed via get/setParam()
-    public enum GetMeParams {login, password, dismiss, lastlogin, lastlogout, siluet, bot, intu, time, tdt, email, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clr, img, alliance, man, HP, psy, maxHP, maxPsy, stamina, str, dex, pow, acc, intel, X, Y, Z, hz}
+    public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
+    public enum Params {login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr,rank_points, clan, str, dex, intu, pow, acc, intel, X, Y, Z, hz, ROOM, id1, id2, i1, bot, siluet, dismiss}  //all possible params that can be accessed via get/setParam()
+
+    @Transient
+    public EnumSet<Params> getmeParams = EnumSet.of(Params.login, Params.password, Params.email, Params.reg_time, Params.lastlogin, Params.lastlogout, Params.lastclantime, Params.loc_time, Params.cure_time, Params.god, Params.hint, Params.exp);
 
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -34,7 +39,7 @@ public class User {
     private Integer id;
 
     @Embedded
-    private final UserParams params = new UserParams();
+    private final UserParams params = new UserParams();                                                                                     //user params that can be set (read-write) are placed there
 
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game socket
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat socket
@@ -64,6 +69,10 @@ public class User {
         String paramValue = getParamStr(param);
         return !paramValue.isEmpty() || appendEmpty ? String.format("%s=\"%s\"", param == Params.intu ? "int" : param.toString(), paramValue) : StringUtil.EMPTY_STRING;
     }
+    private String getParamsXml(EnumSet<Params> params, boolean appendEmpty) {
+        return params.stream().map(p -> getParamXml(p, appendEmpty)).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));
+    }
+
     public String getParamStr(Params param) {                                                                                               //get user param value (param must be in Params enum)
         try {                                                                                                                               //try to find param in UserParam instance
             return params.getParam(param);
@@ -83,6 +92,7 @@ public class User {
     public void setParam(Params paramName, Long paramValue) {setParam(paramName, paramValue.toString());}                                   //set param to Long value
     public void setParam(Params paramName, Double paramValue) {setParam(paramName, paramValue.toString());}                                 //set param to Double value
     public void setParam(Params paramName, String paramValue) {this.params.setParam(paramName, paramValue);}                                //set param to String value
+
 
 
     synchronized void onlineGame(Channel ch) {
@@ -125,8 +135,7 @@ public class User {
 
     public void com_MYPARAM() {
         logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
-        StringJoiner xmlGetme = new StringJoiner(" ", "<MYPARAM ",   "></MYPARAM>");
-        Arrays.stream(GetMeParams.values()).map(p -> getParamXml(Params.valueOf(p.toString()), false)).filter(s -> !s.isEmpty()).forEach(xmlGetme::add);
+        StringJoiner xmlGetme = new StringJoiner(" ", "<MYPARAM ",   "></MYPARAM>").add(getParamsXml(getmeParams, false));
         sendMsg(xmlGetme.toString());
         return;
     }
@@ -167,4 +176,3 @@ public class User {
         return;
     }
 }
-
