@@ -26,7 +26,8 @@ class UserParams {
     private String god;                                                                                                                     //is user BoDun ?
     private Integer hint;                                                                                                                   //user custom settings used in PDA
     private Integer exp;                                                                                                                    //experience
-    private Double propwr;                                                                                                                  //profession level (0-1)
+    private Integer pro;                                                                                                                    //profession
+    private Double propwr;                                                                                                                  //profession power (rate) (0-1)
     private Integer rank_points;                                                                                                            //frags
     private String clan, clan_img;                                                                                                          //clan name and clan image
     private Integer clr;                                                                                                                    //chat font color
