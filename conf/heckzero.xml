@@ -5,7 +5,7 @@
 		<ServerIP>*</ServerIP>
 		<ServerPort>5190</ServerPort>
 		<MaxSocketIdleTime>5</MaxSocketIdleTime>
-		<MaxUserIdleTime>32</MaxUserIdleTime>
+		<MaxUserIdleTime>35</MaxUserIdleTime>
 		<EncryptionKeySize>32</EncryptionKeySize>
 		<UsersCacheTimeout>600</UsersCacheTimeout>
 	</ServerSetup>

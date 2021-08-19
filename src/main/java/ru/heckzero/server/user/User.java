@@ -4,8 +4,11 @@ import io.netty.channel.Channel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.internal.StringUtil;
+import org.apache.commons.beanutils.converters.DoubleConverter;
+import org.apache.commons.beanutils.converters.IntegerConverter;
+import org.apache.commons.beanutils.converters.LongConverter;
+import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
@@ -14,24 +17,27 @@ import ru.heckzero.server.ServerMain;
 import javax.persistence.*;
 import java.lang.reflect.Method;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.EnumSet;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Entity(name = "User")
 @Table(name = "users")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
-    public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by online() and chatOn() methods
-    public enum Params {login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr,rank_points, clan, str, dex, intu, pow, acc, intel, X, Y, Z, hz, ROOM, id1, id2, i1, bot, siluet, dismiss}  //all possible params that can be accessed via get/setParam()
+    private static final Logger logger = LogManager.getFormatterLogger();
+
+    public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by onlineGame() and onlineChat() methods
+    public enum Params {nochat, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, str, dex, intu, pow, acc, intel, X, Y, Z, hz, ROOM, id1, id2, i1, bot, siluet, dismiss}  //all possible params that can be accessed via get/setParam()
+
+    private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //converters used in getParam***() methods
+    private static final IntegerConverter intConv = new IntegerConverter(0);
+    private static final LongConverter longConv = new LongConverter(0L);
+    private static final DoubleConverter doubleConv = new DoubleConverter(0D);
 
     @Transient
-    public EnumSet<Params> getmeParams = EnumSet.of(Params.login, Params.password, Params.email, Params.reg_time, Params.lastlogin, Params.lastlogout, Params.lastclantime, Params.loc_time, Params.cure_time, Params.god, Params.hint, Params.exp);
-
-    private static final Logger logger = LogManager.getFormatterLogger();
+    public EnumSet<Params> getmeParams = EnumSet.of(Params.login, Params.password, Params.lastlogin, Params.lastlogout, Params.loc_time, Params.exp, Params.clan, Params.god);   //params sent in GETME - MYPARAM
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "generator_sequence")
@@ -41,14 +47,13 @@ public class User {
     @Embedded
     private final UserParams params = new UserParams();                                                                                     //user params that can be set (read-write) are placed there
 
-    @Transient volatile private Channel gameChannel = null;                                                                                 //user game socket
-    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat socket
+    @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
+    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
 
     public Channel getGameChannel() { return this.gameChannel;}
     public Channel getChatChannel() { return this.chatChannel;}
 
-    public User() { }                                                                                                                       //default constructor
-    public void setId(Integer id) {this.id = id;}
+    public User() { }                                                                                                                       //default empty constructor
 
     public boolean isEmpty() {return id == null;}                                                                                           //user is empty (having empty params)
     public boolean isOnlineGame() {return gameChannel != null;}                                                                             //this user has a game channel assigned
@@ -62,37 +67,32 @@ public class User {
     private Long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
     private Integer getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}         //user time zone, used in user history log
 
-    public Integer getParamInt(Params param) {return NumberUtils.toInt(getParamStr(param));}
-    public Long getParamLong(Params param) {return NumberUtils.toLong(getParamStr(param));}
-    public Double getParamDouble(Params param) {return NumberUtils.toDouble(getParamStr(param));}
-    public String getParamXml(Params param, boolean appendEmpty) {
-        String paramValue = getParamStr(param);
-        return !paramValue.isEmpty() || appendEmpty ? String.format("%s=\"%s\"", param == Params.intu ? "int" : param.toString(), paramValue) : StringUtil.EMPTY_STRING;
-    }
-    private String getParamsXml(EnumSet<Params> params, boolean appendEmpty) {
-        return params.stream().map(p -> getParamXml(p, appendEmpty)).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));
-    }
+    public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));};                                       //get user param value as different type
+    public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
+    public Long getParamLong(Params param) {return longConv.convert(Long.class, getParam(param));}
+    public Double getParamDouble(Params param) {return doubleConv.convert(Double.class, getParam(param));}
+    public String getParamXml(Params param, boolean appendEmpty) {return getParamStr(param).transform(s -> (!s.isEmpty() || appendEmpty) ? String.format("%s=\"%s\"", param == Params.intu ? "int" : param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    private String getParamsXml(EnumSet<Params> params, boolean appendEmpty) {return params.stream().map(p -> getParamXml(p, appendEmpty)).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
 
-    public String getParamStr(Params param) {                                                                                               //get user param value (param must be in Params enum)
+    private Object getParam(Params param) {                                                                                                 //get user param (param must be in Params enum)
         try {                                                                                                                               //try to find param in UserParam instance
             return params.getParam(param);
-        } catch (Exception e) {logger.debug("cannot find param in UserParams params, gonna look for a special method to compute that param");}
+        } catch (Exception e) {logger.debug("cannot find param %s in User.Params params, looking for a special method which computes that param", param.toString());}
 
         String paramName = param.toString();                                                                                                //param name as a String
         String methodName = String.format("getParam_%s", paramName);
         try {                                                                                                                               //if not found in params. try to compute the param value via the dedicated method
             Method method = this.getClass().getDeclaredMethod(methodName);
-            return method.invoke(this).toString();
+            return method.invoke(this);
         } catch (Exception e) {
             logger.warn("cannot find or compute param %s, neither in User params nor by a dedicated method: %s", paramName, e.getMessage());
         }
-        return StringUtil.EMPTY_STRING;                                                                                                     //return an empty string as a default value
+        return StringUtils.EMPTY;                                                                                                           //return an empty string as a default value
     }
-    public void setParam(Params paramName, Integer paramValue) {setParam(paramName, paramValue.toString());}                                //set param to Integer value
-    public void setParam(Params paramName, Long paramValue) {setParam(paramName, paramValue.toString());}                                   //set param to Long value
-    public void setParam(Params paramName, Double paramValue) {setParam(paramName, paramValue.toString());}                                 //set param to Double value
-    public void setParam(Params paramName, String paramValue) {this.params.setParam(paramName, paramValue);}                                //set param to String value
-
+    public void setParam(Params paramName, String paramValue) {params.setParam(paramName, paramValue);}                                     //set param to String value
+    public void setParam(Params paramName, Integer paramValue) {params.setParam(paramName, paramValue);}                                    //set param to Integer value
+    public void setParam(Params paramName, Long paramValue) {params.setParam(paramName, paramValue);};                                      //set param to Long value
+    public void setParam(Params paramName, Double paramValue) {params.setParam(paramName, paramValue);}                                     //set param to Double value
 
 
     synchronized void onlineGame(Channel ch) {
