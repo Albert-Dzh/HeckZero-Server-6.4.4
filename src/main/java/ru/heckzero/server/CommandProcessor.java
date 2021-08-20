@@ -69,7 +69,7 @@ public class CommandProcessor extends DefaultHandler {
 
     private void com_GAME_CHAT(Attributes attrs) {                                                                                          //chat server host request comes from a game channel
         logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        String xmlReply = String.format("<CHAT server=\"%s\"/>", ServerMain.hzConfiguration.getString("ServerList.ChatServer", StringUtils.EMPTY));
+        String xmlReply = String.format("<CHAT server=\"%s\"/>", ServerMain.hzConfiguration.getString("ServerList.ChatServer", StringUtils.EMPTY)); //get and sent chat server host from the configuration
         ch.writeAndFlush(xmlReply);
         return;
     }
@@ -77,17 +77,17 @@ public class CommandProcessor extends DefaultHandler {
         logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much an already registered online user
         String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in a game authorization phase  inside <OK ses=""> response)
-        UserManager.loginUserChat(ch, ses, login);
+        UserManager.loginUserChat(ch, ses, login);                                                                                          //let the UserManager do the job by authorizing and association the chat channel
         return;
     }
 
-    private void com_GAME_GETME(Attributes attrs) {
+    private void com_GAME_GETME(Attributes attrs) {                                                                                         //initial (just right after the login) request of the user params
         logger.debug("processing <GETME/> command from %s", user.getLogin());
         user.com_MYPARAM();
         return;
     }
 
-    private void com_GAME_GOLOC(Attributes attrs) {
+    private void com_GAME_GOLOC(Attributes attrs) {                                                                                         //user wants to move to an another location or asks for a nearest locations description
         logger.debug("processing <GOLOC/> command from %s", user.getLogin());
         user.com_GOLOC();
         return;
@@ -96,11 +96,11 @@ public class CommandProcessor extends DefaultHandler {
 
     public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> handler
         logger.debug("processing <LOGOUT/> command from %s", user.getLogin());
-        user.disconnect();                                                                                                                  //just close the channel and let channelInactive in NetInHandler do the job  when the channel gets closed
+        user.disconnect();                                                                                                                  //just close the channel and let channelInactive in NetInHandler do the job when the channel gets closed
         return;
     }
 
-    private void com_GAME_SILUET(Attributes attrs) {
+    private void com_GAME_SILUET(Attributes attrs) {                                                                                        //user changes it's body look
         logger.debug("processing <SILUET/> command from %s", user.getLogin());
         String slt = attrs.getValue("slt");                                                                                                 //siluet attributes
         String set = attrs.getValue("set");
@@ -109,12 +109,12 @@ public class CommandProcessor extends DefaultHandler {
     }
 
 
-    private void com_GAME_N(Attributes attrs) {
+    private void com_GAME_N(Attributes attrs) {                                                                                             //NOP (keep alive) packet from the game socket
         logger.debug("processing <N/> command from %s", user.getLogin());
         return;
     }
 
-    private void com_CHAT_N(Attributes attrs) {
+    private void com_CHAT_N(Attributes attrs) {                                                                                             //NOP (keep alive) packet from the chat socket
         logger.debug("processing <N/> command from %s", user.getLogin());
         return;
     }
