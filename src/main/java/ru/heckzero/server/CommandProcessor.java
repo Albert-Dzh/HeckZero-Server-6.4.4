@@ -20,8 +20,8 @@ import java.util.StringJoiner;
 
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private final Channel ch;
-    private final User user;
+    private final Channel ch;                                                                                                               //a channel the command came from
+    private final User user;                                                                                                                //a user associated with the channel
 
     public CommandProcessor(Channel ch) {
         this.ch = ch;                                                                                                                       //the channel the command came from

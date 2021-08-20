@@ -4,19 +4,14 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.Delimiters;
 import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
-import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.XMLConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
@@ -32,10 +27,8 @@ import org.hibernate.service.ServiceRegistry;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
-import ru.heckzero.server.user.UserManager;
 
 import java.io.File;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -44,13 +37,16 @@ public class ServerMain {
     private static final String VERSION = "0.4";
     private static final String CONF_DIR = "conf";                                                                                          //configuration directory
     private static final String CONF_FILE = "heckzero.xml";                                                                                 //server configuration file
-
-    private static final Integer DEF_PORT = 5190;                                                                                           //default port to listen
+    private static final Integer DEF_MAX_WORKER_THREADS = 8;                                                                                //MAX threads in EventExecutorGroup for the offloading EventLoop threads
+    private static final String DEF_LISTEN_HOST = "0.0.0.0";                                                                                //default IP (host) to listen may be IP or FQDN
+    private static final Integer DEF_LISTEN_PORT = 5190;                                                                                    //default port to listen
     private static final Integer DEF_MAX_PACKET_SIZE = 1500;                                                                                //max packet length to parse by DelimiterBasedFrameDecoder handler
     private static final Integer DEF_MAX_SOCKET_IDLE_TIME = 5;                                                                              //default socket(non an authorized user) idle timeout (sec)
     public static final Integer DEF_MAX_USER_IDLE_TIME = 32;                                                                                //Max user timeout
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
     public static final Integer DEF_USER_CACHE_TIMEOUT = 600;                                                                               //users cache timout after which it will be purged
+
+
 
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
@@ -68,7 +64,6 @@ public class ServerMain {
         ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
     }
 
-
     public static void main(String[] args) {
         new ServerMain().startOperation();
         return;
@@ -80,9 +75,9 @@ public class ServerMain {
             return;
         sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create a SessionFactory
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
-        EventExecutorGroup execGroup = new DefaultEventExecutorGroup(8);                                                                    //DefaultEventLoopGroup will offload the operation from the EventLoop
-
-        int listenPort = hzConfiguration.getInt("ServerSetup.ServerPort", DEF_PORT);                                                        //port the server will be listening on
+        EventExecutorGroup execGroup = new DefaultEventExecutorGroup(hzConfiguration.getInt("MaxWorkerThreads", DEF_MAX_WORKER_THREADS));   //DefaultEventLoopGroup will offload operations from the EventLoop
+        int listenPort = hzConfiguration.getInt("ServerSetup.ListenPort", DEF_LISTEN_PORT);                                                 //port the server will be listening on
+        String listenHost = hzConfiguration.getString("ServerSetup.ListenHost", DEF_LISTEN_HOST).trim().replace("*", "0.0.0.0");            //host the server will be listening on
 
         try {
             NetInHandlerMain netInHandlerMain = new NetInHandlerMain();                                                                     //an inbound handler (will do client command processing)
@@ -104,11 +99,12 @@ public class ServerMain {
                             pl.addLast(execGroup, netInHandlerMain);                                                                        //the inbound handler will be executed in separate event exec group
                         }
                     });
-            ChannelFuture f = b.bind(listenPort).syncUninterruptibly();                                                                     //bind and start accepting incoming connections
+
+            ChannelFuture f = b.bind(listenHost, listenPort).sync();                                                                        //bind and start accepting incoming connections
             logger.info("server has been started and is listening on %s", f.channel().localAddress().toString());
             f.channel().closeFuture().sync();                                                                                               //wait for the server channel to close. (when???) but we have to wait to keep application running
         } catch (Exception e) {
-            logger.error(e);
+            logger.error("can't bootstrap the server: %s:%s", e.toString(), e.getMessage());
         }
         group.shutdownGracefully();                                                                                                         //shut down the event group
         execGroup.shutdownGracefully();

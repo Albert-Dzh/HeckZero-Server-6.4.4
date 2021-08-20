@@ -2,12 +2,13 @@
 <HZServerConfig>
 
 	<ServerSetup>
-		<ServerIP>*</ServerIP>
-		<ServerPort>5190</ServerPort>
+		<ListenHost>0.0.0.0</ListenHost>
+		<ListenPort>5190</ListenPort>
 		<MaxSocketIdleTime>5</MaxSocketIdleTime>
 		<MaxUserIdleTime>50</MaxUserIdleTime>
 		<EncryptionKeySize>32</EncryptionKeySize>
 		<UsersCacheTimeout>600</UsersCacheTimeout>
+		<MaxWorkerThreads>8</MaxWorkerThreads>
 	</ServerSetup>
 
 	<ServerList>
