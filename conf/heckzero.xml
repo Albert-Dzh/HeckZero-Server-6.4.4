@@ -10,4 +10,9 @@
 		<UsersCacheTimeout>600</UsersCacheTimeout>
 	</ServerSetup>
 
+	<ServerList>
+		<Server first="1">192.168.2.14</Server>
+		<Server>192.168.13.137</Server>
+	</ServerList>
+
 </HZServerConfig>

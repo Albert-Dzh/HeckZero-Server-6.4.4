@@ -20,6 +20,7 @@ import ru.heckzero.server.user.UserManager;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.ByteArrayInputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
@@ -38,10 +39,12 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {                                                                 //a new client has connected
-        InetSocketAddress sa = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //get client socket address
+        InetSocketAddress sa = ((InetSocketAddress)ctx.channel().localAddress());                                                           //server address client connected to
+        InetSocketAddress ca = (InetSocketAddress)ctx.channel().remoteAddress();                                                            //client address client connected from
+        String serverFQDN = sa.getAddress().getCanonicalHostName();                                                                         //server FQDN (reverse lookup of sa)
 
-        String sockStr = String.format("%s:%d", sa.getHostString(), sa.getPort());                                                          //socket address as a string
-        logger.info("client connected from %s", sockStr);
+        String sockStr = String.format("%s:%d", ca.getHostString(), ca.getPort());                                                          //client socket address as a string
+        logger.info("client connected from %s -> %s:%d", sockStr, serverFQDN, sa.getPort());
 
         ctx.channel().attr(AttributeKey.valueOf("sockStr")).set(sockStr);                                                                   //and store it as a channel attribute for login purpose
         ctx.channel().attr(AttributeKey.valueOf("chStr")).set(sockStr);                                                                     //initial chStr = sockStr (will be replaced to user login after successful authorization)
@@ -49,7 +52,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
         String genKey = RandomStringUtils.randomAlphanumeric(ServerMain.hzConfiguration.getInt("ServerSetup.EncryptionKeySize", ServerMain.DEF_ENCRYPTION_KEY_SIZE));  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(AttributeKey.valueOf("encKey")).set(genKey);                                                                     //store generated encryption key as a channel attribute
-        ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                       //send a reply message to the client containing the encryption key
+        if (!serverFQDN.equals("main.timezero.ru"))
+            ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                   //send an encryption key only to the clients connected NOT to main.timezero.ru (they will come up with a <LIST>)
         return;
     }
 

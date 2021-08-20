@@ -12,7 +12,10 @@ import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.StringJoiner;
 
 public class CommandProcessor extends DefaultHandler {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -46,6 +49,31 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_NOUSER_LIST(Attributes attrs) {                                                                                        //<LIST> request for the list of game servers
+        List<String> servers = ServerMain.hzConfiguration.getList(String.class, "ServerList.Server", new ArrayList<>());                    //read server list from the configuration
+        StringJoiner sj = new StringJoiner(" ", "<LIST>", "</LIST>");                                                                       //format the resulting XML containing server LIST
+        servers.forEach(s -> sj.add(String.format("<SERVER host=\"%s\"%s/>", s, ServerMain.hzConfiguration.getString(String.format("ServerList.Server(%d)[@first]", servers.indexOf(s)), "").transform(f -> f.isEmpty() ? "" : " first=\"" + f + "\"")))); //магия рептилий
+        ch.writeAndFlush(sj.toString());
+        ch.close();
+        return;
+    }
+
+        private void com_NOUSER_LOGIN(Attributes attrs) {                                                                                       //<LOGIN /> handler
+        logger.debug("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+        String login = attrs.getValue("l");                                                                                                 //login attribute
+        String password = attrs.getValue("p");                                                                                              //password attribute
+        UserManager.loginUser(ch, login, password);                                                                                         //set a new user online
+        return;
+    }
+
+    private void com_NOUSER_CHAT(Attributes attrs) {
+        logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+        String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much a registered online user
+        String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in authorization phase in <OK ses=""> response)
+        UserManager.loginUserChat(ch, ses, login);
+        return;
+    }
+
     private void com_GAME_GETME(Attributes attrs) {
         logger.debug("processing <GETME/> command from %s", user.getLogin());
         user.com_MYPARAM();
@@ -58,13 +86,6 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_NOUSER_LOGIN(Attributes attrs) {                                                                                       //<LOGIN /> handler
-        logger.debug("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        String login = attrs.getValue("l");                                                                                                 //login attribute
-        String password = attrs.getValue("p");                                                                                              //password attribute
-        UserManager.loginUser(ch, login, password);                                                                                         //set a new user online
-        return;
-    }
 
     public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> handler
         logger.debug("processing <LOGOUT/> command from %s", user.getLogin());
@@ -81,13 +102,6 @@ public class CommandProcessor extends DefaultHandler {
     }
 
 
-    private void com_NOUSER_CHAT(Attributes attrs) {
-        logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much a registered online user
-        String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in authorization phase in <OK ses=""> response)
-        UserManager.loginUserChat(ch, ses, login);
-        return;
-    }
     private void com_GAME_N(Attributes attrs) {
         logger.debug("processing <N/> command from %s", user.getLogin());
         return;
