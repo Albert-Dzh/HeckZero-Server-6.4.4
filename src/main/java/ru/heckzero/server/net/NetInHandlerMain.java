@@ -52,8 +52,8 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
 
         String genKey = RandomStringUtils.randomAlphanumeric(ServerMain.hzConfiguration.getInt("ServerSetup.EncryptionKeySize", ServerMain.DEF_ENCRYPTION_KEY_SIZE));  //generate a random string - an encryption key for the future user authentication
         ctx.channel().attr(AttributeKey.valueOf("encKey")).set(genKey);                                                                     //store generated encryption key as a channel attribute
-        if (!serverFQDN.equals("main.timezero.ru"))
-            ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));                                                                   //send an encryption key only to the clients connected NOT to main.timezero.ru (they will come up with a <LIST>)
+        if (!serverFQDN.equals("main.timezero.ru"))                                                                                         //send an encryption key only to the clients connected to NOT main.timezero.ru (they will come up with a <LIST> later)
+            ctx.writeAndFlush(String.format("<KEY s =\"%s\"/>", genKey));
         return;
     }
 

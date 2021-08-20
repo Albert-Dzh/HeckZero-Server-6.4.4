@@ -2,6 +2,7 @@ package ru.heckzero.server;
 
 import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.xml.sax.Attributes;
@@ -41,7 +42,7 @@ public class CommandProcessor extends DefaultHandler {
             Method handlerMethod = this.getClass().getDeclaredMethod(handleMethodName, Attributes.class);	                                //get a handler method reference
             handlerMethod.invoke(this, attributes);
         }catch (NoSuchMethodException e) {                                                                                                  //corresponding method is not found
-            logger.warn("can't process command %s: method void %s(Attribute, Channel) is not yet implemented", qName, handleMethodName);
+            logger.warn("can't process command %s: method void %s(Attributes) is not yet implemented", qName, handleMethodName);
         }catch (Exception e) {																						                        //method invocation error occurred while executing the handler method
             logger.error("can't execute method %s: %s", handleMethodName, e.getMessage());
             e.printStackTrace();
@@ -49,16 +50,16 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_NOUSER_LIST(Attributes attrs) {                                                                                        //<LIST> request for the list of game servers
+    private void com_NOUSER_LIST(Attributes attrs) {                                                                                        //<LIST> initial client request for the list of game servers
         List<String> servers = ServerMain.hzConfiguration.getList(String.class, "ServerList.Server", new ArrayList<>());                    //read server list from the configuration
         StringJoiner sj = new StringJoiner(" ", "<LIST>", "</LIST>");                                                                       //format the resulting XML containing server LIST
         servers.forEach(s -> sj.add(String.format("<SERVER host=\"%s\"%s/>", s, ServerMain.hzConfiguration.getString(String.format("ServerList.Server(%d)[@first]", servers.indexOf(s)), "").transform(f -> f.isEmpty() ? "" : " first=\"" + f + "\"")))); //магия рептилий
         ch.writeAndFlush(sj.toString());
-        ch.close();
+        ch.close();                                                                                                                         //we don't need a sniff socket any more
         return;
     }
 
-        private void com_NOUSER_LOGIN(Attributes attrs) {                                                                                       //<LOGIN /> handler
+    private void com_NOUSER_LOGIN(Attributes attrs) {                                                                                       //<LOGIN /> handler
         logger.debug("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         String login = attrs.getValue("l");                                                                                                 //login attribute
         String password = attrs.getValue("p");                                                                                              //password attribute
@@ -66,10 +67,16 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_NOUSER_CHAT(Attributes attrs) {
+    private void com_GAME_CHAT(Attributes attrs) {                                                                                          //chat server host request comes from a game channel
         logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much a registered online user
-        String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in authorization phase in <OK ses=""> response)
+        String xmlReply = String.format("<CHAT server=\"%s\"/>", ServerMain.hzConfiguration.getString("ServerList.ChatServer", StringUtils.EMPTY));
+        ch.writeAndFlush(xmlReply);
+        return;
+    }
+    private void com_NOUSER_CHAT(Attributes attrs) {                                                                                        //a new CHAT connection from a chat channel arrives
+        logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+        String login = attrs.getValue("l");                                                                                                 //chat authorization login - must much an already registered online user
+        String ses = attrs.getValue("ses");                                                                                                 //chat authorization key (was sent by the server to the client in a game authorization phase  inside <OK ses=""> response)
         UserManager.loginUserChat(ch, ses, login);
         return;
     }

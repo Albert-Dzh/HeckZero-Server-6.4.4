@@ -5,14 +5,14 @@
 		<ServerIP>*</ServerIP>
 		<ServerPort>5190</ServerPort>
 		<MaxSocketIdleTime>5</MaxSocketIdleTime>
-		<MaxUserIdleTime>35</MaxUserIdleTime>
+		<MaxUserIdleTime>50</MaxUserIdleTime>
 		<EncryptionKeySize>32</EncryptionKeySize>
 		<UsersCacheTimeout>600</UsersCacheTimeout>
 	</ServerSetup>
 
 	<ServerList>
 		<Server first="1">192.168.2.14</Server>
-		<Server>192.168.13.137</Server>
+		<ChatServer>192.168.2.14</ChatServer>
 	</ServerList>
 
 </HZServerConfig>
