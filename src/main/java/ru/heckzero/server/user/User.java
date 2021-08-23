@@ -3,23 +3,22 @@ package ru.heckzero.server.user;
 import io.netty.channel.Channel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
-import io.netty.util.internal.StringUtil;
 import org.apache.commons.beanutils.converters.DoubleConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.LongConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ru.heckzero.server.Location;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 import java.lang.reflect.Method;
 import java.time.Instant;
-import java.util.Calendar;
-import java.util.EnumSet;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity(name = "User")
@@ -38,8 +37,8 @@ public class User {
     private static final DoubleConverter doubleConv = new DoubleConverter(0D);
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "generator_sequence")
-    @SequenceGenerator(name = "generator_sequence", sequenceName = "users_id_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
+    @SequenceGenerator(name = "user_generator_sequence", sequenceName = "users_id_seq", allocationSize = 1)
     private Integer id;
 
     @Embedded
@@ -140,10 +139,24 @@ public class User {
         sendMsg(xmlGetme.toString());
         return;
     }
-    public void com_GOLOC() {
+
+    public void com_GOLOC(String n, String d, String slow, String force, String pay, String t1, String t2) {
         logger.info("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
-        String xml = String.format("<GOLOC><L/></GOLOC>");
-        sendMsg(xml);
+        Integer X = getParamInt(User.Params.X);
+        Integer Y = getParamInt(User.Params.Y);
+
+        Integer nn = NumberUtils.toInt(n, 5);
+
+        Location currLoc = Location.getLocation(Location.getShiftedCoordinate(X, Location.dxdy[nn - 1][0]), Location.getShiftedCoordinate(Y, Location.dxdy[nn - 1][1]));
+        StringJoiner sj = new StringJoiner(" ", String.format("<GOLOC n=\"%d\">", nn), "</GOLOC>");
+
+        if (d != null) {                                                                                                                    //123...9
+            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(c -> c == 5 ? currLoc : Location.getLocation(Location.getShiftedCoordinate(X, Location.dxdy[c - 1][0]), Location.getShiftedCoordinate(Y, Location.dxdy[c - 1][1]))).collect(Collectors.toList());
+            locations.forEach(l -> sj.add(l.getXML()));
+        }
+
+
+        sendMsg(sj.toString());
         return;
     }
 

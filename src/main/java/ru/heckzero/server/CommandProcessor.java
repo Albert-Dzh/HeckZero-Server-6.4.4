@@ -15,7 +15,6 @@ import ru.heckzero.server.user.UserManager;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.StringJoiner;
 
 public class CommandProcessor extends DefaultHandler {
@@ -89,7 +88,15 @@ public class CommandProcessor extends DefaultHandler {
 
     private void com_GAME_GOLOC(Attributes attrs) {                                                                                         //user wants to move to an another location or asks for a nearest locations description
         logger.debug("processing <GOLOC/> command from %s", user.getLogin());
-        user.com_GOLOC();
+        String n = attrs.getValue("n");
+        String d = attrs.getValue("d");
+        String slow = attrs.getValue("slow");
+        String force = attrs.getValue("force");
+        String pay = attrs.getValue("pay");
+        String t1 = attrs.getValue("t1");
+        String t2 = attrs.getValue("t2");
+
+        user.com_GOLOC(n, d, slow, force, pay, t1, t2);
         return;
     }
 
