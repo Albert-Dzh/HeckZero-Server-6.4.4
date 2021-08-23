@@ -46,8 +46,6 @@ public class ServerMain {
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
     public static final Integer DEF_USER_CACHE_TIMEOUT = 600;                                                                               //users cache timout after which it will be purged
 
-
-
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
     private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "ehcache.xml");
