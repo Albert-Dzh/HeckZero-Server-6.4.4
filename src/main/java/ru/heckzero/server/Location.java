@@ -1,25 +1,38 @@
 package ru.heckzero.server;
 
+import org.apache.commons.beanutils.converters.IntegerConverter;
+import org.apache.commons.beanutils.converters.StringConverter;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
+import ru.heckzero.server.user.User;
 
 import javax.persistence.*;
+import java.lang.reflect.Field;
+import java.util.EnumSet;
+import java.util.stream.Collectors;
 
 @Entity(name = "Location")
 @Table(name = "locations")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class Location {
     private static final Logger logger = LogManager.getFormatterLogger();
+    private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
+    private static final IntegerConverter intConv = new IntegerConverter(0);
+
+    public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
+    private static EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
+
     private static final Integer DEF_LOC_TIME = 5;
     public static final int dxdy [ ][ ] = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1} };
 
     private static int normalLocToLocal(int val) {return val > 180 ? (val - 360) : (val <= -180) ? (val + 360) : val;}
     private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}
-    public static int getShiftedCoordinate(int currCoordinate, int shift) {
+    private static int getShiftedCoordinate(int currCoordinate, int shift) {
         return normalizeLoc(currCoordinate + shift);
     }
 
@@ -47,7 +60,7 @@ public class Location {
 
     protected Location() { }
 
-    private Location (Integer X, Integer Y) {
+    private Location (Integer X, Integer Y) {                                                                                               //generate a default location
         this.X = X;
         this.Y = Y;
         this.tm = DEF_LOC_TIME;
@@ -60,7 +73,10 @@ public class Location {
         return;
     }
 
-    public static Location getLocation(Integer X, Integer Y) {
+    public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
+    public static Location getLocation(User user, int shift) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), shift);}
+    public static Location getLocation(int X, int Y, int shift) {return getLocation(getShiftedCoordinate(X, dxdy[shift - 1][0]), getShiftedCoordinate(Y, dxdy[shift - 1][1]));}
+    public static Location getLocation(Integer X, Integer Y) {                                                                              //try to get location from database
         Session session = ServerMain.sessionFactory.openSession();
         Query<Location> query = session.createQuery("select l from Location l where X=:X and Y = :Y", Location.class).setParameter("X", X).setParameter("Y", Y);
         try (session) {
@@ -69,11 +85,20 @@ public class Location {
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
         }
-        return new Location(X, Y);                                                                                                          //in case of database error
+        return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
 
-    public String getXML() {
-        return String.format("<L X=\"%d\" Y=\"%d\" m=\"%s\" name=\"%s\" />", X, Y, m, name);
+    public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
+    public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
+    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    public String getLocationXml() {return golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
+
+    private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
+        try {
+            Field field = this.getClass().getDeclaredField(paramName.toString());
+            return ObjectUtils.defaultIfNull(field.get(this), StringUtils.EMPTY);                                                           //and return it (or an empty string if null)
+        } catch (Exception e) {logger.error("can't get location param %s: %s", paramName.toString(), e.getMessage()); }
+        return StringUtils.EMPTY;
     }
 
 }

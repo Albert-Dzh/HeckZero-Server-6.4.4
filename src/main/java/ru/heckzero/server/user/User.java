@@ -142,19 +142,24 @@ public class User {
 
     public void com_GOLOC(String n, String d, String slow, String force, String pay, String t1, String t2) {
         logger.info("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
-        Integer X = getParamInt(User.Params.X);
-        Integer Y = getParamInt(User.Params.Y);
 
-        Integer nn = NumberUtils.toInt(n, 5);
+        Integer shift = NumberUtils.toInt(n, 5);                                                                                            //button number user has pressed on minimap (null -> 5 - means there was no movement made and this is just a locations request)
 
-        Location currLoc = Location.getLocation(Location.getShiftedCoordinate(X, Location.dxdy[nn - 1][0]), Location.getShiftedCoordinate(Y, Location.dxdy[nn - 1][1]));
-        StringJoiner sj = new StringJoiner(" ", String.format("<GOLOC n=\"%d\">", nn), "</GOLOC>");
-
-        if (d != null) {                                                                                                                    //123...9
-            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(c -> c == 5 ? currLoc : Location.getLocation(Location.getShiftedCoordinate(X, Location.dxdy[c - 1][0]), Location.getShiftedCoordinate(Y, Location.dxdy[c - 1][1]))).collect(Collectors.toList());
-            locations.forEach(l -> sj.add(l.getXML()));
+        Location userLocation = Location.getLocation(this, shift);                                                                          //get the location data user wants to move to or get the user current location if there was no movement
+        StringJoiner sj = new StringJoiner("", String.format("<GOLOC", shift), "</GOLOC>");                                                 //start formatting a <GOLOC> reply
+        if (shift != 5) {                                                                                                                   //user moves to another location
+            setParam(Params.X, userLocation.getParamInt(Location.Params.X));
+            setParam(Params.Y, userLocation.getParamInt(Location.Params.Y));
+            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", Instant.now().getEpochSecond(), userLocation.getParamInt(Location.Params.b) ^ 1);
+            sendMsg(reply);
+            sj.add(String.format(" n=\"%d\"", shift));                                                                                      //add n if we have moved to some location
         }
+        sj.add(userLocation.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));
 
+        if (d != null) {                                                                                                                    //client requests nearest location description
+            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(c -> c == 5 ? userLocation : Location.getLocation(this, c)).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
+            locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
+        }
 
         sendMsg(sj.toString());
         return;
