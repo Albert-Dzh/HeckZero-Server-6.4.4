@@ -2,7 +2,6 @@ package ru.heckzero.server;
 
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,33 +42,27 @@ public class Location {
 
     @Column(name = "\"X\"")    private Integer X;                                                                                           //X,Y coordinate (server format) (0-359)
     @Column(name = "\"Y\"")    private Integer Y;
-    private Integer tm;                                                                                                                     //location wait time (loc_time) sec
-    private String t;                                                                                                                       //location surface type 1 symbol (A-Z)
-    private String m;                                                                                                                       //location map itself
-    private String n;                                                                                                                       //location music
-    private String r;                                                                                                                       //Is there a road on the location (0 - no, 1 - yes)
-    private String name;                                                                                                                    //name for the mini map and chat
-    private String b;                                                                                                                       //Is there a cupola (0 - yes, 1 - no) (can user battle here)
-    private String z;                                                                                                                       //number of artefacts (taken from world.swf)
-    private String battlemap_f;                                                                                                             //type of battle map for the location
-    private String danger;                                                                                                                  //danger level for the player (0-low, 1 - location is rangers protected, 2 - high)
+    private Integer tm = DEF_LOC_TIME;                                                                                                      //location wait time (loc_time) sec
+    private String t = "A";                                                                                                                 //location surface type 1 symbol (A-Z)
+    private String m ="t1:19:8,t1:26:12";                                                                                                   //location map itself
+    private String n = StringUtils.EMPTY;                                                                                                   //location music
+    private String r = StringUtils.EMPTY;                                                                                                   //Is there a road on the location (0 - no, 1 - yes)
+    private String name = StringUtils.EMPTY;                                                                                                //name for the mini map and chat
+    private String b = "1";                                                                                                                 //Is there a cupola (0 - yes, 1 - no) (can user battle here)
+    private String z = "9";                                                                                                                 //number of artefacts (taken from world.swf)
+    private String battlemap_f = "A";                                                                                                       //type of battle map for the location
+    private String danger = StringUtils.EMPTY;                                                                                              //danger level for the player (0-low, 1 - location is rangers protected, 2 - high)
     private String o;                                                                                                                       //radiation level if o < 999 or not accessible if o >=999
-    private String p;                                                                                                                       //location road condition ?
-    private String repair;                                                                                                                  //location road is being repairing  ?
-    private String monsters;                                                                                                                //monster type (attribute m in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
+    private String p = StringUtils.EMPTY;                                                                                                   //location road condition ?
+    private String repair = StringUtils.EMPTY;                                                                                              //location road is being repairing  ?
+    private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute m in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
 
     protected Location() { }
 
     private Location (Integer X, Integer Y) {                                                                                               //generate a default location
         this.X = X;
         this.Y = Y;
-        this.tm = DEF_LOC_TIME;
-        this.t = "A";
-        this.m = "t1:19:8,t1:26:12";
-        this.name = StringUtils.EMPTY;
-        this.b = "1";
         this.o = X > 360 || Y > 360 || X <= -360 || Y <= -360 ? "999" : "";
-        this.monsters = "2,2,2;3,3,3";
         return;
     }
 
@@ -96,7 +89,7 @@ public class Location {
     private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
         try {
             Field field = this.getClass().getDeclaredField(paramName.toString());
-            return ObjectUtils.defaultIfNull(field.get(this), StringUtils.EMPTY);                                                           //and return it (or an empty string if null)
+            return field.get(this);                                                                                                         //and return it (or an empty string if null)
         } catch (Exception e) {logger.error("can't get location param %s: %s", paramName.toString(), e.getMessage()); }
         return StringUtils.EMPTY;
     }

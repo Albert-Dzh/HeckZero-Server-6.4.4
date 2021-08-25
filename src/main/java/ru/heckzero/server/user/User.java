@@ -148,13 +148,25 @@ public class User {
         Location userLocation = Location.getLocation(this, shift);                                                                          //get the location data user wants to move to or get the user current location if there was no movement
         StringJoiner sj = new StringJoiner("", String.format("<GOLOC", shift), "</GOLOC>");                                                 //start formatting a <GOLOC> reply
         if (shift != 5) {                                                                                                                   //user moves to another location
+            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond()) {                                                           //loc_time is not expired, user can't move
+                sendMsg("<ERRGO code=\"5\"/>");
+                return;
+            }
+            if (userLocation.getParamInt(Location.Params.o) >= 999) {                                                                       //an impassable location, no trespassing allowed
+                sendMsg("<ERRGO code=\"%1\"/>");
+                return;
+            }
+            Long locTime = Instant.now().getEpochSecond() + Math.max(userLocation.getParamInt(Location.Params.tm), 5);                      //compute a loc_time for a user(now + the location loc_time (location tm parameter))
+            setParam(Params.loc_time, locTime);                                                                                             //set new loc_time for a user
+
             setParam(Params.X, userLocation.getParamInt(Location.Params.X));
             setParam(Params.Y, userLocation.getParamInt(Location.Params.Y));
-            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", Instant.now().getEpochSecond(), userLocation.getParamInt(Location.Params.b) ^ 1);
+
+            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, userLocation.getParamInt(Location.Params.b) ^ 1);
             sendMsg(reply);
-            sj.add(String.format(" n=\"%d\"", shift));                                                                                      //add n if we have moved to some location
+            sj.add(String.format(" n=\"%d\"", shift));                                                                                      //add n="shift" if we have moved to some location
         }
-        sj.add(userLocation.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));
+        sj.add(userLocation.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));      //add m (monster) to <GOLOC>
 
         if (d != null) {                                                                                                                    //client requests nearest location description
             List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(c -> c == 5 ? userLocation : Location.getLocation(this, c)).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
@@ -174,6 +186,14 @@ public class User {
         return;
     }
 
+    public void setRoom(int X, int Y) {setRoom(X, Y, 0, 0); }
+    public void setRoom(int X, int Y, int Z, int ROOM) {
+        setParam(Params.X, X);
+        setParam(Params.Y, Y);
+        setParam(Params.Z, Z);
+        setParam(Params.ROOM, ROOM);
+        return;
+    }
 
     public void sendMsg(String msg) {sendMsg(gameChannel, msg);}                                                                            //send a message to the game socket
     public void sendMsgChat(String msg) {sendMsg(chatChannel, msg);}                                                                        //send a message to the chat socket
