@@ -153,7 +153,7 @@ public class User {
                 return;
             }
             if (userLocation.getParamInt(Location.Params.o) >= 999) {                                                                       //an impassable location, no trespassing allowed
-                sendMsg("<ERRGO code=\"%1\"/>");
+                sendMsg("<ERRGO code=\"1\"/>");
                 return;
             }
             Long locTime = Instant.now().getEpochSecond() + Math.max(userLocation.getParamInt(Location.Params.tm), 5);                      //compute a loc_time for a user(now + the location loc_time (location tm parameter))

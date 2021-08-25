@@ -26,14 +26,13 @@ public class Location {
     public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
     private static EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
 
-    private static final Integer DEF_LOC_TIME = 5;
-    public static final int dxdy [ ][ ] = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1} };
+    private static final int DEF_LOC_TIME = 5;
+    private static final int dxdy [ ][ ] = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1} };
 
-    private static int normalLocToLocal(int val) {return val > 180 ? (val - 360) : (val <= -180) ? (val + 360) : val;}
     private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}
-    private static int getShiftedCoordinate(int currCoordinate, int shift) {
-        return normalizeLoc(currCoordinate + shift);
-    }
+    private static int shiftCoordinate(int currCoordinate, int shift) {return normalizeLoc(currCoordinate + shift);}
+
+//    public boolean isExtreme {return X == 180  X == 359}
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_generator_sequence")
@@ -52,7 +51,7 @@ public class Location {
     private String z = "9";                                                                                                                 //number of artefacts (taken from world.swf)
     private String battlemap_f = "A";                                                                                                       //type of battle map for the location
     private String danger = StringUtils.EMPTY;                                                                                              //danger level for the player (0-low, 1 - location is rangers protected, 2 - high)
-    private String o;                                                                                                                       //radiation level if o < 999 or not accessible if o >=999
+    private String o = "";                                                                                                                       //radiation level if o < 999 or not accessible if o >=999
     private String p = StringUtils.EMPTY;                                                                                                   //location road condition ?
     private String repair = StringUtils.EMPTY;                                                                                              //location road is being repairing  ?
     private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute m in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
@@ -62,13 +61,13 @@ public class Location {
     private Location (Integer X, Integer Y) {                                                                                               //generate a default location
         this.X = X;
         this.Y = Y;
-        this.o = X > 360 || Y > 360 || X <= -360 || Y <= -360 ? "999" : "";
+//        this.o = X == 180 || Y > 359  ? "999" : "";
         return;
     }
 
     public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
     public static Location getLocation(User user, int shift) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), shift);}
-    public static Location getLocation(int X, int Y, int shift) {return getLocation(getShiftedCoordinate(X, dxdy[shift - 1][0]), getShiftedCoordinate(Y, dxdy[shift - 1][1]));}
+    public static Location getLocation(int X, int Y, int shift) {return getLocation(shiftCoordinate(X, dxdy[shift - 1][0]), shiftCoordinate(Y, dxdy[shift - 1][1]));}
     public static Location getLocation(Integer X, Integer Y) {                                                                              //try to get location from database
         Session session = ServerMain.sessionFactory.openSession();
         Query<Location> query = session.createQuery("select l from Location l where X=:X and Y = :Y", Location.class).setParameter("X", X).setParameter("Y", Y);
