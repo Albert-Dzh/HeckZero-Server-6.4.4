@@ -148,7 +148,13 @@ public class User {
         Location userLocation = Location.getLocation(this, shift);                                                                          //get the location data user wants to move to or get the user current location if there was no movement
         StringJoiner sj = new StringJoiner("", String.format("<GOLOC", shift), "</GOLOC>");                                                 //start formatting a <GOLOC> reply
         if (shift != 5) {                                                                                                                   //user moves to another location
+            if (userLocation.isLocationAcrossTheBorder(this, shift)) {
+                sendMsg("<ERRGO />");
+                return;
+            }
+
             if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond()) {                                                           //loc_time is not expired, user can't move
+                logger.warn("user %s tried to move while loc_time is < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
                 sendMsg("<ERRGO code=\"5\"/>");
                 return;
             }

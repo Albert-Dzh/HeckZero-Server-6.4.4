@@ -29,7 +29,7 @@ public class Location {
     private static final int DEF_LOC_TIME = 5;
     private static final int [][] dxdy = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1},     {-2, -2}, {-1, -2}, {0, -2}, {1, -2}, {2, -2},    {2, -1}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {-1, 2}, {-2, 2}, {-2, 1}, {-2, 0}, {-2, -1}  };
 //    private static final int [][] locNums = { {10, 11, 12, 13, 14}, {25, 1, 2, 3, 15}, {24, 4, 5, 6, 16}, {23, 7, 8, 9, 17}, {22, 21, 20, 19, 18} };
-
+//    public static int  normalLocToLocal(int value) {return  value > 180 ? value - 360 : (value <= -180 ? value + 360 : value);}
     private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}
     private static int shiftCoordinate(int currCoordinate, int shift) {return normalizeLoc(currCoordinate + shift);}
 
@@ -64,6 +64,12 @@ public class Location {
         return;
     }
 
+    public boolean isLocationAcrossTheBorder(User user, int shift) {
+        int userX = user.getParamInt(User.Params.X);
+        int userY = user.getParamInt(User.Params.Y);
+        return  ((userX == 181 && (shift == 1 || shift == 4 || shift == 7)) || (userY == 181 && (shift == 1 || shift == 2 || shift == 3)) || (userX == 180 && (shift == 3 || shift == 6 || shift == 9)) ||  (userY == 180 && (shift == 7 || shift == 8 || shift == 9)));
+    }
+
     public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
     public static Location getLocation(User user, int shift) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), shift);}
     public static Location getLocation(int X, int Y, int shift) {return getLocation(shiftCoordinate(X, dxdy[shift - 1][0]), shiftCoordinate(Y, dxdy[shift - 1][1]));}
@@ -78,6 +84,7 @@ public class Location {
         }
         return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
+
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}

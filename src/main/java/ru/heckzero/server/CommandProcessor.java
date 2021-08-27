@@ -100,7 +100,7 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GAME_MMP(Attributes attrs) {                                                                                          //user requests a location set for a 5x5 minimap
+    private void com_GAME_MMP(Attributes attrs) {                                                                                          //user requests a location set for a 5x5 big map
         String param = attrs.getValue("param");
         user.com_MMP(param);
         return;
