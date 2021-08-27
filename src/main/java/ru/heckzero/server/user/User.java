@@ -143,46 +143,54 @@ public class User {
     public void com_GOLOC(String n, String d, String slow, String force, String pay, String t1, String t2) {
         logger.info("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
 
-        Integer shift = NumberUtils.toInt(n, 5);                                                                                            //button number user has pressed on minimap (null -> 5 - means there was no movement made and this is just a locations request)
+        int btnNum = NumberUtils.toInt(n, 5);                                                                                               //button number user has pressed on minimap (null -> 5 - means there was no movement made and this is just a locations request)
+        if (btnNum < 1 || btnNum > 9) {                                                                                                     //bnt num must within 1-9
+            logger.warn("user %s tried to move to illegal location num: %d", getLogin(), btnNum);
+            disconnect();                                                                                                                   //TODO ban the motherfecker
+            return;
+        }
+        Location locationToGo = Location.getLocation(this, btnNum);                                                                         //get the location data user wants to move to or get the user current location if there was no movement requested
 
-        Location userLocation = Location.getLocation(this, shift);                                                                          //get the location data user wants to move to or get the user current location if there was no movement
-        StringJoiner sj = new StringJoiner("", String.format("<GOLOC", shift), "</GOLOC>");                                                 //start formatting a <GOLOC> reply
-        if (shift != 5) {                                                                                                                   //user moves to another location
-            if (userLocation.isLocationAcrossTheBorder(this, shift)) {
-                sendMsg("<ERRGO />");
+        StringJoiner sj = new StringJoiner("", "<GOLOC", "</GOLOC>");                                                                       //start formatting a <GOLOC> reply
+
+        if (btnNum != 5) {                                                                                                                  //user moves to another location
+            if (locationToGo.getLocBtnNum(this) != btnNum) {
+                logger.warn("user %s tried to move to inapplicable location from %d/%d to %d/%d", getLogin(), getParam(Params.X), getParam(Params.Y), locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));
+                sendMsg("<ERRGO />");                                                                                                       //Вы не смогли перейти в этом направлении
                 return;
             }
-
             if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond()) {                                                           //loc_time is not expired, user can't move
                 logger.warn("user %s tried to move while loc_time is < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
-                sendMsg("<ERRGO code=\"5\"/>");
+                sendMsg(String.format("MYPARAM time=\"%d\"/><ERRGO code=\"5\"/>", Instant.now().getEpochSecond()));                         //Вы пока не можете двигаться, отдохните
                 return;
             }
-            if (userLocation.getParamInt(Location.Params.o) >= 999) {                                                                       //an impassable location, no trespassing allowed
-                sendMsg("<ERRGO code=\"1\"/>");
+            if (locationToGo.getParamInt(Location.Params.o) >= 999) {                                                                       //an impassable location, no trespassing allowed
+                sendMsg("<ERRGO code=\"1\"/>");                                                                                             //Локация, в которую вы пытаетесь перейти, непроходима
                 return;
             }
-            Long locTime = Instant.now().getEpochSecond() + Math.max(userLocation.getParamInt(Location.Params.tm), 5);                      //compute a loc_time for a user(now + the location loc_time (location tm parameter))
+
+            sj.add(String.format(" n=\"%d\"", btnNum));                                                                                     //add n="shift" if we have moved to some location
+
+            Long locTime = Instant.now().getEpochSecond() + Math.max(locationToGo.getParamInt(Location.Params.tm), 5);                      //compute a loc_time for a user(now + the location loc_time (location tm parameter))
             setParam(Params.loc_time, locTime);                                                                                             //set new loc_time for a user
-            setRoom(userLocation.getParamInt(Location.Params.X), userLocation.getParamInt(Location.Params.Y));
-            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, userLocation.getParamInt(Location.Params.b) ^ 1);
+            setRoom(locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));                              //change user coordinates to new location
+
+            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, locationToGo.getParamInt(Location.Params.b) ^ 1);
             sendMsg(reply);
-            sj.add(String.format(" n=\"%d\"", shift));                                                                                      //add n="shift" if we have moved to some location
         }
-        sj.add(userLocation.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));      //add m (monster) to <GOLOC>
+        sj.add(locationToGo.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));      //add m (monster) to <GOLOC> from the current location
 
         if (d != null) {                                                                                                                    //client requests nearest location description
-            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(c -> c == 5 ? userLocation : Location.getLocation(this, c)).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
+            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(btn -> btn == 5 ? locationToGo : Location.getLocation(this, btn)).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
             locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
         }
-
         sendMsg(sj.toString());
         return;
     }
 
     public void com_MMP(String param) {
         StringJoiner sj = new StringJoiner("", "<MMP>", "</MMP>");                                                                          //MMP - Big Map (5x5) request
-        List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(c -> Location.getLocation(this, c)).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
+        List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(c -> Location.getLocation(this, c)).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "param")
         locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
         sendMsg(sj.toString());
         return;

@@ -2,6 +2,7 @@ package ru.heckzero.server;
 
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,12 +27,13 @@ public class Location {
     public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
     private static final EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
 
-    private static final int DEF_LOC_TIME = 5;
+    private static final int DEF_LOC_TIME = 5;                                                                                              //default location wait time in sec.
     private static final int [][] dxdy = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1},     {-2, -2}, {-1, -2}, {0, -2}, {1, -2}, {2, -2},    {2, -1}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {-1, 2}, {-2, 2}, {-2, 1}, {-2, 0}, {-2, -1}  };
-//    private static final int [][] locNums = { {10, 11, 12, 13, 14}, {25, 1, 2, 3, 15}, {24, 4, 5, 6, 16}, {23, 7, 8, 9, 17}, {22, 21, 20, 19, 18} };
-//    public static int  normalLocToLocal(int value) {return  value > 180 ? value - 360 : (value <= -180 ? value + 360 : value);}
-    private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}
-    private static int shiftCoordinate(int currCoordinate, int shift) {return normalizeLoc(currCoordinate + shift);}
+    private static final Integer [][] locNums = { {10, 11, 12, 13, 14}, {25, 1, 2, 3, 15}, {24, 4, 5, 6, 16}, {23, 7, 8, 9, 17}, {22, 21, 20, 19, 18} }; //map for computing button number by location coordinate
+
+    private static int  normalLocToLocal(int value) {return  value > 180 ? value - 360 : (value <= -180 ? value + 360 : value);}            //transform normalized coordinates to local (human adapted)
+    private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}                                  //make a coordinate normalized (after shift)
+    private static int shiftCoordinate(int currCoordinate, int shift) {return normalizeLoc(currCoordinate + shift);}                        //get shifted coordinate (normalized)
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_generator_sequence")
@@ -40,7 +42,7 @@ public class Location {
 
     @Column(name = "\"X\"")    private Integer X;                                                                                           //X,Y coordinate (server format) (0-359)
     @Column(name = "\"Y\"")    private Integer Y;
-    private Integer tm = DEF_LOC_TIME;                                                                                                      //location wait time (loc_time) sec
+    private Integer tm = DEF_LOC_TIME;                                                                                                      //location wait time (loc_time) in sec
     private String t = "A";                                                                                                                 //location surface type 1 symbol (A-Z)
     private String m ="t1:19:8,t1:26:12";                                                                                                   //location map itself
     private String n = StringUtils.EMPTY;                                                                                                   //location music
@@ -60,20 +62,22 @@ public class Location {
     private Location (Integer X, Integer Y) {                                                                                               //generate a default location
         this.X = X;
         this.Y = Y;
-
         return;
     }
 
-    public boolean isLocationAcrossTheBorder(User user, int shift) {
-        int userX = user.getParamInt(User.Params.X);
+    public int getLocBtnNum(User user) {                                                                                                    //return user minimap button number this location can be placed on
+        int userX = user.getParamInt(User.Params.X);                                                                                        //current user coordinates
         int userY = user.getParamInt(User.Params.Y);
-        return  ((userX == 181 && (shift == 1 || shift == 4 || shift == 7)) || (userY == 181 && (shift == 1 || shift == 2 || shift == 3)) || (userX == 180 && (shift == 3 || shift == 6 || shift == 9)) ||  (userY == 180 && (shift == 7 || shift == 8 || shift == 9)));
+
+        int col = normalLocToLocal(this.X) - normalLocToLocal(userX) + 2;                                                                   //get locNum indexes
+        int row = normalLocToLocal(this.Y) - normalLocToLocal(userY) + 2;
+        return ArrayUtils.get(ArrayUtils.get(locNums, row), col, ArrayUtils.INDEX_NOT_FOUND);                                               //get locNum value or -1 if indexes are out of bounds
     }
 
     public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
-    public static Location getLocation(User user, int shift) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), shift);}
-    public static Location getLocation(int X, int Y, int shift) {return getLocation(shiftCoordinate(X, dxdy[shift - 1][0]), shiftCoordinate(Y, dxdy[shift - 1][1]));}
-    public static Location getLocation(Integer X, Integer Y) {                                                                              //try to get location from database
+    public static Location getLocation(User user, int btnNum) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), btnNum);}
+    public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
+    public static Location getLocation(Integer X, Integer Y) {                                                                              //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
         Query<Location> query = session.createQuery("select l from Location l where X=:X and Y = :Y", Location.class).setParameter("X", X).setParameter("Y", Y);
         try (session) {
