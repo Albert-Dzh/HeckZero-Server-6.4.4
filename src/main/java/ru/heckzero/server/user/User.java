@@ -158,10 +158,7 @@ public class User {
             }
             Long locTime = Instant.now().getEpochSecond() + Math.max(userLocation.getParamInt(Location.Params.tm), 5);                      //compute a loc_time for a user(now + the location loc_time (location tm parameter))
             setParam(Params.loc_time, locTime);                                                                                             //set new loc_time for a user
-
-            setParam(Params.X, userLocation.getParamInt(Location.Params.X));
-            setParam(Params.Y, userLocation.getParamInt(Location.Params.Y));
-
+            setRoom(userLocation.getParamInt(Location.Params.X), userLocation.getParamInt(Location.Params.Y));
             String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, userLocation.getParamInt(Location.Params.b) ^ 1);
             sendMsg(reply);
             sj.add(String.format(" n=\"%d\"", shift));                                                                                      //add n="shift" if we have moved to some location
@@ -173,6 +170,14 @@ public class User {
             locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
         }
 
+        sendMsg(sj.toString());
+        return;
+    }
+
+    public void com_MMP(String param) {
+        StringJoiner sj = new StringJoiner("", "<MMP>", "</MMP>");                                                                          //MMP - Big Map (5x5) request
+        List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(c -> Location.getLocation(this, c)).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
+        locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
         sendMsg(sj.toString());
         return;
     }

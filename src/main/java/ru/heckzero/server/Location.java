@@ -24,15 +24,14 @@ public class Location {
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
     public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
-    private static EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
+    private static final EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
 
     private static final int DEF_LOC_TIME = 5;
-    private static final int dxdy [ ][ ] = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1} };
+    private static final int [][] dxdy = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1},     {-2, -2}, {-1, -2}, {0, -2}, {1, -2}, {2, -2},    {2, -1}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {-1, 2}, {-2, 2}, {-2, 1}, {-2, 0}, {-2, -1}  };
+//    private static final int [][] locNums = { {10, 11, 12, 13, 14}, {25, 1, 2, 3, 15}, {24, 4, 5, 6, 16}, {23, 7, 8, 9, 17}, {22, 21, 20, 19, 18} };
 
     private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}
     private static int shiftCoordinate(int currCoordinate, int shift) {return normalizeLoc(currCoordinate + shift);}
-
-//    public boolean isExtreme {return X == 180  X == 359}
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_generator_sequence")
@@ -51,7 +50,7 @@ public class Location {
     private String z = "9";                                                                                                                 //number of artefacts (taken from world.swf)
     private String battlemap_f = "A";                                                                                                       //type of battle map for the location
     private String danger = StringUtils.EMPTY;                                                                                              //danger level for the player (0-low, 1 - location is rangers protected, 2 - high)
-    private String o = "";                                                                                                                       //radiation level if o < 999 or not accessible if o >=999
+    private String o = "";                                                                                                                  //radiation level if o < 999 or not accessible if o >=999
     private String p = StringUtils.EMPTY;                                                                                                   //location road condition ?
     private String repair = StringUtils.EMPTY;                                                                                              //location road is being repairing  ?
     private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute m in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
@@ -61,7 +60,7 @@ public class Location {
     private Location (Integer X, Integer Y) {                                                                                               //generate a default location
         this.X = X;
         this.Y = Y;
-//        this.o = X == 180 || Y > 359  ? "999" : "";
+
         return;
     }
 

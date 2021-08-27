@@ -100,6 +100,11 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_MMP(Attributes attrs) {                                                                                          //user requests a location set for a 5x5 minimap
+        String param = attrs.getValue("param");
+        user.com_MMP(param);
+        return;
+    }
 
     public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> handler
         logger.debug("processing <LOGOUT/> command from %s", user.getLogin());
