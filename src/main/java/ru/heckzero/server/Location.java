@@ -8,16 +8,22 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.query.Query;
+import org.hibernate.annotations.NaturalId;
+import org.hibernate.annotations.NaturalIdCache;
 import ru.heckzero.server.user.User;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 @Entity(name = "Location")
 @Table(name = "locations")
+@Cacheable
+@NaturalIdCache
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class Location {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -40,13 +46,19 @@ public class Location {
     @SequenceGenerator(name = "loc_generator_sequence", sequenceName = "locations_id_seq", allocationSize = 1)
     private Integer id;
 
-    @Column(name = "\"X\"")    private Integer X;                                                                                           //X,Y coordinate (server format) (0-359)
-    @Column(name = "\"Y\"")    private Integer Y;
+    @Column(name = "\"X\"")
+    @NaturalId                                                                                                                              //locations are queried by Natural Id API
+    private Integer X;                                                                                                                      //X,Y coordinate (server format) (0-359)
+
+    @Column(name = "\"Y\"")
+    @NaturalId
+    private Integer Y;
+
     private Integer tm = DEF_LOC_TIME;                                                                                                      //location wait time (loc_time) in sec
     private String t = "A";                                                                                                                 //location surface type 1 symbol (A-Z)
     private String m ="t1:19:8,t1:26:12";                                                                                                   //location map itself
     private String n = StringUtils.EMPTY;                                                                                                   //location music
-    private String r = StringUtils.EMPTY;                                                                                                   //Is there a road on the location (0 - no, 1 - yes)
+    private String r = StringUtils.EMPTY;                                                                                                   //Is there a road at the location (0 - no, 1 - yes)
     private String name = StringUtils.EMPTY;                                                                                                //name for the mini map and chat
     private String b = "1";                                                                                                                 //Is there a cupola (0 - yes, 1 - no) (can user battle here)
     private String z = "9";                                                                                                                 //number of artefacts (taken from world.swf)
@@ -56,6 +68,10 @@ public class Location {
     private String p = StringUtils.EMPTY;                                                                                                   //location road condition ?
     private String repair = StringUtils.EMPTY;                                                                                              //location road is being repairing  ?
     private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute m in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
+
+    @OneToMany(mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    private final List<Building> buildings = new ArrayList<>();
 
     protected Location() { }
 
@@ -79,12 +95,11 @@ public class Location {
     public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
     public static Location getLocation(Integer X, Integer Y) {                                                                              //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
-        Query<Location> query = session.createQuery("select l from Location l where X=:X and Y = :Y", Location.class).setParameter("X", X).setParameter("Y", Y);
         try (session) {
-            Location location = query.uniqueResult();
-            return (location == null) ? new Location(X, Y) : location;
+            Location location = session.byNaturalId(Location.class).using("X", X).using("Y", Y).load();
+            return (location == null) ? new Location(X, Y) : location;                                                                      //return location data from db or a default if a location was not found in database
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
+            logger.error("can't load location %d/%d from database: %s, generating a default location", X, Y, e.getMessage());
         }
         return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
@@ -93,7 +108,13 @@ public class Location {
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-    public String getLocationXml() {return golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
+    public String getLocationXml() {
+        StringJoiner sj = new StringJoiner("", "", "</L>");
+        String locationParamsXml = golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<L ", ">"));
+        sj.add(locationParamsXml);
+        buildings.forEach(b -> sj.add(b.getBuildingXml()));
+        return sj.toString();
+    }
 
     private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
         try {
@@ -102,5 +123,4 @@ public class Location {
         } catch (Exception e) {logger.error("can't get location param %s: %s", paramName.toString(), e.getMessage()); }
         return StringUtils.EMPTY;
     }
-
 }

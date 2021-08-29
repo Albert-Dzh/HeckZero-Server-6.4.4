@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Entity(name = "User")
 @Table(name = "users")
+@Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -146,10 +147,10 @@ public class User {
         int btnNum = NumberUtils.toInt(n, 5);                                                                                               //button number user has pressed on minimap (null -> 5 - means there was no movement made and this is just a locations request)
         if (btnNum < 1 || btnNum > 9) {                                                                                                     //bnt num must within 1-9
             logger.warn("user %s tried to move to illegal location num: %d", getLogin(), btnNum);
-            disconnect();                                                                                                                   //TODO ban the motherfecker
+            disconnect();                                                                                                                   //TODO should we ban the motherfecker cheater
             return;
         }
-        Location locationToGo = Location.getLocation(this, btnNum);                                                                         //get the location data user wants to move to or get the user current location if there was no movement requested
+        Location locationToGo = Location.getLocation(this, btnNum);                                                                         //get the location data user wants move to or the current user location if there was no movement requested
 
         StringJoiner sj = new StringJoiner("", "<GOLOC", "</GOLOC>");                                                                       //start formatting a <GOLOC> reply
 
@@ -159,7 +160,7 @@ public class User {
                 sendMsg("<ERRGO />");                                                                                                       //Вы не смогли перейти в этом направлении
                 return;
             }
-            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond()) {                                                           //loc_time is not expired, user can't move
+            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond()) {                                                           //loc_time hasn't expired, user can't move
                 logger.warn("user %s tried to move while loc_time is < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
                 sendMsg(String.format("MYPARAM time=\"%d\"/><ERRGO code=\"5\"/>", Instant.now().getEpochSecond()));                         //Вы пока не можете двигаться, отдохните
                 return;
@@ -180,16 +181,16 @@ public class User {
         }
         sj.add(locationToGo.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));      //add m (monster) to <GOLOC> from the current location
 
-        if (d != null) {                                                                                                                    //client requests nearest location description
+        if (d != null) {                                                                                                                    //user requests nearest location description
             List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(btn -> btn == 5 ? locationToGo : Location.getLocation(this, btn)).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
-            locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
+            locations.forEach(l -> sj.add(l.getLocationXml()));
         }
-        sendMsg(sj.toString());
+        sendMsg(sj.toString());                                                                                                             //send a <GOLOC/> reply
         return;
     }
 
     public void com_MMP(String param) {
-        StringJoiner sj = new StringJoiner("", "<MMP>", "</MMP>");                                                                          //MMP - Big Map (5x5) request
+        StringJoiner sj = new StringJoiner("", "<MMP>", "</MMP>");                                                                          //MMP - Big map (5x5) request
         List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(c -> Location.getLocation(this, c)).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "param")
         locations.forEach(l -> sj.add("<L ").add(l.getLocationXml()).add("/>"));
         sendMsg(sj.toString());

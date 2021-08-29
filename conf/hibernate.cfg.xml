@@ -26,12 +26,9 @@
         <!--  L2 Cache connection settings  -->
         <property name="hibernate.cache.use_second_level_cache">true</property>
         <property name="hibernate.cache.use_query_cache">true</property>
+        <property name="hibernate.javax.cache.missing_cache_strategy">create</property>
         <property name="hibernate.cache.region.factory_class">org.hibernate.cache.jcache.internal.JCacheRegionFactory</property>
         <property name="hibernate.cache.provider_class">org.ehcache.jsr107.EhcacheCachingProvider</property>
 
-
-<!--        <mapping resource = "META-INF/client.hbm.xml"/>-->
-
-<!--        <mapping class="org.heckzero.test.Book"/>-->
     </session-factory>
 </hibernate-configuration>

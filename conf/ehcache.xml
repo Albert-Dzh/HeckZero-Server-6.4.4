@@ -5,6 +5,11 @@
             http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.0.xsd
             http://www.ehcache.org/v3/jsr107 http://www.ehcache.org/schema/ehcache-107-ext-3.0.xsd">
 
+    <service>
+        <jsr107:defaults default-template="default">
+        </jsr107:defaults>
+    </service>
+
     <cache-template name="default">
         <key-type>java.lang.Object</key-type>
         <value-type>java.lang.Object</value-type>
@@ -19,10 +24,18 @@
         </resources>
     </cache-template>
 
+    <cache-template name="timestamps">
+        <key-type>java.lang.Object</key-type>
+        <value-type>java.lang.Object</value-type>
+        <expiry>
+            <none/>
+        </expiry>
+        <resources>
+            <heap unit="entries">100000</heap>
+        </resources>
+    </cache-template>
 
     <!-- Configure the caches that Hibernate uses by default. -->
-    <cache alias="default-query-results-region" uses-template="default" />
-    <cache alias="default-update-timestamps-region" uses-template="default" />
-    <cache alias="default" uses-template="default" />
-    
+    <cache alias="default-update-timestamps-region" uses-template="timestamps" />
+
 </config>
