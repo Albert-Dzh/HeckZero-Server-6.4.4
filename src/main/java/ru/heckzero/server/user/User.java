@@ -160,9 +160,9 @@ public class User {
                 sendMsg("<ERRGO />");                                                                                                       //Вы не смогли перейти в этом направлении
                 return;
             }
-            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond()) {                                                           //loc_time hasn't expired, user can't move
-                logger.warn("user %s tried to move while loc_time is < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
-                sendMsg(String.format("MYPARAM time=\"%d\"/><ERRGO code=\"5\"/>", Instant.now().getEpochSecond()));                         //Вы пока не можете двигаться, отдохните
+            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond() + 1) {                                                       //TODO why do we have to add 1 to now()?
+                logger.warn("user %s tried to move at loc_time < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
+                sendMsg(String.format("<MYPARAM time=\"%d\"/><ERRGO code=\"5\"/>", Instant.now().getEpochSecond()));                        //Вы пока не можете двигаться, отдохните
                 return;
             }
             if (locationToGo.getParamInt(Location.Params.o) >= 999) {                                                                       //an impassable location, no trespassing allowed
