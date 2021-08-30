@@ -47,7 +47,8 @@ class UserParams {
     private Long id1, id2;                                                                                                                  //items id generator borders
     private Integer i1;                                                                                                                     //item id generator cursor
     private String ne, ne2;                                                                                                                 //tell what it is
-    private Integer cup_0, cup_1, cup_2, silv;                                                                                              //money
+    private Integer cup_0, cup_1, cup_2, p78money;                                                                                          //copper and perk coins
+    private Double silv, gold;                                                                                                              //silver and gold coins
     private Integer acc_flags;                                                                                                              //some account options, still not well known
     private String siluet;                                                                                                                  //siluet description
     private Integer bot;                                                                                                                    //0 - player is a human, 1- bot
