@@ -27,6 +27,8 @@ import org.hibernate.service.ServiceRegistry;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.world.Building;
+import ru.heckzero.server.world.Location;
 
 import java.io.File;
 import java.util.concurrent.Executors;

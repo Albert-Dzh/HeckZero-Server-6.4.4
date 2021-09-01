@@ -1,4 +1,4 @@
-package ru.heckzero.server;
+package ru.heckzero.server.world;
 
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
@@ -10,6 +10,7 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.NaturalIdCache;
+import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 
 import javax.persistence.*;

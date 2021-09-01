@@ -11,8 +11,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import ru.heckzero.server.Location;
+import org.hibernate.query.NativeQuery;
+import ru.heckzero.server.world.Location;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
@@ -196,6 +198,25 @@ public class User {
         sendMsg(sj.toString());
         return;
     }
+
+    public void com_BIGMAP() {
+        Session session = ServerMain.sessionFactory.openSession();
+        List<Object[ ]> mapObjects = new ArrayList<>();
+        StringJoiner sj = new StringJoiner("", "<BIGMAP>", "</BIGMAP>");
+
+        try (session) {
+            NativeQuery query = session.createSQLQuery("select b.type, b.name, b.xy, b.linked from bigmap b where b.enabled = 1").unwrap(NativeQuery.class).addSynchronizedQuerySpace("").setCacheable(true);
+            mapObjects = query.getResultList();
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load bigmap data: %s", e.getMessage());
+            e.printStackTrace();
+        }
+        mapObjects.forEach(o -> sj.add(String.format("<%s name=\"%s\" xy=\"%s\"%s", o[0], o[1], o[2], o[0].equals("city") ? "/>" : String.format(" linked=\"%s\"", o[3]))));
+        sendMsg(sj.toString());
+        return;
+    }
+
+
 
     public void com_SILUET(String slt, String set) {
         logger.info("processing <SILUET/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")));

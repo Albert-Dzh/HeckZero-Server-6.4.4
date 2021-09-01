@@ -106,6 +106,12 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_BIGMAP(Attributes attrs) {                                                                                        //user requests a world map
+        user.com_BIGMAP();
+        return;
+    }
+
+
     public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> handler
         logger.debug("processing <LOGOUT/> command from %s", user.getLogin());
         user.disconnect();                                                                                                                  //just close the channel and let channelInactive in NetInHandler do the job when the channel gets closed

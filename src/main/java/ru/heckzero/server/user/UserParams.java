@@ -52,7 +52,7 @@ class UserParams {
     private Integer acc_flags;                                                                                                              //some account options, still not well known
     private String siluet;                                                                                                                  //siluet description
     private Integer bot;                                                                                                                    //0 - player is a human, 1- bot
-    private String name, city, about, note;                                                                                                 //user self given params in "about" section of PDA
+    private String name, city, about, note;                                                                                                 //user self-given params in "about" section of PDA
     private String list;                                                                                                                    //user contact list
     private String plist;                                                                                                                   //perk list
     @Column(name = "\"ODratio\"") private Integer ODratio;                                                                                  //OD ratio affected on user
@@ -80,7 +80,7 @@ class UserParams {
                 return;
             }
             String strValue = paramValue instanceof String ? (String)paramValue : paramValue.toString();                                    //cast or convert paramValue to String
-            switch (fieldType.getSimpleName()) {                                                                                            //a short field type name (Integer, String. etc)
+            switch (fieldType.getSimpleName()) {                                                                                            //a short field type name (Integer, String, etc.)
                 case "String" -> field.set(this, strValue);                                                                                 //just set a String value to String field type
                 case "Integer" -> field.set(this, NumberUtils.isParsable(strValue) ? Math.toIntExact(Math.round(Double.parseDouble(strValue))) : 0); //convert String value to field type
                 case "Long" -> field.set(this, NumberUtils.isParsable(strValue) ? Math.round(Double.parseDouble(strValue)) : 0L);

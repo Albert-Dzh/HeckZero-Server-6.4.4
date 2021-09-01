@@ -1,4 +1,4 @@
-package ru.heckzero.server;
+package ru.heckzero.server.world;
 
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
