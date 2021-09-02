@@ -13,9 +13,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.query.NativeQuery;
-import ru.heckzero.server.world.Location;
+import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.world.Location;
+import ru.heckzero.server.world.Portal;
 
 import javax.persistence.*;
 import java.lang.reflect.Method;
@@ -201,17 +202,18 @@ public class User {
 
     public void com_BIGMAP() {
         Session session = ServerMain.sessionFactory.openSession();
-        List<Object[ ]> mapObjects = new ArrayList<>();
         StringJoiner sj = new StringJoiner("", "<BIGMAP>", "</BIGMAP>");
+        List <Portal> portals = new ArrayList<>();
 
         try (session) {
-            NativeQuery query = session.createSQLQuery("select b.type, b.name, b.xy, b.linked from bigmap b where b.enabled = 1").unwrap(NativeQuery.class).addSynchronizedQuerySpace("").setCacheable(true);
-            mapObjects = query.getResultList();
+            Query<Portal> query = session.createQuery("select p from Portal p where p.bigmap_shown = 1", Portal.class).setCacheable(true);
+            portals = query.list();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load bigmap data: %s", e.getMessage());
             e.printStackTrace();
         }
-        mapObjects.forEach(o -> sj.add(String.format("<%s name=\"%s\" xy=\"%s\"%s", o[0], o[1], o[2], o[0].equals("city") ? "/>" : String.format(" linked=\"%s\"", o[3]))));
+//        portals.forEach(p -> logger.info("id = %d name = %s X = %d Y = %d bigmap_city = %s", p.getId(),p.getBuilding().getParamStr(Building.Params.txt), p.getBuilding().getLocation().getParamInt(Location.Params.X), p.getBuilding().getLocation().getParamInt(Location.Params.Y), p.getBigmap_city()));
+        portals.forEach(p -> sj.add(p.getBigMapCityXml()));
         sendMsg(sj.toString());
         return;
     }
