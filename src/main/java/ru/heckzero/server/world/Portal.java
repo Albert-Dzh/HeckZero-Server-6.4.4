@@ -9,7 +9,9 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.StringJoiner;
 
 @Entity(name = "Portal")
@@ -42,6 +44,9 @@ public class Portal {
     @JoinColumn(name = "b_id")
     private Building building;
 
+    @OneToMany(mappedBy = "portal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    private final List<PortalRoute> portalRoutes = new ArrayList<>();
     public Portal() { }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
@@ -49,9 +54,11 @@ public class Portal {
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 //    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
-    public String getBigMapCityXml() {
+    public String getPortalBigMapXml() {
         StringJoiner sj = new StringJoiner("");
-        sj.add(StringUtils.isEmpty(bigmap_city) ? "" : String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.X)), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.Y))));
+        if (StringUtils.isNotBlank(bigmap_city))
+            sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.X)), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.Y))));
+        sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\"/>", building.getParamStr(Building.Params.txt), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.X)), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.Y))));
         return sj.toString();
     }
 
