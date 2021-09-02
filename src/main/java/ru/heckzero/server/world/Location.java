@@ -82,15 +82,6 @@ public class Location {
         return;
     }
 
-    public int getLocBtnNum(User user) {                                                                                                    //return user minimap button number this location can be placed on
-        int userX = user.getParamInt(User.Params.X);                                                                                        //current user coordinates
-        int userY = user.getParamInt(User.Params.Y);
-
-        int col = normalLocToLocal(this.X) - normalLocToLocal(userX) + 2;                                                                   //get locNum indexes
-        int row = normalLocToLocal(this.Y) - normalLocToLocal(userY) + 2;
-        return ArrayUtils.get(ArrayUtils.get(locNums, row), col, ArrayUtils.INDEX_NOT_FOUND);                                               //get locNum value or -1 if indexes are out of bounds
-    }
-
     public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
     public static Location getLocation(User user, int btnNum) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), btnNum);}
     public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
@@ -105,6 +96,20 @@ public class Location {
         return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
 
+    public int getX(){return getParamInt(Params.X);}
+    public int getY(){return getParamInt(Params.Y);}
+
+    public int getLocalX(){return normalLocToLocal(getParamInt(Params.X));}
+    public int getLocalY(){return normalLocToLocal(getParamInt(Params.Y));}
+
+    public int getLocBtnNum(User user) {                                                                                                    //return user minimap button number this location can be placed on
+        int userX = user.getParamInt(User.Params.X);                                                                                        //current user coordinates
+        int userY = user.getParamInt(User.Params.Y);
+
+        int col = normalLocToLocal(this.X) - normalLocToLocal(userX) + 2;                                                                   //get locNum indexes
+        int row = normalLocToLocal(this.Y) - normalLocToLocal(userY) + 2;
+        return ArrayUtils.get(ArrayUtils.get(locNums, row), col, ArrayUtils.INDEX_NOT_FOUND);                                               //get locNum value or -1 if indexes are out of bounds
+    }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}

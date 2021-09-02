@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 @Entity(name = "Portal")
 @Table(name = "portals")
@@ -47,6 +48,7 @@ public class Portal {
     @OneToMany(mappedBy = "portal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<PortalRoute> portalRoutes = new ArrayList<>();
+
     public Portal() { }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
@@ -54,11 +56,13 @@ public class Portal {
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 //    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
-    public String getPortalBigMapXml() {
+    public String getBigMapXml() {
         StringJoiner sj = new StringJoiner("");
         if (StringUtils.isNotBlank(bigmap_city))
-            sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.X)), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.Y))));
-        sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\"/>", building.getParamStr(Building.Params.txt), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.X)), Location.normalLocToLocal(building.getLocation().getParamInt(Location.Params.Y))));
+            sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, building.getLocation().getLocalX(), building.getLocation().getLocalY()));
+
+        String routes = portalRoutes.stream().filter(PortalRoute::isBigMapEnabled).map(r -> r.getBigMapData()).collect(Collectors.joining(";", " linked=\"", ";\""));
+        sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\"%s/>", building.getParamStr(Building.Params.txt), building.getLocation().getLocalX(), building.getLocation().getLocalY(), routes));
         return sj.toString();
     }
 

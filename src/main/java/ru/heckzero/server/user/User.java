@@ -212,7 +212,7 @@ public class User {
             logger.error("can't load bigmap data: %s", e.getMessage());
             e.printStackTrace();
         }
-        portals.forEach(p -> sj.add(p.getPortalBigMapXml()));
+        portals.forEach(p -> sj.add(p.getBigMapXml()));
         sendMsg(sj.toString());
         return;
     }

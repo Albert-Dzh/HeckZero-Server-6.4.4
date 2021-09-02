@@ -1,8 +1,11 @@
 package ru.heckzero.server.world;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 
@@ -19,14 +22,31 @@ public class PortalRoute {
     @SequenceGenerator(name = "portal_routes_generator_sequence", sequenceName = "portal_routes_id_seq", allocationSize = 1)
     private Integer id;
 
-    private Integer pid_to;
+    private Integer bid_to;
     @Column(name = "\"ROOM\"") private Integer ROOM;
-    private Double cost;
+    private Double cost;                                                                                                                    //1000 weight units price
+    private Integer bigmap_shown;                                                                                                           //show this route on a bigmap
 
-    public PortalRoute() {  }
-
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pid_from")
     private Portal portal;                                                                                                                  //portal association
 
+    public PortalRoute() {  }
+
+    public boolean isBigMapEnabled() {return bigmap_shown == 1;}
+
+    public String getBigMapData() {
+        Session session = ServerMain.sessionFactory.openSession();
+
+        try (session) {
+            Building bldTo = session.get(Building.class, bid_to);
+            Integer X = bldTo.getLocation().getLocalX();
+            Integer Y = bldTo.getLocation().getLocalY();
+            return String.format("%d,%d", X, Y);
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load building data by bid %d: %s", bid_to, e.getMessage());
+            e.printStackTrace();
+        }
+        return StringUtils.EMPTY;
+    }
 }
