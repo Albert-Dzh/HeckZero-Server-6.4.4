@@ -61,8 +61,9 @@ public class Portal {
         if (StringUtils.isNotBlank(bigmap_city))
             sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, building.getLocation().getLocalX(), building.getLocation().getLocalY()));
 
-        String routes = portalRoutes.stream().filter(PortalRoute::isBigMapEnabled).map(PortalRoute::getBigMapData).collect(Collectors.joining(";"));
-        sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\"%s/>", building.getParamStr(Building.Params.txt), building.getLocation().getLocalX(), building.getLocation().getLocalY(), routes.isEmpty() ? "" : String.format(" linked=\"%s;\"", routes)));
+        String routes = portalRoutes.stream().map(PortalRoute::getBigMapData).filter(StringUtils::isNoneBlank).collect(Collectors.joining(";")); //get portal routes (from this portal)
+        if (!routes.isEmpty())
+            sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\" linked=\"%s;\"/>", building.getParamStr(Building.Params.txt), building.getLocation().getLocalX(), building.getLocation().getLocalY(), routes));
         return sj.toString();
     }
 
