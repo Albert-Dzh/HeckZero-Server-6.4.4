@@ -52,7 +52,7 @@ public class Building {
 
     public Building() { }
 
-    public Location getLocation() {
+    public Location getLocation() {                                                                                                         //get the location this Building belongs to
         return location;
     }
 

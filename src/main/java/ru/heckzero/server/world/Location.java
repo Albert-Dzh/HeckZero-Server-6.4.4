@@ -68,7 +68,7 @@ public class Location {
     private String o = "";                                                                                                                  //radiation level if o < 999 or not accessible if o >=999
     private String p = StringUtils.EMPTY;                                                                                                   //location road condition ?
     private String repair = StringUtils.EMPTY;                                                                                              //location road is being repairing  ?
-    private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute m in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
+    private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute "m" in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
 
     @OneToMany(mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
@@ -96,17 +96,17 @@ public class Location {
         return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
 
-    public int getX(){return getParamInt(Params.X);}
-    public int getY(){return getParamInt(Params.Y);}
+    public int getX() {return getParamInt(Params.X);}                                                                                       //get location X coordinate (shortcut)
+    public int getY() {return getParamInt(Params.Y);}                                                                                       //get location Y coordinate (shortcut)
 
-    public int getLocalX(){return normalLocToLocal(getParamInt(Params.X));}
-    public int getLocalY(){return normalLocToLocal(getParamInt(Params.Y));}
+    public int getLocalX() {return normalLocToLocal(getParamInt(Params.X));}                                                                //get location local coordinates X,Y (for the client)
+    public int getLocalY() {return normalLocToLocal(getParamInt(Params.Y));}
 
-    public int getLocBtnNum(User user) {                                                                                                    //return user minimap button number this location can be placed on
+    public int getLocBtnNum(User user) {                                                                                                    //return the minimap button number this location can be placed on
         int userX = user.getParamInt(User.Params.X);                                                                                        //current user coordinates
         int userY = user.getParamInt(User.Params.Y);
 
-        int col = normalLocToLocal(this.X) - normalLocToLocal(userX) + 2;                                                                   //get locNum indexes
+        int col = normalLocToLocal(this.X) - normalLocToLocal(userX) + 2;                                                                   //get locNum[] indexes
         int row = normalLocToLocal(this.Y) - normalLocToLocal(userY) + 2;
         return ArrayUtils.get(ArrayUtils.get(locNums, row), col, ArrayUtils.INDEX_NOT_FOUND);                                               //get locNum value or -1 if indexes are out of bounds
     }

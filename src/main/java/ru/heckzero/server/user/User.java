@@ -61,6 +61,7 @@ public class User {
     public boolean isOnlineChat() {return chatChannel != null;}                                                                             //this user has a chat channel assigned
     public boolean isOffline() {return !(isOnlineGame() || isOnlineChat());}                                                                //user is offline
     public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
+    public boolean isGod() {return getParamInt(Params.god) == 1;}                                                                           //privileged user
     public boolean isCop() {return getParamStr(Params.clan).equals("police");}                                                              //user is a cop (is a member of police clan)
     public boolean isInBattle() {return false;}                                                                                             //just a stub yet, take some cognac when you are about to change this method
 
@@ -149,35 +150,34 @@ public class User {
 
         int btnNum = NumberUtils.toInt(n, 5);                                                                                               //button number user has pressed on minimap (null -> 5 - means there was no movement made and this is just a locations request)
         if (btnNum < 1 || btnNum > 9) {                                                                                                     //bnt num must within 1-9
-            logger.warn("user %s tried to move to illegal location num: %d", getLogin(), btnNum);
+            logger.warn("user %s tried to move to illegal location (btn num: %d)", getLogin(), btnNum);
             disconnect();                                                                                                                   //TODO should we ban the motherfecker cheater
             return;
         }
         Location locationToGo = Location.getLocation(this, btnNum);                                                                         //get the location data user wants move to or the current user location if there was no movement requested
-
         StringJoiner sj = new StringJoiner("", "<GOLOC", "</GOLOC>");                                                                       //start formatting a <GOLOC> reply
 
         if (btnNum != 5) {                                                                                                                  //user moves to another location
-            if (locationToGo.getLocBtnNum(this) != btnNum) {
+            if (locationToGo.getLocBtnNum(this) != btnNum) {                                                                                //getLocBtnNum() must return the same btnNum as user has tapped
                 logger.warn("user %s tried to move to inapplicable location from %d/%d to %d/%d", getLogin(), getParam(Params.X), getParam(Params.Y), locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));
                 sendMsg("<ERRGO />");                                                                                                       //Вы не смогли перейти в этом направлении
                 return;
             }
-            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond() + 1) {                                                       //TODO why do we have to add 1 to now()?
+            if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond() + 1 && !isGod()) {                                           //TODO why do we have to add 1 to now()?
                 logger.warn("user %s tried to move at loc_time < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
                 sendMsg(String.format("<MYPARAM time=\"%d\"/><ERRGO code=\"5\"/>", Instant.now().getEpochSecond()));                        //Вы пока не можете двигаться, отдохните
                 return;
             }
-            if (locationToGo.getParamInt(Location.Params.o) >= 999) {                                                                       //an impassable location, no trespassing allowed
+            if (locationToGo.getParamInt(Location.Params.o) >= 999 && !isGod()) {                                                           //an impassable location, trespassing is not allowed
                 sendMsg("<ERRGO code=\"1\"/>");                                                                                             //Локация, в которую вы пытаетесь перейти, непроходима
                 return;
             }
 
             sj.add(String.format(" n=\"%d\"", btnNum));                                                                                     //add n="shift" if we have moved to some location
 
-            Long locTime = Instant.now().getEpochSecond() + Math.max(locationToGo.getParamInt(Location.Params.tm), 5);                      //compute a loc_time for a user(now + the location loc_time (location tm parameter))
-            setParam(Params.loc_time, locTime);                                                                                             //set new loc_time for a user
-            setRoom(locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));                              //change user coordinates to new location
+            Long locTime = Instant.now().getEpochSecond() + Math.max(locationToGo.getParamInt(Location.Params.tm), 5);                      //compute a new loc_time for user(now + the location loc_time (location tm parameter))
+            setParam(Params.loc_time, locTime);                                                                                             //set the new loc_time for a user
+            setRoom(locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));                              //actually change user coordinates to new location
 
             String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, locationToGo.getParamInt(Location.Params.b) ^ 1);
             sendMsg(reply);

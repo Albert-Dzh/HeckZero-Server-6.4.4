@@ -22,13 +22,13 @@ public class PortalRoute {
     @SequenceGenerator(name = "portal_routes_generator_sequence", sequenceName = "portal_routes_id_seq", allocationSize = 1)
     private Integer id;
 
-    private Integer bid_to;
+    private Integer b_id;
     @Column(name = "\"ROOM\"") private Integer ROOM;
     private Double cost;                                                                                                                    //1000 weight units price
     private Integer bigmap_shown;                                                                                                           //show this route on a bigmap
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "pid_from")
+    @JoinColumn(name = "p_id")
     private Portal portal;                                                                                                                  //portal association
 
     public PortalRoute() {  }
@@ -39,12 +39,12 @@ public class PortalRoute {
         Session session = ServerMain.sessionFactory.openSession();
 
         try (session) {
-            Building bldTo = session.get(Building.class, bid_to);
+            Building bldTo = session.get(Building.class, b_id);
             Integer X = bldTo.getLocation().getLocalX();
             Integer Y = bldTo.getLocation().getLocalY();
             return String.format("%d,%d", X, Y);
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load building data by bid %d: %s", bid_to, e.getMessage());
+            logger.error("can't load building data by bid %d: %s", b_id, e.getMessage());
             e.printStackTrace();
         }
         return StringUtils.EMPTY;
