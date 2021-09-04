@@ -33,17 +33,17 @@ public class Portal {
     @SequenceGenerator(name = "portal_generator_sequence", sequenceName = "portals_id_seq", allocationSize = 1)
     private Integer id;
 
-    private Integer cash;
-    private String ds;
-    private String city;
-    private String p1;
-    private String p2;
-    private String bigmap_city;
-    private Integer bigmap_shown;
+    private Integer cash;                                                                                                                   //portal cash
+    private String ds;                                                                                                                      //discount (%) for citizens
+    private String city;                                                                                                                    //of that city
+    private String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
+    private String p2;                                                                                                                      //corsair clone cost
+    private String bigmap_city;                                                                                                             //city on bigmap this portal represents
+    private Boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
 
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "b_id")
-    private Building building;
+    private Building building;                                                                                                              //building this portal associate with (foreign key to location_b)
 
     @OneToMany(mappedBy = "portal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
@@ -56,9 +56,9 @@ public class Portal {
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 //    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
-    public String getBigMapXml() {
+    public String getBigMapXml() {                                                                                                          //generate an object for the bigmap (city and/or portal)
         StringJoiner sj = new StringJoiner("");
-        if (StringUtils.isNotBlank(bigmap_city))
+        if (StringUtils.isNotBlank(bigmap_city))                                                                                            //this portal "represents" a city on bigmap
             sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, building.getLocation().getLocalX(), building.getLocation().getLocalY()));
 
         String routes = portalRoutes.stream().map(PortalRoute::getBigMapData).filter(StringUtils::isNoneBlank).collect(Collectors.joining(";")); //get portal routes (from this portal)
@@ -73,21 +73,5 @@ public class Portal {
             return field.get(this);                                                                                                         //and return it (or an empty string if null)
         } catch (Exception e) {logger.error("can't get portal param %s: %s", paramName.toString(), e.getMessage()); }
         return StringUtils.EMPTY;
-    }
-
-
-    @Override
-    public String toString() {
-        return "Portal{" +
-                "id=" + id +
-                ", cash=" + cash +
-                ", ds='" + ds + '\'' +
-                ", city='" + city + '\'' +
-                ", p1='" + p1 + '\'' +
-                ", p2='" + p2 + '\'' +
-                ", bigmap_city='" + bigmap_city + '\'' +
-                ", bigmap_shown='" + bigmap_shown + '\'' +
-//                ", building=" + building +
-                '}';
     }
 }

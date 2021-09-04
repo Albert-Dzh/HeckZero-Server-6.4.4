@@ -20,17 +20,17 @@ public class PortalRoute {
     @SequenceGenerator(name = "portal_routes_generator_sequence", sequenceName = "portal_routes_id_seq", allocationSize = 1)
     private Integer id;
 
-    @Column(name = "\"ROOM\"") private Integer ROOM;
-    private Double cost;                                                                                                                    //1000 weight units price
-    private Boolean bigmap_shown;                                                                                                           //include this route to bigmap data
+    @Column(name = "\"ROOM\"") private Integer ROOM;                                                                                        //room inside the building this route goes to
+    private Double cost;                                                                                                                    //1000 weight units teleportation price
+    private Boolean bigmap_shown;                                                                                                           //include this route into bigmap data
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "p_id")
-    private Portal portal;                                                                                                                  //Portal this route goes from
+    private Portal portal;                                                                                                                  //Portal id this route goes from (foreign key to portals)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "b_id")
-    private Building dstBuilding;                                                                                                           //Building this route goes to
+    private Building dstBuilding;                                                                                                           //Building id this route goes to (foreign key to location_b)
 
     public PortalRoute() {  }
 

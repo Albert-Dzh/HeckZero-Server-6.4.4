@@ -85,7 +85,7 @@ public class Location {
     public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
     public static Location getLocation(User user, int btnNum) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), btnNum);}
     public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
-    public static Location getLocation(Integer X, Integer Y) {                                                                              //try to get location from a database
+    public static Location getLocation(int X, int Y) {                                                                                      //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
         try (session) {
             Location location = session.byNaturalId(Location.class).using("X", X).using("Y", Y).load();

@@ -206,7 +206,7 @@ public class User {
         List <Portal> portals = new ArrayList<>();
 
         try (session) {
-            Query<Portal> query = session.createQuery("select p from Portal p where p.bigmap_shown = 1", Portal.class).setCacheable(true);
+            Query<Portal> query = session.createQuery("select p from Portal p where cast(p.bigmap_shown as integer) = 1", Portal.class).setCacheable(true);
             portals = query.list();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load bigmap data: %s", e.getMessage());
