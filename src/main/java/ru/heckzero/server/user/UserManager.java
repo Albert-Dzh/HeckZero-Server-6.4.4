@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.util.AttributeKey;
-import io.netty.util.internal.StringUtil;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,9 +18,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class UserManager {                                                                                                                  //yes, this class name ends in 'er' fuck off, Egor ;)
     public enum ErrCodes {NOERROR, WRONG_USER, WRONG_PASSWORD, ANOTHER_CONNECTION, USER_BLOCKED, OLD_VERSION, NEED_KEY, WRONG_KEY, ANOTHER_WINDOW, SRV_FAIL} //Error codes for the client on unsuccessful login
@@ -156,13 +158,13 @@ public class UserManager {                                                      
         User user = getUser(login);                                                                                                         //get a user by login from a list of cached users or from database
         if (user == null) {                                                                                                                 //SQL Exception was thrown while getting user data from a db
             logger.error("can't get user data from database by login '%s' due to a DB error", login);
-            String errMsg = String.format("<ERROR code = \"%d\" />", ErrCodes.SRV_FAIL.ordinal());
+            String errMsg = String.format("<ERROR code=\"%d\"/>", ErrCodes.SRV_FAIL.ordinal());
             ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
             return;
         }
         if (user.isEmpty()) {                                                                                                               //this an empty User instance, which means the user has not been found in a database
             logger.info("user '%s' does not exist", login);
-            String errMsg = String.format("<ERROR code = \"%d\" />", ErrCodes.WRONG_USER.ordinal());                                        //user does not exist
+            String errMsg = String.format("<ERROR code=\"%d\"/>", ErrCodes.WRONG_USER.ordinal());                                           //user does not exist
             ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
             return;
         }
@@ -170,20 +172,21 @@ public class UserManager {                                                      
         logger.info("phase 2 checking user '%s' credentials", user.getLogin());
         String userClearPass = user.getParamStr(User.Params.password);                                                                      //the user clear password from database
         String serverCryptedPass = encrypt((String)ch.attr(AttributeKey.valueOf("encKey")).get(), userClearPass);                           //encrypt user password using the same algorithm as a client does
-        if (!serverCryptedPass.equals(userCryptedPass)) {                                                                                   //passwords mismatch detected
+        if (!StringUtils.equals(serverCryptedPass, userCryptedPass)) {                                                                      //passwords don't match
             logger.info("wrong password for user '%s'", user.getLogin());
-            String errMsg = String.format("<ERROR code = \"%d\" />", ErrCodes.WRONG_PASSWORD.ordinal());
+            String errMsg = String.format("<ERROR code=\"%d\"/>", ErrCodes.WRONG_PASSWORD.ordinal());
             ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
             return;
         }
+        logger.info("phase 3 checking if user '%s' if blocked", user.getLogin());
         if (!user.getParamStr(User.Params.dismiss).isBlank()) {                                                                             //user is blocked (dismiss is not empty)
-            logger.info("user '%s' is banned, reason: '%s'", user.getLogin(), user.getParamStr(User.Params.dismiss));
-            String errMsg = String.format("<ERROR code = \"%d\" txt=\"%s\" />", ErrCodes.USER_BLOCKED.ordinal(), user.getParamStr(User.Params.dismiss));
+            logger.info("user '%s' is blocked, reason: '%s'", user.getLogin(), user.getParamStr(User.Params.dismiss));
+            String errMsg = String.format("<ERROR code=\"%d\" txt=\"%s\" />", ErrCodes.USER_BLOCKED.ordinal(), user.getParamStr(User.Params.dismiss));
             ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
             return;
         }
 
-        logger.info("phase 3 checking if user '%s' is already online", user.getLogin());
+        logger.info("phase 4 checking if user '%s' is already online", user.getLogin());
         synchronized (user) {
             while (user.isOnlineGame()) {                                                                                                   //gameChannel != null, we might receive notify from offlineChat() instead of offlineGame(), so we have to wait again
                 if (user.getGameChannel().isActive()) {                                                                                     //channel is active, we have to send an error message and close the channel
@@ -194,7 +197,7 @@ public class UserManager {                                                      
 
                 logger.info("waiting for the user '%s' game channel to get offline", user.getLogin());                                      //wait for the offlineGame() to finish and sends notifyAll() to awake us
                 try {
-                    user.wait();                                                                                                            //wait for the notify() from offlineGame(), releasing monitor
+                    user.wait();                                                                                                            //wait for notify() from offlineGame(), releasing the monitor
                 } catch (InterruptedException e) {
                     logger.error("exception while waiting for user '%s' to get offline, stopping this login attempt, and closing incoming channel", user.getLogin());
                     ch.close();
@@ -203,7 +206,7 @@ public class UserManager {                                                      
             }
             user.onlineGame(ch);                                                                                                            //perform initial procedures to set the user game channel online
             cachedUsers.addIfAbsent(user);
-            logger.info("phase 4 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("sockStr")).get());
+            logger.info("phase 5 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("sockStr")).get());
         }
         return;
     }
@@ -229,7 +232,7 @@ public class UserManager {                                                      
         return;
     }
 
-    private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. user must not be offline for a defined time not in battle
+    private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. the user must not be in a battle and must be offline for a defined amount of time
         logger.debug("purging rotten users from the cache");
         Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
         cachedUsers.removeIf(isRotten);
@@ -258,32 +261,15 @@ public class UserManager {                                                      
     }
 
     private static String encrypt(String key, String msg) {
-        byte [] s_block = {
-                        0, 30, 30, 28, 28, 37, 37,  9,  9, 18, 18, 34, 34, 35,                                                              // the 1st chain of pairs' transpositions
-                        1, 26, 26, 32, 32, 22, 22, 23, 23, 21, 21, 14, 14, 33, 33, 16,                                                      // the 2nd chain of pairs' transpositions
-                        16,  7,  7,  4,  4,  2,  2, 24, 24, 29, 29, 20, 20,  8,  8,  5,
-                        5, 15, 15, 17, 17, 36, 36,  6,                                                                                      // the 3rd chain of pairs' transpositions
-                        3, 39, 39, 12, 12, 10, 10, 27, 27, 25,                                                                              // the 4th chain of pairs' transpositions
-                        11, 38, 38, 13, 13, 19, 19, 31                                                                                      // the 5th chain of pairs' transpositions
-                };
-
-        String result = StringUtil.EMPTY_STRING;
+        int [] shuffle_indexes = {35, 6, 4, 25, 7, 8, 36, 16, 20, 37, 12, 31, 39, 38, 21, 5, 33, 15, 9, 13, 29, 23, 32, 22, 2, 27, 1, 10, 30, 24, 0, 19, 26, 14, 18, 34, 17, 28, 11, 3};
         try {
-            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");                                                                        // stage a (get SHA-1 encryptor)
-
-            String passKey = msg.substring(0, 1) + key.substring(0, 10) + msg.substring(1) + key.substring(10);                             // stage b (collect the string)
-            char[] shuffled_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase().toCharArray();  // stage c (cipher the string with SHA-1)
-
-            for (byte i = 0; i < s_block.length; i += 2) {                                                                                   // stage d (shuffle result of ciphering)
-                char tmp = shuffled_SHA1[s_block[i]];
-                shuffled_SHA1[s_block[i]] = shuffled_SHA1[s_block[i + 1]];
-                shuffled_SHA1[s_block[i + 1]] = tmp;
-            }
-            result = new String(shuffled_SHA1);
-        }
-        catch (NoSuchAlgorithmException e) {
+            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");                                                                        //get a SHA-1 encryptor
+            String passKey = msg.charAt(0) + key.substring(0, 10) + msg.substring(1) + key.substring(10);                                   //compose the string to be hashed
+            String passKey_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase();                 //cipher the string with SHA-1
+            return IntStream.range(0, 40).mapToObj(i -> passKey_SHA1.charAt(ArrayUtils.indexOf(shuffle_indexes, i))).map(String::valueOf).collect(Collectors.joining());
+        } catch (NoSuchAlgorithmException e) {
             logger.error("encrypt: %s", e.getMessage());
         }
-        return result;
+        return null;
     }
 }

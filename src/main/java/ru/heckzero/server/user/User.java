@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
+import ru.heckzero.server.Chat;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.world.Location;
 import ru.heckzero.server.world.Portal;
@@ -32,13 +33,15 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by onlineGame() and onlineChat() methods
-    public enum Params {time, tdt, nochat, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
+    public enum Params {time, tdt, nochat, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
     public static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in GETME - MYPARAM
 
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
     private static final LongConverter longConv = new LongConverter(0L);
     private static final DoubleConverter doubleConv = new DoubleConverter(0D);
+
+    @Transient private final  Chat chat = new Chat(this);
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -51,8 +54,8 @@ public class User {
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
 
-    public Channel getGameChannel() { return this.gameChannel;}
-    public Channel getChatChannel() { return this.chatChannel;}
+    public Channel getGameChannel() {return this.gameChannel;}
+    public Channel getChatChannel() {return this.chatChannel;}
 
     public User() { }                                                                                                                       //default empty constructor
 
@@ -106,7 +109,7 @@ public class User {
         this.gameChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME))); //replace read timeout handler to a new one with a longer timeout defined for authorized user
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.loc_time, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time)); //compute client loc_time - time he is allowed to leave his location
-        setParam(Params.nochat, 1);                                                                                                         //user has no chat socket connected upon login. He will be treated as chat off by his ROOM neighbours
+        setParam(Params.nochat, 1);                                                                                                         //user has no chat socket connected upon login. He will be treated as chat off by his ROOM-mates
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);
         return;
@@ -128,6 +131,7 @@ public class User {
         this.chatChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.CHAT);
         this.chatChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "' (chat)");
         this.chatChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME)));
+        chat.startChat();
         return;
     }
     synchronized void offlineChat() {
