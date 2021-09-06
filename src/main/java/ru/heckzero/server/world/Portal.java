@@ -33,13 +33,13 @@ public class Portal {
     @SequenceGenerator(name = "portal_generator_sequence", sequenceName = "portals_id_seq", allocationSize = 1)
     private Integer id;
 
-    private Integer cash;                                                                                                                   //portal cash
+    private int cash;                                                                                                                       //portal cash
     private String ds;                                                                                                                      //discount (%) for citizens
     private String city;                                                                                                                    //of that city
     private String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
     private String p2;                                                                                                                      //corsair clone cost
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
-    private Boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
+    private boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
 
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "b_id")
@@ -52,7 +52,7 @@ public class Portal {
     public Portal() { }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
+    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 //    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 

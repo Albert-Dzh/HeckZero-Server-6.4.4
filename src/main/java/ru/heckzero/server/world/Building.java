@@ -29,18 +29,16 @@ public class Building {
     @SequenceGenerator(name = "loc_b_generator_sequence", sequenceName = "locations_b_seq", allocationSize = 1)
     private Integer id;
 
-    @Column(name = "\"X\"")
-    private Integer X;                                                                                                                      //X,Y coordinate within a location
-    @Column(name = "\"Y\"")
-    private Integer Y;
-    @Column(name = "\"Z\"")
-    private Integer Z;                                                                                                                      //unique building number withing a location
-    private String txt;                                                                                                                     //building description
+    @Column(name = "\"X\"") private int X = 20;                                                                                             //X,Y coordinate within a location
+    @Column(name = "\"Y\"") private int Y = 8;
+    @Column(name = "\"Z\"")private int Z;                                                                                                   //unique building number withing a location
+
+    private String txt = "this is a stub building";                                                                                         //building description
     @Column(name = "\"maxHP\"")
     private String maxHP;
     @Column(name = "\"HP\"")
     private String HP;
-    private Integer name;                                                                                                                   //building type
+    private int name = 169;                                                                                                                 //building type ruin by default
     private String upg;
     private String maxl;
     private String repair;
@@ -50,14 +48,15 @@ public class Building {
     @JoinColumn(name = "l_id")
     private Location location;                                                                                                              //location association
 
-    public Building() { }
+    protected Building() { }
+    public Building(int Z) {this.Z = Z;}                                                                                                    //constructor with a certain Z coordinate
 
     public Location getLocation() {                                                                                                         //get the location this Building belongs to
         return location;
     }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
+    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     public String getBuildingXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 

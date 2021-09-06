@@ -49,13 +49,13 @@ public class Location {
 
     @Column(name = "\"X\"")
     @NaturalId                                                                                                                              //locations are queried by Natural Id API
-    private Integer X;                                                                                                                      //X,Y coordinate (server format) (0-359)
+    private int X;                                                                                                                          //X,Y coordinate (server format) (0-359)
 
     @Column(name = "\"Y\"")
     @NaturalId
-    private Integer Y;
+    private int Y;
 
-    private Integer tm = DEF_LOC_TIME;                                                                                                      //location wait time (loc_time) in sec
+    private int tm = DEF_LOC_TIME;                                                                                                          //location wait time (loc_time) in sec
     private String t = "A";                                                                                                                 //location surface type 1 symbol (A-Z)
     private String m ="t1:19:8,t1:26:12";                                                                                                   //location map itself
     private String n = StringUtils.EMPTY;                                                                                                   //location music
@@ -76,14 +76,12 @@ public class Location {
 
     protected Location() { }
 
-    private Location (Integer X, Integer Y) {                                                                                               //generate a default location
+    private Location (int X, int Y) {                                                                                                       //generate a default location
         this.X = X;
         this.Y = Y;
         return;
     }
 
-    public static Location getLocation(User user) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y));}
-    public static Location getLocation(User user, int btnNum) {return getLocation(user.getParamInt(User.Params.X), user.getParamInt(User.Params.Y), btnNum);}
     public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
     public static Location getLocation(int X, int Y) {                                                                                      //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
@@ -96,9 +94,10 @@ public class Location {
         return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
 
+    public Building getBuilding(int Z) {return buildings.stream().filter(b -> b.getParamInt(Building.Params.Z) == Z).findFirst().orElseGet(() -> new Building(Z)); } //return building by Z coordinate
+
     public int getX() {return getParamInt(Params.X);}                                                                                       //get location X coordinate (shortcut)
     public int getY() {return getParamInt(Params.Y);}                                                                                       //get location Y coordinate (shortcut)
-
     public int getLocalX() {return normalLocToLocal(getParamInt(Params.X));}                                                                //get location local coordinates X,Y (for the client)
     public int getLocalY() {return normalLocToLocal(getParamInt(Params.Y));}
 
@@ -112,7 +111,7 @@ public class Location {
     }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public Integer getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
+    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     public String getLocationXml() {
         StringJoiner sj = new StringJoiner("", "", "</L>");

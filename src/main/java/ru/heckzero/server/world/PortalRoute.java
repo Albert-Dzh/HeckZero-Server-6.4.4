@@ -20,9 +20,9 @@ public class PortalRoute {
     @SequenceGenerator(name = "portal_routes_generator_sequence", sequenceName = "portal_routes_id_seq", allocationSize = 1)
     private Integer id;
 
-    @Column(name = "\"ROOM\"") private Integer ROOM;                                                                                        //room inside the building this route goes to
-    private Double cost;                                                                                                                    //1000 weight units teleportation price
-    private Boolean bigmap_shown;                                                                                                           //include this route into bigmap data
+    @Column(name = "\"ROOM\"") private int ROOM;                                                                                            //room inside the building this route goes to
+    private double cost;                                                                                                                    //1000 weight units teleportation price
+    private boolean bigmap_shown;                                                                                                           //include this route into bigmap data
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "p_id")
@@ -34,5 +34,5 @@ public class PortalRoute {
 
     public PortalRoute() {  }
 
-    public String getBigMapData() {return bigmap_shown ? String.format("%s,%s", dstBuilding.getLocation().getLocalX(), dstBuilding.getLocation().getLocalY()) : StringUtils.EMPTY; }
+    public String getBigMapData() {return bigmap_shown ? String.format("%d,%d", dstBuilding.getLocation().getLocalX(), dstBuilding.getLocation().getLocalY()) : StringUtils.EMPTY; }
 }

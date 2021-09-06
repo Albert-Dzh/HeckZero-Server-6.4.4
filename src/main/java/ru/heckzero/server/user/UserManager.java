@@ -26,16 +26,16 @@ import java.util.stream.IntStream;
 
 public class UserManager {                                                                                                                  //yes, this class name ends in 'er' fuck off, Egor ;)
     public enum ErrCodes {NOERROR, WRONG_USER, WRONG_PASSWORD, ANOTHER_CONNECTION, USER_BLOCKED, OLD_VERSION, NEED_KEY, WRONG_KEY, ANOTHER_WINDOW, SRV_FAIL} //Error codes for the client on unsuccessful login
-    public enum UserType {CACHED, ONLINE_GAME, ONLINE_CHAT, ONLINE_GAME_OR_CHAT, IN_BATTLE, NPC, HUMAN, POLICE}
+    public enum UserType {CACHED, IN_GAME, ONLINE_GAME, ONLINE_CHAT, ONLINE_GAME_OR_CHAT, IN_BATTLE, NPC, HUMAN, POLICE}
 
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final CopyOnWriteArrayList<User> cachedUsers = new CopyOnWriteArrayList<>();
 
     private static boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                   //check if a user provided password conforms the requirements
-    public static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                    //validate a string as a valid SHA1 hash
+    private static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                   //validate a string has a valid SHA1 hash format
 
     static {
-        ServerMain.mainScheduledExecutor.scheduleWithFixedDelay(() -> purgeCachedUsers(), 60L, 60L , TimeUnit.SECONDS);                     //purging offline users from the cachedUsers
+        ServerMain.mainScheduledExecutor.scheduleWithFixedDelay(UserManager::purgeCachedUsers, 60L, 60L , TimeUnit.SECONDS);                //purging offline users from the cachedUsers
     }
     public UserManager() { }
 
@@ -47,9 +47,11 @@ public class UserManager {                                                      
         Predicate<User> isHuman = isNPC.negate();
         Predicate<User> isCop = User::isCop;
         Predicate<User> isInBattle = User::isInBattle;
+        Predicate<User> isInGame = User::isInGame;
 
         return switch (type) {
             case CACHED -> cachedUsers;
+            case IN_GAME -> cachedUsers.stream().filter(isInGame).collect(Collectors.toList());
             case ONLINE_GAME -> cachedUsers.stream().filter(isOnlineGame).collect(Collectors.toList());		                                //all online users game
             case ONLINE_CHAT -> cachedUsers.stream().filter(isOnlineChat).collect(Collectors.toList());					                    //all online users chat
             case ONLINE_GAME_OR_CHAT -> cachedUsers.stream().filter(isOnlineGameOrChat).collect(Collectors.toList());		                //all online users with game or chat channel
@@ -58,6 +60,16 @@ public class UserManager {                                                      
             case HUMAN -> cachedUsers.stream().filter(isHuman).collect(Collectors.toList());					                            //not NPS users
             case POLICE -> cachedUsers.stream().filter(isCop).collect(Collectors.toList());							                        //cops (clan = police)
         };
+    }
+    private static boolean areInSameLoc(User user1, User user2) {                                                                           //are users in a same location
+        return user1.getParamInt(User.Params.X) == user2.getParamInt(User.Params.X) && user1.getParamInt(User.Params.Y) == user2.getParamInt(User.Params.Y) && user1.getParamInt(User.Params.Z) == user2.getParamInt(User.Params.Z) ;
+    }
+    private static boolean areInSameRoom(User user1, User user2) {                                                                          //are users in a same room
+        return areInSameLoc(user1, user2) && user1.getParamInt(User.Params.ROOM) == user2.getParamInt(User.Params.ROOM);
+    }
+
+    public static List<User> getRoomMates(User user) {                                                                                      //get a list of in game users that are in a same room
+        return getCachedUsers(UserType.IN_GAME).stream().filter(u -> UserManager.areInSameRoom(u, user)).collect(Collectors.toList());
     }
 
     public static User getOnlineUserGame(Channel ch) {                                                                                      //search from cached online users by a game channel
@@ -140,7 +152,7 @@ public class UserManager {                                                      
         return;
     }
 
-    public static void loginUser(Channel ch, String login, String userCryptedPass) {                                                        //check if the user can login and set it online
+    public static void loginUser(Channel ch, String login, String userCryptedPass) {                                                        //check if the user can log in and set him online
         logger.info("processing <LOGIN/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         logger.info("phase 0 validating received user credentials");
         if (login == null || userCryptedPass == null) {                                                                                     //login or password attributes are missed, this is abnormal. closing the channel
@@ -234,8 +246,8 @@ public class UserManager {                                                      
 
     private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. the user must not be in a battle and must be offline for a defined amount of time
         logger.debug("purging rotten users from the cache");
-        Predicate<User> isRotten = (u) -> u.isOffline() && !u.isInBattle() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
-        cachedUsers.removeIf(isRotten);
+        Predicate<User> isRotten = (u) -> !u.isInGame() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
+        cachedUsers.removeIf(isRotten);                                                                                                     //remove users matching the predicate from cashedUsers
         return;
     }
 
