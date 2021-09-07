@@ -139,6 +139,8 @@ public class CommandProcessor extends DefaultHandler {
 
     private void com_CHAT_POST(Attributes attrs) {
         logger.debug("processing <POST/> command from %s", user.getLogin());
+        String t = attrs.getValue("t");                                                                                                     //text? attribute of the <POST> request - the message itself
+        user.com_POST(t);
         return;
     }
 

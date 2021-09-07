@@ -75,7 +75,7 @@ public class User {
     private String getParam_battleid() {return StringUtils.EMPTY;}
     private String getParam_group() {return StringUtils.EMPTY;}
     private int getParam_level() {return 17;}
-    public int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                           //user chat status, whether he has his chat channel off (null)
+    private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
 
     public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is in now
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
@@ -243,6 +243,13 @@ public class User {
         return;
     }
 
+    public void com_POST(String t) {                                                                                                        //chat POST - the message from user
+        if (StringUtils.isNotBlank(t))
+            chat.post(t);
+        else
+            logger.warn("invalid <POST/> command received from user %s, t = %s, got nothing to process", getLogin(), t);
+        return;
+    }
     public void setRoom(int X, int Y) {setRoom(X, Y, 0, 0); }
     public void setRoom(int X, int Y, int Z, int ROOM) {
         chat.removeMe();

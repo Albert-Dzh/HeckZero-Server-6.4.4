@@ -82,7 +82,6 @@ public class UserManager {                                                      
         return getCachedUsers(UserType.ONLINE_GAME_OR_CHAT).stream().filter(u -> ch.equals(u.getGameChannel()) || ch.equals(u.getChatChannel())).findFirst().orElseGet(User::new);
     }
 
-
     public static User getOnlineUserGame(String login) {                                                                                    //search from cached online game users by login
         return getCachedUsers(UserType.ONLINE_GAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
     }

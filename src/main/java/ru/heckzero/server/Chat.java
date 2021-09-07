@@ -14,10 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class Chat {
 	private static final Logger logger = LogManager.getFormatterLogger();
@@ -87,7 +84,7 @@ public class Chat {
 		status |= (aboutU.getParamInt(User.Params.nochat) ^ 1) * MASK_ONLINE;																//neighbor has his chat on/off
 		status |= aboutU.getParamInt(User.Params.chatblock) > System.currentTimeMillis() / 1000L ?  MASK_SLEEP : 0;				    		//neighbor's chat is blocked by police (read only)
 		status |= contactGroup.equalsIgnoreCase("ДРУЗЬЯ") ? MASK_FRIEND : 0;																//check if aboutU is a friend (in group FRIENDS)
-		status |= contactGroup.equalsIgnoreCase("ВРАГИ") || contactGroup.equalsIgnoreCase("АВТОНАПАДЕНИЕ") ? MASK_BANDIT : 0;	    		//aboutU is bad guy for a ForU
+		status |= contactGroup.equalsIgnoreCase("ВРАГИ") || contactGroup.equalsIgnoreCase("АВТОНАПАДЕНИЕ") ? MASK_BANDIT : 0;	    		//aboutU is bad guy for ForU
 		status |= aboutU.getParamInt(User.Params.pro) << 5;																					//user's profession
 		status |= aboutU.isInClaim() ?  MASK_CLAIM : 0;																						//user is in a claim
 		status |= aboutU.isInBattle() ?  MASK_BATTLE : 0;																					//user is in a battle
@@ -116,50 +113,50 @@ public class Chat {
 		return;
 	}
 
-/*
-	public void post(Node xmlData) {
+	public void post(String postText) {
 		ArrayList<String> privateLogins = new ArrayList<String>();
-		HZUser tmpU;
-		DateFormat dateFormat = new SimpleDateFormat("HH:mm");
 		boolean toClan = false;
-		
-		if (user.getParamLong("chatblock") > System.currentTimeMillis() / 1000l) 																											//user has his chat blocked by cop
+
+		if (user.getParamLong(User.Params.chatblock) > System.currentTimeMillis() / 1000l) 													//user has his chat blocked by cop
 			return;
 		
-		String postText = (xmlData.getAttributes().getNamedItem("t") != null) ? xmlData.getAttributes().getNamedItem("t").getNodeValue() : StringUtils.EMPTY;			//t - chat message itself
-		postText = StringUtils.strip(postText.replace("\"", "&quot;"));
+		postText = StringUtils.strip(postText.replace("\"", "&quot;"));																		//massage the post text
 		String [ ] words = StringUtils.split(postText);
-		String resultMsg = String.format("<S t=\"%s [%s] %s\t%s\t\" />",  dateFormat.format(new Date()), user.getLogin(),  postText, user.getParam("clr"));
+		String resultMsg = String.format("<S t=\"%s [%s] %s\t%s\t\" />", dateFormat.format(new Date()), user.getLogin(), postText, user.getParamStr(User.Params.clr));
 		
 		for (int i = 0; i < words.length; i++) 
-			if (words[i].equals("private") && words[i +1].matches("^\\[.*\\]$")) {																											//found private keyword in chat message 
+			if (words[i].equals("private") && words[i +1].matches("^\\[.*\\]$")) {															//found private keyword in chat message
 				 String tmpLogin = words[i + 1].substring(1, words[i + 1].length() - 1);
-				 if (tmpLogin.equals("clan")) {toClan = true; break;}
+				 if (tmpLogin.equals("clan")) {
+					 toClan = true;
+					 break;
+				 }
 				 privateLogins.add(tmpLogin);
 			}
 		
-		if (toClan) {trace("message will be send to all online clan members"); return;}
+		if (toClan) {
+			logger.info("message will be send to all online clan members");
+			return;
+		}
 		
-		if (!privateLogins.isEmpty()) {																																											//at least one private user
-			if (!privateLogins.contains(user.getLogin()))																																						//if privateUsers does not contain the sender - add sender to the list
+		if (!privateLogins.isEmpty()) {																										//we've got at least one private user to send a message to
+			if (!privateLogins.contains(user.getLogin()))																					//if privateUsers does not contain the sender - add sender to the list
 				privateLogins.add(user.getLogin());
-			for (String login: privateLogins) {																																									//send a chat message to all private users
-				if ((tmpU = HZUser.getUser(login)) != null && tmpU.isChatOn()) {
-					tmpU.sendChatCmd(resultMsg);
-				}
-				else	{																																																		//send a chat sys msg back to sender
-					user.sendChatCmd(makeSysMsg(CHAT_SYS_MSG_PLAYER_CHAT_OFF, StringUtils.EMPTY, login));											//Персонаж [login] в данный момент не может общаться в чате
-				}
+
+			for (String login: privateLogins) {																								//send a chat private message to all collected users
+				User recipient = UserManager.getOnlineUserGame(login);
+				if (recipient.isOnlineChat())
+					recipient.sendMsgChat(resultMsg);
+				else																														//send a chat sys msg back to sender
+					user.sendMsgChat(makeSysMsg(CHAT_SYS_MSG_PLAYER_CHAT_OFF, StringUtils.EMPTY, login));									//Персонаж [login] в данный момент не может общаться в чате
 			}
 			return;
 		}
-		user.sendChatCmdToNbrs(resultMsg);
+		UserManager.getRoomMates(user).forEach(u -> u.sendMsgChat(resultMsg));
 		return;
 	} 
-*/
 
 	public String makeSysMsg(int code, String ... param) {																																//generate a chat system message
-		DateFormat dateFormat = new SimpleDateFormat("HH:mm");
 		return  String.format("<Z t=\"%s\t%d\t", dateFormat.format(new Date()), code) +  StringUtils.join(param, "\t" ) + "\"/>";
 	}
 }
