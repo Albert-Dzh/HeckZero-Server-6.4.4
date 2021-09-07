@@ -68,7 +68,7 @@ public class CommandProcessor extends DefaultHandler {
 
     private void com_GAME_CHAT(Attributes attrs) {                                                                                          //chat server host request comes from a game channel
         logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
-        String xmlReply = String.format("<CHAT server=\"%s\"/>", ServerMain.hzConfiguration.getString("ServerList.ChatServer", StringUtils.EMPTY)); //get and sent chat server host from the configuration
+        String xmlReply = String.format("<CHAT server=\"%s\"/>", ServerMain.hzConfiguration.getString("ServerList.ChatServer", StringUtils.EMPTY)); //get and send chat server host from the configuration
         ch.writeAndFlush(xmlReply);
         return;
     }

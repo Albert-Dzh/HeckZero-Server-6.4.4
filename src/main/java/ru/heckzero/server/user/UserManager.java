@@ -72,6 +72,10 @@ public class UserManager {                                                      
         return getCachedUsers(UserType.IN_GAME).stream().filter(u -> UserManager.areInSameRoom(u, user)).collect(Collectors.toList());
     }
 
+    public static List<User> getClanMatesOnline(User user) {                                                                                //get user clan mates online
+        return getCachedUsers(UserType.ONLINE_GAME).stream().filter(u -> u.getParamStr(User.Params.clan).equals(user.getParamStr(User.Params.clan))).collect(Collectors.toList());
+    }
+
     public static User getOnlineUserGame(Channel ch) {                                                                                      //search from cached online users by a game channel
         return getCachedUsers(UserType.ONLINE_GAME).stream().filter(u -> ch.equals(u.getGameChannel())).findFirst().orElseGet(User::new);
     }

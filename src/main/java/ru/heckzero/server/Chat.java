@@ -134,8 +134,8 @@ public class Chat {
 				 privateLogins.add(tmpLogin);
 			}
 		
-		if (toClan) {
-			logger.info("message will be send to all online clan members");
+		if (toClan) {																														//message be sent to all online clan members
+			UserManager.getClanMatesOnline(user).forEach(u -> u.sendMsgChat(resultMsg));
 			return;
 		}
 		
