@@ -28,7 +28,7 @@ public class PortalRoute {
     @JoinColumn(name = "p_id")
     private Portal portal;                                                                                                                  //Portal id this route goes from (foreign key to portals)
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "d_id")
     private Portal dstPortal;                                                                                                               //Building id this route goes to (foreign key to location_b)
 
