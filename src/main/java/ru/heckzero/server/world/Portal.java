@@ -45,7 +45,7 @@ public class Portal {
     @JoinColumn(name = "b_id")
     private Building building;                                                                                                              //building this portal associate with (foreign key to location_b)
 
-    @OneToMany(mappedBy = "portal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "srcPortal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<PortalRoute> portalRoutes = new ArrayList<>();
 

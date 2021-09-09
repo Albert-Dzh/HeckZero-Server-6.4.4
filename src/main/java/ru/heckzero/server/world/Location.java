@@ -34,13 +34,15 @@ public class Location {
     public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
     private static final EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
 
+    private static final int SPAN = 360;                                                                                                    //the world's horizontal and vertical dimension
     private static final int DEF_LOC_TIME = 5;                                                                                              //default location wait time in sec.
     private static final int [][] dxdy = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1},     {-2, -2}, {-1, -2}, {0, -2}, {1, -2}, {2, -2},    {2, -1}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {-1, 2}, {-2, 2}, {-2, 1}, {-2, 0}, {-2, -1}  };
     private static final Integer [][] locNums = { {10, 11, 12, 13, 14}, {25, 1, 2, 3, 15}, {24, 4, 5, 6, 16}, {23, 7, 8, 9, 17}, {22, 21, 20, 19, 18} }; //map for computing button number by location coordinate
 
     public static int  normalLocToLocal(int value) {return  value > 180 ? value - 360 : (value <= -180 ? value + 360 : value);}            //transform normalized coordinates to local (human adapted)
     private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}                                  //make a coordinate normalized (after shift)
-    private static int shiftCoordinate(int currCoordinate, int shift) {return normalizeLoc(currCoordinate + shift);}                        //get shifted coordinate (normalized)
+    private static int shiftCoordinate(int coordinate, int shift) {return Math.floorMod(coordinate + shift, SPAN);}                         //compute shifted coordinate
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_generator_sequence")
