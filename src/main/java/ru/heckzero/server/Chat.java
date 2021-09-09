@@ -125,7 +125,7 @@ public class Chat {
 		String resultMsg = String.format("<S t=\"%s [%s] %s\t%s\t\" />", dateFormat.format(new Date()), user.getLogin(), postText, user.getParamStr(User.Params.clr));
 		
 		for (int i = 0; i < words.length; i++) 
-			if (words[i].equals("private") && words[i +1].matches("^\\[.*\\]$")) {															//found private keyword in chat message
+			if (words[i].equals("private") && words[i +1].matches("^\\[.*]$")) {															//found private keyword in chat message
 				 String tmpLogin = words[i + 1].substring(1, words[i + 1].length() - 1);
 				 if (tmpLogin.equals("clan")) {
 					 toClan = true;

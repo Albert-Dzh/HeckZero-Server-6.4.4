@@ -29,10 +29,10 @@ public class PortalRoute {
     private Portal portal;                                                                                                                  //Portal id this route goes from (foreign key to portals)
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "b_id")
-    private Building dstBuilding;                                                                                                           //Building id this route goes to (foreign key to location_b)
+    @JoinColumn(name = "d_id")
+    private Portal dstPortal;                                                                                                               //Building id this route goes to (foreign key to location_b)
 
     public PortalRoute() {  }
 
-    public String getBigMapData() {return bigmap_shown ? String.format("%d,%d", dstBuilding.getLocation().getLocalX(), dstBuilding.getLocation().getLocalY()) : StringUtils.EMPTY; }
+    public String getBigMapData() {return bigmap_shown ? String.format("%d,%d", dstPortal.getBuilding().getLocation().getLocalX(), dstPortal.getBuilding().getLocation().getLocalY()) : StringUtils.EMPTY; }
 }

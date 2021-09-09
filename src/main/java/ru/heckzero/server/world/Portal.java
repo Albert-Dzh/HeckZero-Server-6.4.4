@@ -51,6 +51,10 @@ public class Portal {
 
     public Portal() { }
 
+    public Building getBuilding() {
+        return building;
+    }
+
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
