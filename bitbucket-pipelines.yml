@@ -22,6 +22,7 @@ pipelines:
                 COMMAND: '/root/work/heckzero/server/heckzero-server-6.2.4/redeploy.sh'
                 MODE: 'command'
                 PORT: '22'
+
 #                SSH_KEY: '<string>'             # Optional
 #                EXTRA_ARGS: '<string>'          # Optional
 #                ENV_VARS: '<string>' # Optional
