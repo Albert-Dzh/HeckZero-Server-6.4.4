@@ -33,12 +33,12 @@ public class Building {
     @Column(name = "\"Y\"") private int Y = 8;
     @Column(name = "\"Z\"")private int Z;                                                                                                   //unique building number withing a location
 
-    private String txt = "this is a stub building";                                                                                         //building description
+    private String txt = "a stub building";                                                                                         //building description
     @Column(name = "\"maxHP\"")
     private String maxHP;
     @Column(name = "\"HP\"")
     private String HP;
-    private int name = 169;                                                                                                                 //building type ruin by default
+    private int name = 0;                                                                                                                   //building type 0 - no building
     private String upg;
     private String maxl;
     private String repair;
@@ -50,6 +50,8 @@ public class Building {
 
     protected Building() { }
     public Building(int Z) {this.Z = Z;}                                                                                                    //constructor with a certain Z coordinate
+
+    public boolean isEmpty() {return name == 0;}
 
     public Location getLocation() {                                                                                                         //get the location this Building belongs to
         return location;

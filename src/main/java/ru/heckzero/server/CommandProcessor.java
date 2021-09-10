@@ -3,6 +3,7 @@ package ru.heckzero.server;
 import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.xml.sax.Attributes;
@@ -86,7 +87,7 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GAME_GOLOC(Attributes attrs) {                                                                                         //user wants to move to an another location or asks for a nearest locations description
+    private void com_GAME_GOLOC(Attributes attrs) {                                                                                         //user wants to move to  another location or asks for nearest locations description
         logger.debug("processing <GOLOC/> command from %s", user.getLogin());
         String n = attrs.getValue("n");
         String d = attrs.getValue("d");
@@ -100,7 +101,7 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GAME_MMP(Attributes attrs) {                                                                                          //user requests a location set for a 5x5 big map
+        private void com_GAME_MMP(Attributes attrs) {                                                                                          //user requests a location set for a 5x5 big map
         String param = attrs.getValue("param");
         user.com_MMP(param);
         return;
@@ -111,6 +112,12 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_GOBLD(Attributes attrs) {                                                                                         //user wants to enter a building
+        logger.debug("processing <GOBLD/> command from %s", user.getLogin());
+        String n = attrs.getValue("n");
+        user.com_GOBLD(NumberUtils.toInt(n));
+        return;
+    }
 
     public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> handler
         logger.debug("processing <LOGOUT/> command from %s", user.getLogin());

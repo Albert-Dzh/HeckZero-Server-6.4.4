@@ -39,10 +39,9 @@ public class Location {
     private static final int [][] dxdy = { {-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1},     {-2, -2}, {-1, -2}, {0, -2}, {1, -2}, {2, -2},    {2, -1}, {2, 0}, {2, 1}, {2, 2}, {1, 2}, {0, 2}, {-1, 2}, {-2, 2}, {-2, 1}, {-2, 0}, {-2, -1}  };
     private static final Integer [][] locNums = { {10, 11, 12, 13, 14}, {25, 1, 2, 3, 15}, {24, 4, 5, 6, 16}, {23, 7, 8, 9, 17}, {22, 21, 20, 19, 18} }; //map for computing button number by location coordinate
 
-    public static int  normalLocToLocal(int value) {return  value > 180 ? value - 360 : (value <= -180 ? value + 360 : value);}            //transform normalized coordinates to local (human adapted)
+    public static int  normalLocToLocal(int value) {return  value > 180 ? value - 360 : (value <= -180 ? value + 360 : value);}             //transform normalized coordinates to local (human adapted)
     private static int normalizeLoc(int val) {return val < 0 ? val + 360 : (val > 359 ? val - 360 : val);}                                  //make a coordinate normalized (after shift)
     private static int shiftCoordinate(int coordinate, int shift) {return Math.floorMod(coordinate + shift, SPAN);}                         //compute shifted coordinate
-
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_generator_sequence")
@@ -115,11 +114,11 @@ public class Location {
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-    public String getLocationXml() {
+    public String getLocationXml() {                                                                                                        //format location description in XML
         StringJoiner sj = new StringJoiner("", "", "</L>");
-        String locationParamsXml = golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<L ", ">"));
+        String locationParamsXml = golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<L ", ">")); // add location data
         sj.add(locationParamsXml);
-        buildings.forEach(b -> sj.add(b.getBuildingXml()));
+        buildings.forEach(b -> sj.add(b.getBuildingXml()));                                                                                 //add buildings data
         return sj.toString();
     }
 

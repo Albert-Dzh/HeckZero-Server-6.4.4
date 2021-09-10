@@ -16,6 +16,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.Chat;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.world.Building;
 import ru.heckzero.server.world.Location;
 import ru.heckzero.server.world.Portal;
 
@@ -117,10 +118,9 @@ public class User {
         this.gameChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME))); //replace read timeout handler to a new one with a longer timeout defined for authorized user
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.loc_time, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time)); //compute client loc_time - time he is allowed to leave his location
-//        setParam(Params.nochat, 1);                                                                                                         //user has no chat socket connected upon login. He will be treated as chat off by his ROOM-mates
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);
-        chat.updateMyStatus();
+        chat.updateMyStatus();                                                                                                              //will add user to room
         return;
     }
 
@@ -129,7 +129,7 @@ public class User {
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
         disconnectChat();                                                                                                                   //chat without a game is ridiculous
         setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
-        chat.updateMyStatus();
+        chat.updateMyStatus();                                                                                                              //will remove user from room
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
         logger.info("user '%s' game channel logged out", getLogin());
         return;
@@ -154,14 +154,14 @@ public class User {
     }
 
     public void com_MYPARAM() {                                                                                                             //provision the client initial params as a reply for <GETME/>
-        logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
+        logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         StringJoiner xmlGetme = new StringJoiner(" ", "<MYPARAM ", "></MYPARAM>").add(getParamsXml(getmeParams, false));
         sendMsg(xmlGetme.toString());
         return;
     }
 
     public void com_GOLOC(String n, String d, String slow, String force, String pay, String t1, String t2) {
-        logger.info("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
+        logger.debug("processing <GOLOC/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
 
         int btnNum = NumberUtils.toInt(n, 5);                                                                                               //button number user has pressed on minimap (null -> 5 - means there was no movement made and this is just a locations request)
         if (btnNum < 1 || btnNum > 9) {                                                                                                     //bnt num must within 1-9
@@ -192,8 +192,7 @@ public class User {
 
             Long locTime = Instant.now().getEpochSecond() + Math.max(locationToGo.getParamInt(Location.Params.tm), 5);                      //compute a new loc_time for user(now + the location loc_time (location tm parameter))
             setParam(Params.loc_time, locTime);                                                                                             //set the new loc_time for a user
-            setRoom(locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));                              //actually change user coordinates to new location
-
+            setLocation(locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));                          //actually change user coordinates to new location
             String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, locationToGo.getParamInt(Location.Params.b) ^ 1);
             sendMsg(reply);
         }
@@ -232,11 +231,35 @@ public class User {
         return;
     }
 
+    public void com_GOBLD(int n) {                                                                                                          //user entering or exiting a building
+        logger.info("processing <GOBLD/> from %s", getLogin());
+        if (n == 0) {                                                                                                                       //user comes out of building
+            setRoom();                                                                                                                      //set Z, hz and ROOM params to 0
+            sendMsg("<OKGO/>");                                                                                                             //allow the user to go out
+            return;
+        }
+        Building bld = getLocation().getBuilding(n);                                                                                        //get the building info
+        if (bld.isEmpty()) {                                                                                                                //building does not exist
+            sendMsg("<ERRGO code=\"20\"/>");
+            return;
+        }
 
+        String bldClan = bld.getParamStr(Building.Params.clan);                                                                             //clan name this building belongs to
+        if (!bldClan.isBlank() && !getParamStr(Params.clan).equals(bldClan)) {                                                              //TODO check if user has a temporary building pass
+            sendMsg("<ERRGO code=\"20\"/>");                                                                                                //user can't go to a private building
+            return;
+        }
+
+        int bldType = bld.getParamInt(Building.Params.name);                                                                                //building type
+        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 0);                                        //TODO implement check if user is a buildmaster (owner=1)
+        setBuilding(n, bldType);                                                                                                            //place user inside the building (set params)
+        sendMsg(resultXML);
+        return;
+    }
 
     public void com_SILUET(String slt, String set) {
-        logger.info("processing <SILUET/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")));
-        logger.info("slt = %s, set = %s", slt, set);
+        logger.debug("processing <SILUET/> from %s", getLogin());
+        logger.debug("slt = %s, set = %s", slt, set);
         setParam(Params.siluet, set);
         String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>",  set);
         sendMsg(response);
@@ -250,14 +273,24 @@ public class User {
             logger.warn("invalid <POST/> command received from user %s, t = %s, got nothing to process", getLogin(), t);
         return;
     }
-    public void setRoom(int X, int Y) {setRoom(X, Y, 0, 0); }
-    public void setRoom(int X, int Y, int Z, int ROOM) {
-        chat.removeMe();
 
-        setParam(Params.X, X);
-        setParam(Params.Y, Y);
-        setParam(Params.Z, Z);
-        setParam(Params.ROOM, ROOM);
+    public void setRoom() {setRoom(-1, -1, 0, 0, 0);}                                                                                       //coming out
+    public void setLocation(int X, int Y) {setRoom(X, Y, -1, -1, -1);}                                                                      //only change a location
+    public void setBuilding(int Z, int hz) {setRoom(-1, -1, Z, hz, 0);}                                                                     //enter to building
+    public void setRoom(int ROOM) {setRoom(-1, -1, -1, -1, ROOM);}                                                                          //set room inside the building
+    public void setRoom(int X, int Y, int Z, int hz, int ROOM) {                                                                            //actually change user coordinates and other parameters
+        chat.removeMe();                                                                                                                    //remove user from chat room
+
+        if (X >= 0)
+            setParam(Params.X, X);
+        if (Y >= 0)
+            setParam(Params.Y, Y);
+        if (Z >= 0)
+            setParam(Params.Z, Z);
+        if (hz >= 0)
+            setParam(Params.hz, hz);
+        if (ROOM >= 0)
+            setParam(Params.ROOM, ROOM);
 
         chat.updateMyStatus();
         chat.showMeRoom();

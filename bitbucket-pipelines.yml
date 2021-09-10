@@ -1,0 +1,28 @@
+# This is an example Starter pipeline configuration
+# Use a skeleton to build, test and deploy using manual and parallel steps
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image: atlassian/default-image:2
+
+pipelines:
+  default:
+    - step:
+       script:
+       - echo "This script runs on all brunches that don't have specific pipeline assigned in 'branches'."
+
+  branches:
+    master:
+      - step:
+          name: "deploy server to production"
+          script:
+            - pipe: atlassian/ssh-run:0.3.1
+              variables:
+                SSH_USER: 'root'
+                SERVER: 'heckzero.adlernet.ru'
+                COMMAND: '/root/work/heckzero/server/heckzero-server-6.2.4/redeploy.sh'
+                MODE: 'command'
+                PORT: '22'
+#                SSH_KEY: '<string>'             # Optional
+#                EXTRA_ARGS: '<string>'          # Optional
+#                ENV_VARS: '<string>' # Optional
+#                DEBUG: '<string>' # Optional
