@@ -100,11 +100,11 @@ public class Chat {
 	}
 
 
-	public void showMeRoom() {																																										//Отправить игроку список всех игроков в одной комнате с ним
+	public void showMeRoom() {																												//send room (location) info and room-mates list to the user
 		Location locData = user.getLocation();
-		String roomData = String.format("Location [%d/%d] %s", locData.getLocalX(), locData.getLocalY() , (!locData.getParamStr(Location.Params.name).isEmpty()) ? " | " + locData.getParamStr(Location.Params.name) : "");
 
-		roomData += String.format("%s", user.getParamInt(User.Params.Z) != 0 ? " | " + locData.getBuilding(user.getParamInt(User.Params.Z)).getParamStr(Building.Params.txt) : "");	//add a house data in case a user is inside a house
+		String roomData = String.format("Location [%d/%d] %s", locData.getLocalX(), locData.getLocalY() , (!locData.getParamStr(Location.Params.name).isEmpty()) ? " | " + locData.getParamStr(Location.Params.name) : "");
+		roomData += String.format("%s", user.getParamInt(User.Params.Z) != 0 ? " | " + locData.getBuilding(user.getParamInt(User.Params.Z)).getParamStr(Building.Params.txt) : "");	//add a building visible name in case a user is inside a building
 		roomData += user.getParamInt(User.Params.ROOM) != 0 ?  String.format(" | Room %d", user.getParamInt(User.Params.ROOM)) : "";												//add a room data in case a user is inside some room within a house
 
 		StringJoiner sj = new StringJoiner(",", "<R t=\"" + roomData +"\t",  "\"/>");																								//create result string

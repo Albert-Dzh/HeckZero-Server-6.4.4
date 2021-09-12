@@ -5,7 +5,11 @@ import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.NaturalId;
+import org.hibernate.annotations.NaturalIdCache;
+import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
@@ -18,8 +22,8 @@ import java.util.stream.Collectors;
 @Entity(name = "Portal")
 @Table(name = "portals")
 @Cacheable
+@NaturalIdCache
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
-
 public class Portal {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
@@ -37,10 +41,11 @@ public class Portal {
     private String ds;                                                                                                                      //discount (%) for citizens
     private String city;                                                                                                                    //of that city
     private String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
-    private String p2;                                                                                                                      //corsair clone cost
+    private String p2;                                                                                                                      //corsair clone price
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
     private boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
 
+    @NaturalId
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "b_id")
     private Building building;                                                                                                              //building this portal associate with (foreign key to location_b)
@@ -49,15 +54,22 @@ public class Portal {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<PortalRoute> portalRoutes = new ArrayList<>();
 
-    public Portal() { }
-
-    public Building getBuilding() {
-        return building;
+    public static Portal getPortal(Building bld) {                                                                                          //try to get Portal by building id from a database
+        Session session = ServerMain.sessionFactory.openSession();
+        try (session) {
+            Portal portal = session.bySimpleNaturalId(Portal.class).load(bld);
+            return (portal == null) ? new Portal() : portal;                                                                                //return portal data from db or a default portal if it was not found in database
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load portal with b_id %d from database: %s, generating a default Portal instance", bld.getId(), e.getMessage());
+        }
+        return new Portal();                                                                                                                //in case of database error return a default portal
     }
-
+    protected Portal() { }
+    public boolean isEmpty() {return id == null;}
+    public Building getBuilding() {return building;}                                                                                        //return the building this portal represents
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
-    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+//    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 //    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
     public String getBigMapXml() {                                                                                                          //generate an object for the bigmap (city and/or portal)
@@ -77,5 +89,21 @@ public class Portal {
             return field.get(this);                                                                                                         //and return it (or an empty string if null)
         } catch (Exception e) {logger.error("can't get portal param %s: %s", paramName.toString(), e.getMessage()); }
         return StringUtils.EMPTY;
+    }
+
+    @Override
+    public String toString() {
+        return "Portal{" +
+                "id=" + id +
+                ", cash=" + cash +
+                ", ds='" + ds + '\'' +
+                ", city='" + city + '\'' +
+                ", p1='" + p1 + '\'' +
+                ", p2='" + p2 + '\'' +
+                ", bigmap_city='" + bigmap_city + '\'' +
+                ", bigmap_shown=" + bigmap_shown +
+                ", building=" + building +
+                ", portalRoutes=" + portalRoutes +
+                '}';
     }
 }

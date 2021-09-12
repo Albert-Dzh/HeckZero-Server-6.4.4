@@ -75,27 +75,26 @@ public class Location {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<Building> buildings = new ArrayList<>();
 
-    protected Location() { }
-
-    private Location (int X, int Y) {                                                                                                       //generate a default location
-        this.X = X;
-        this.Y = Y;
-        return;
-    }
-
     public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
     public static Location getLocation(int X, int Y) {                                                                                      //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
         try (session) {
             Location location = session.byNaturalId(Location.class).using("X", X).using("Y", Y).load();
-            return (location == null) ? new Location(X, Y) : location;                                                                      //return location data from db or a default if a location was not found in database
+            return (location == null) ? new Location(X, Y) : location;                                                                      //return location data from db or a default if location was not found in database
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load location %d/%d from database: %s, generating a default location", X, Y, e.getMessage());
         }
         return new Location(X, Y);                                                                                                          //in case of database error return a default location
     }
 
-    public Building getBuilding(int Z) {return buildings.stream().filter(b -> b.getParamInt(Building.Params.Z) == Z).findFirst().orElseGet(() -> new Building(Z)); } //return building by Z coordinate
+    protected Location() { }
+    private Location (int X, int Y) {                                                                                                       //generate a default location
+        this.X = X;
+        this.Y = Y;
+        return;
+    }
+
+    public Building getBuilding(int Z) {return buildings.stream().filter(b -> b.getParamInt(Building.Params.Z) == Z).findFirst().orElseGet(Building::new); } //return building by Z coordinate
 
     public int getX() {return getParamInt(Params.X);}                                                                                       //get location X coordinate (shortcut)
     public int getY() {return getParamInt(Params.Y);}                                                                                       //get location Y coordinate (shortcut)

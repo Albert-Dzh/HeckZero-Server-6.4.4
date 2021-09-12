@@ -78,8 +78,9 @@ public class User {
     private int getParam_level() {return 17;}
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
 
-    public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is in now
+    public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
+    public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
@@ -239,7 +240,7 @@ public class User {
             return;
         }
         Building bld = getLocation().getBuilding(n);                                                                                        //get the building info
-        if (bld.isEmpty()) {                                                                                                                //building does not exist
+        if (bld.isEmpty()) {                                                                                                                //suck building does not exist
             sendMsg("<ERRGO code=\"20\"/>");
             return;
         }
@@ -251,17 +252,24 @@ public class User {
         }
 
         int bldType = bld.getParamInt(Building.Params.name);                                                                                //building type
-        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 0);                                        //TODO implement check if user is a buildmaster (owner=1)
-        setBuilding(n, bldType);                                                                                                            //place user inside the building (set params)
+        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 0);                                        //TODO implement checking if user is a building owner
+        setBuilding(n, bldType);                                                                                                            //place the user inside the building (set proper params)
         sendMsg(resultXML);
         return;
     }
 
-    public void com_SILUET(String slt, String set) {
+    public void com_PR() {
+        logger.info("processing <PR/> from %s", getLogin());
+        Portal portal = Portal.getPortal(getBuilding());
+        logger.info("got portal %s", portal);
+
+        return;
+    }
+
+    public void com_SILUET(String slt, String set) {                                                                                        //set user body type
         logger.debug("processing <SILUET/> from %s", getLogin());
-        logger.debug("slt = %s, set = %s", slt, set);
         setParam(Params.siluet, set);
-        String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>",  set);
+        String response = String.format("<SILUET code=\"0\"/><MYPARAM siluet=\"%s\"/>", set);
         sendMsg(response);
         return;
     }

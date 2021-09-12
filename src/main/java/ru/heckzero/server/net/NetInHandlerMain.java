@@ -1,7 +1,6 @@
 package ru.heckzero.server.net;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -20,15 +19,14 @@ import ru.heckzero.server.user.UserManager;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.ByteArrayInputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-
                                                                                                                                             //TODO change class name to NetInHandler (remove 'Main' word)
 
 @Sharable
 public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LogManager.getFormatterLogger();
+                                                                                                                                            //we have only one instance of SAXFactory and ThreadLocal because this class is Sharable, so they don't need to be declared ad static
     private final SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();                                                //create SAX XML parser factory
     private final ThreadLocal<SAXParser> tlParser = ThreadLocal.withInitial(() -> {try {return saxParserFactory.newSAXParser();} catch (Exception e) {logger.error("can't create SAX parser: %s", e.getMessage()); return null;}});
 

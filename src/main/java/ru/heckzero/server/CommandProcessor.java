@@ -101,7 +101,7 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-        private void com_GAME_MMP(Attributes attrs) {                                                                                          //user requests a location set for a 5x5 big map
+    private void com_GAME_MMP(Attributes attrs) {                                                                                           //user requests a location set for a 5x5 big map
         String param = attrs.getValue("param");
         user.com_MMP(param);
         return;
@@ -116,6 +116,11 @@ public class CommandProcessor extends DefaultHandler {
         logger.debug("processing <GOBLD/> command from %s", user.getLogin());
         String n = attrs.getValue("n");
         user.com_GOBLD(NumberUtils.toInt(n));
+        return;
+    }
+
+    private void com_GAME_PR(Attributes attrs) {                                                                                            //portal operations
+        user.com_PR();
         return;
     }
 

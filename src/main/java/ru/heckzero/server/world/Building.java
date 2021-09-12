@@ -31,14 +31,14 @@ public class Building {
 
     @Column(name = "\"X\"") private int X = 20;                                                                                             //X,Y coordinate within a location
     @Column(name = "\"Y\"") private int Y = 8;
-    @Column(name = "\"Z\"")private int Z;                                                                                                   //unique building number withing a location
+    @Column(name = "\"Z\"") private int Z = 0;                                                                                              //unique building number withing a location
 
-    private String txt = "a stub building";                                                                                         //building description
+    private String txt = "!!!STUB!!!";                                                                                                      //building visible name
     @Column(name = "\"maxHP\"")
     private String maxHP;
     @Column(name = "\"HP\"")
     private String HP;
-    private int name = 0;                                                                                                                   //building type 0 - no building
+    private int name;                                                                                                                       //building type 0 - no building
     private String upg;
     private String maxl;
     private String repair;
@@ -49,14 +49,14 @@ public class Building {
     private Location location;                                                                                                              //location association
 
     protected Building() { }
-    public Building(int Z) {this.Z = Z;}                                                                                                    //constructor with a certain Z coordinate
 
-    public boolean isEmpty() {return name == 0;}
+    public boolean isEmpty() {return id == null;}
 
-    public Location getLocation() {                                                                                                         //get the location this Building belongs to
-        return location;
+    public Integer getId() {
+        return id;
     }
 
+    public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
