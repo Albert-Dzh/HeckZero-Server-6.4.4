@@ -7,12 +7,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
-import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.annotations.NaturalId;
-import org.hibernate.annotations.NaturalIdCache;
+import org.hibernate.annotations.*;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.Table;
 import javax.persistence.*;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -69,19 +70,24 @@ public class Location {
     private String o = "";                                                                                                                  //radiation level if o < 999 or not accessible if o >=999
     private String p = StringUtils.EMPTY;                                                                                                   //location road condition ?
     private String repair = StringUtils.EMPTY;                                                                                              //location road is being repairing  ?
-    private String monsters = "2,2,2;3,3,3";                                                                                                //monster type (attribute "m" in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
+    private String monsters = "2,2,2;3,3,3";                                                                                                //location monsters type and count (attribute "m" in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
 
-    @OneToMany(mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<Building> buildings = new ArrayList<>();
 
-    public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
+    public static Location getLocation(int X, int Y, int btnNum) {logger.info("btn = %d", btnNum); return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
     public static Location getLocation(int X, int Y) {                                                                                      //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
         try (session) {
-            Location location = session.byNaturalId(Location.class).using("X", X).using("Y", Y).load();
-            return (location == null) ? new Location(X, Y) : location;                                                                      //return location data from db or a default if location was not found in database
+            Location location = session.createQuery("select l from Location l left join fetch l.buildings where l.X = :X and l.Y = :Y", Location.class).setParameter("X", X).setParameter("Y", Y).setCacheable(true).uniqueResult();
+            if (location != null) {
+                location.buildings.size();                                                                                                      //get (initialize) buildings collection from the L2 cache or db on subsequent queries
+                return location;
+            } else
+                logger.warn("location %d/%d (%d/%d) does not exist in database, generation a default location instead", X, Y, normalLocToLocal(X), normalLocToLocal(Y));
         } catch (Exception e) {                                                                                                             //database problem occurred
+            e.printStackTrace();
             logger.error("can't load location %d/%d from database: %s, generating a default location", X, Y, e.getMessage());
         }
         return new Location(X, Y);                                                                                                          //in case of database error return a default location

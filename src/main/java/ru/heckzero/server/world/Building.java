@@ -9,11 +9,12 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
-import java.util.EnumSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity(name = "Building")
 @Table(name = "locations_b")
+@Inheritance(strategy = InheritanceType.JOINED)
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class Building {
@@ -34,17 +35,15 @@ public class Building {
     @Column(name = "\"Z\"") private int Z = 0;                                                                                              //unique building number withing a location
 
     private String txt = "!!!STUB!!!";                                                                                                      //building visible name
-    @Column(name = "\"maxHP\"")
-    private String maxHP;
-    @Column(name = "\"HP\"")
-    private String HP;
-    private int name;                                                                                                                       //building type 0 - no building
+    @Column(name = "\"maxHP\"") private String maxHP;
+    @Column(name = "\"HP\"") private String HP;
+    private int name = 188;                                                                                                                 //building type 188 - ruins
     private String upg;
     private String maxl;
     private String repair;
-    private String clan;
+    private String clan;                                                                                                                    //clan which owns the building
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "l_id")
     private Location location;                                                                                                              //location association
 
@@ -63,10 +62,25 @@ public class Building {
     public String getBuildingXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
     private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
+        List<Field> fields = getAllFields(this.getClass());
+        Field field = fields.stream().filter(f -> f.getName().equals(paramName.toString())).findFirst().orElse(null);
+        if (field == null) {
+            logger.error("can't get building (%s) param %s: such field does not exist", this.getClass().getSimpleName(), paramName.toString());
+            return StringUtils.EMPTY;
+        }
         try {
-            Field field = this.getClass().getDeclaredField(paramName.toString());
             return field.get(this);                                                                                                         //and return it (or an empty string if null)
-        } catch (Exception e) {logger.error("can't get building param %s: %s", paramName.toString(), e.getMessage()); }
+        } catch (Exception e) {logger.error("can't get building (%s) param %s: %s", this.getClass().getSimpleName(), paramName.toString(), e.getMessage());}
+
         return StringUtils.EMPTY;
     }
+
+    private List<Field> getAllFields(Class clazz) {
+        if (clazz == null)
+            return Collections.emptyList();
+        List<Field> result = new ArrayList<>(getAllFields(clazz.getSuperclass()));
+        result.addAll(Arrays.asList(clazz.getDeclaredFields()));
+        return result;
+    }
+
 }

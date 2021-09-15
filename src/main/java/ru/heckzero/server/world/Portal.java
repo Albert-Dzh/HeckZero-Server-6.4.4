@@ -7,12 +7,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.annotations.NaturalId;
-import org.hibernate.annotations.NaturalIdCache;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -21,21 +18,14 @@ import java.util.stream.Collectors;
 
 @Entity(name = "Portal")
 @Table(name = "portals")
-@Cacheable
-@NaturalIdCache
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
-public class Portal {
+@PrimaryKeyJoinColumn(name = "b_id")
+public class Portal extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum Params {cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
-    private static final EnumSet<Params> portalParams = EnumSet.of(Params.cash, Params.ds, Params.city, Params.p1, Params.p2, Params.bigmap_city, Params.bigmap_shown);
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "portal_generator_sequence")
-    @SequenceGenerator(name = "portal_generator_sequence", sequenceName = "portals_id_seq", allocationSize = 1)
-    private Integer id;
+    public enum PortalParams {cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
+    private static final EnumSet<PortalParams> portalParams = EnumSet.of(PortalParams.cash, PortalParams.ds, PortalParams.city, PortalParams.p1, PortalParams.p2, PortalParams.bigmap_city, PortalParams.bigmap_shown);
 
     private int cash;                                                                                                                       //portal cash
     private String ds;                                                                                                                      //discount (%) for citizens
@@ -45,65 +35,46 @@ public class Portal {
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
     private boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
 
-    @NaturalId
-    @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "b_id")
-    private Building building;                                                                                                              //building this portal associate with (foreign key to location_b)
-
-    @OneToMany(mappedBy = "srcPortal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "srcPortal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-    private final List<PortalRoute> portalRoutes = new ArrayList<>();
+    private final List<PortalRoute> routes = new ArrayList<>();
 
-    public static Portal getPortal(Building bld) {                                                                                          //try to get Portal by building id from a database
+    public List<PortalRoute> getRoutes() { return routes; }
+
+    public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
         Session session = ServerMain.sessionFactory.openSession();
         try (session) {
-            Portal portal = session.bySimpleNaturalId(Portal.class).load(bld);
+            Portal portal = session.get(Portal.class, id);
             return (portal == null) ? new Portal() : portal;                                                                                //return portal data from db or a default portal if it was not found in database
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load portal with b_id %d from database: %s, generating a default Portal instance", bld.getId(), e.getMessage());
+            logger.error("can't load portal with id %d from database: %s, generating a default Portal instance", id, e.getMessage());
         }
         return new Portal();                                                                                                                //in case of database error return a default portal
     }
     protected Portal() { }
-    public boolean isEmpty() {return id == null;}
-    public Building getBuilding() {return building;}                                                                                        //return the building this portal represents
-    public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
-//    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-//    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
     public String getBigMapXml() {                                                                                                          //generate an object for the bigmap (city and/or portal)
         StringJoiner sj = new StringJoiner("");
         if (StringUtils.isNotBlank(bigmap_city))                                                                                            //this portal "represents" a city on bigmap
-            sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, building.getLocation().getLocalX(), building.getLocation().getLocalY()));
+            sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, getLocation().getLocalX(), getLocation().getLocalY()));
 
-        String routes = portalRoutes.stream().map(PortalRoute::getBigMapData).filter(StringUtils::isNoneBlank).collect(Collectors.joining(";")); //get portal routes (from this portal)
+        String routes = this.routes.stream().map(PortalRoute::getBigMapData).filter(StringUtils::isNoneBlank).collect(Collectors.joining(";")); //get portal routes (from this portal)
         if (!routes.isEmpty())
-            sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\" linked=\"%s;\"/>", building.getParamStr(Building.Params.txt), building.getLocation().getLocalX(), building.getLocation().getLocalY(), routes));
+            sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\" linked=\"%s;\"/>", getParamStr(Building.Params.txt), getLocation().getLocalX(), getLocation().getLocalY(), routes));
         return sj.toString();
-    }
-
-    private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
-        try {
-            Field field = this.getClass().getDeclaredField(paramName.toString());
-            return field.get(this);                                                                                                         //and return it (or an empty string if null)
-        } catch (Exception e) {logger.error("can't get portal param %s: %s", paramName.toString(), e.getMessage()); }
-        return StringUtils.EMPTY;
     }
 
     @Override
     public String toString() {
         return "Portal{" +
-                "id=" + id +
-                ", cash=" + cash +
+                "cash=" + cash +
                 ", ds='" + ds + '\'' +
                 ", city='" + city + '\'' +
                 ", p1='" + p1 + '\'' +
                 ", p2='" + p2 + '\'' +
                 ", bigmap_city='" + bigmap_city + '\'' +
                 ", bigmap_shown=" + bigmap_shown +
-                ", building=" + building +
-                ", portalRoutes=" + portalRoutes +
+                ", portalRoutes=" + routes +
                 '}';
     }
 }

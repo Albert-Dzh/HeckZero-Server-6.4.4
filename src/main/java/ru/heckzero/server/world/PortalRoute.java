@@ -11,7 +11,6 @@ import javax.persistence.*;
 @Table(name = "portal_routes")
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
-
 public class PortalRoute {
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -25,14 +24,18 @@ public class PortalRoute {
     private boolean bigmap_shown;                                                                                                           //include this route into bigmap data
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "p_id")
-    private Portal srcPortal;                                                                                                               //Portal id this route goes from (foreign key to portals)
+    @JoinColumn(name = "p_id_src")
+    private Portal srcPortal;                                                                                                               //Portal id this route goes from (foreign key to portals b_id)
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "d_id")
-    private Portal dstPortal;                                                                                                               //Building id this route goes to (foreign key to location_b)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "p_id_dst")
+    private Portal dstPortal;                                                                                                               //Portal id this route goes to (foreign key to portals b_id)
 
     public PortalRoute() {  }
 
-    public String getBigMapData() {return bigmap_shown ? String.format("%d,%d", dstPortal.getBuilding().getLocation().getLocalX(), dstPortal.getBuilding().getLocation().getLocalY()) : StringUtils.EMPTY; }
+    public Portal getDstPortal() {
+        return dstPortal;
+    }
+
+    public String getBigMapData() {return bigmap_shown ? String.format("%d,%d", dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY()) : StringUtils.EMPTY; }
 }

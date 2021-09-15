@@ -49,7 +49,7 @@ public class User {
     @SequenceGenerator(name = "user_generator_sequence", sequenceName = "users_id_seq", allocationSize = 1)
     private Integer id;
 
-    @Embedded
+    @Embedded                                                                                                                               //TODO can it be declared static???
     private final UserParams params = new UserParams();                                                                                     //user params that can be set (read-write) are placed there
 
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
@@ -172,7 +172,6 @@ public class User {
         }
         Location locationToGo = getLocation(btnNum);                                                                                        //get the location data user wants move to or the current user location if there was no movement requested
         StringJoiner sj = new StringJoiner("", "<GOLOC", "</GOLOC>");                                                                       //start formatting a <GOLOC> reply
-
         if (btnNum != 5) {                                                                                                                  //user moves to another location
             if (locationToGo.getLocBtnNum(this) != btnNum) {                                                                                //getLocBtnNum() must return the same btnNum as user has tapped
                 logger.warn("user %s tried to move to inapplicable location from %d/%d to %d/%d", getLogin(), getParam(Params.X), getParam(Params.Y), locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));
@@ -221,8 +220,10 @@ public class User {
         List <Portal> portals = new ArrayList<>();
 
         try (session) {
-            Query<Portal> query = session.createQuery("select p from Portal p where cast(p.bigmap_shown as integer) = 1", Portal.class).setCacheable(true);
+            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr inner join fetch p.location where cast(p.bigmap_shown as integer) = 1", Portal.class).setCacheable(true);
             portals = query.list();
+            portals.forEach(p -> p.getLocation().getX());
+            portals.forEach(p -> p.getRoutes().size());
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load bigmap data: %s", e.getMessage());
             e.printStackTrace();
@@ -260,7 +261,7 @@ public class User {
 
     public void com_PR() {
         logger.info("processing <PR/> from %s", getLogin());
-        Portal portal = Portal.getPortal(getBuilding());
+        Portal portal = Portal.getPortal(getBuilding().getId());
         logger.info("got portal %s", portal);
 
         return;
