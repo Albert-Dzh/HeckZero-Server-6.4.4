@@ -6,6 +6,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.annotations.*;
 import ru.heckzero.server.ServerMain;
@@ -76,16 +77,17 @@ public class Location {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<Building> buildings = new ArrayList<>();
 
-    public static Location getLocation(int X, int Y, int btnNum) {logger.info("btn = %d", btnNum); return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
+    public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
     public static Location getLocation(int X, int Y) {                                                                                      //try to get location from a database
         Session session = ServerMain.sessionFactory.openSession();
         try (session) {
             Location location = session.createQuery("select l from Location l left join fetch l.buildings where l.X = :X and l.Y = :Y", Location.class).setParameter("X", X).setParameter("Y", Y).setCacheable(true).uniqueResult();
             if (location != null) {
-                location.buildings.size();                                                                                                      //get (initialize) buildings collection from the L2 cache or db on subsequent queries
+                if (!Hibernate.isInitialized(location.buildings))
+                    Hibernate.initialize(location.buildings);                                                                               //initialize buildings collection from the L2 cache or db on subsequent queries
                 return location;
             } else
-                logger.warn("location %d/%d (%d/%d) does not exist in database, generation a default location instead", X, Y, normalLocToLocal(X), normalLocToLocal(Y));
+                logger.debug("location %d/%d (%d/%d) does not exist in database, generating a default location", X, Y, normalLocToLocal(X), normalLocToLocal(Y));
         } catch (Exception e) {                                                                                                             //database problem occurred
             e.printStackTrace();
             logger.error("can't load location %d/%d from database: %s, generating a default location", X, Y, e.getMessage());

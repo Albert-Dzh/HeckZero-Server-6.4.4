@@ -37,7 +37,7 @@ public class Building {
     private String txt = "!!!STUB!!!";                                                                                                      //building visible name
     @Column(name = "\"maxHP\"") private String maxHP;
     @Column(name = "\"HP\"") private String HP;
-    private int name = 188;                                                                                                                 //building type 188 - ruins
+    private int name = 188;                                                                                                                 //building type - ruins by default
     private String upg;
     private String maxl;
     private String repair;
@@ -45,7 +45,7 @@ public class Building {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "l_id")
-    private Location location;                                                                                                              //location association
+    protected Location location;                                                                                                              //location association
 
     protected Building() { }
 

@@ -5,8 +5,10 @@ import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
@@ -39,19 +41,43 @@ public class Portal extends Building {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
-    public List<PortalRoute> getRoutes() { return routes; }
+    public List<PortalRoute> getRoutes() {return routes;}
+
+    public static List<Portal> getAllPortals() {
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr inner join fetch p.location where cast(p.bigmap_shown as integer) = 1", Portal.class).setCacheable(true);
+            List<Portal> portals = query.list();
+            portals.forEach(Portal::ensureInitialized);                                                                                     //initialize location and routes on subsequent queries from L2 cache
+            return portals;
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load bigmap data: %s", e.getMessage());
+            e.printStackTrace();
+        }
+        return new ArrayList<Portal>(0);
+    }
 
     public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
         Session session = ServerMain.sessionFactory.openSession();
         try (session) {
             Portal portal = session.get(Portal.class, id);
-            return (portal == null) ? new Portal() : portal;                                                                                //return portal data from db or a default portal if it was not found in database
+            if (portal != null) {
+                portal.ensureInitialized();
+                return portal;
+            }
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load portal with id %d from database: %s, generating a default Portal instance", id, e.getMessage());
         }
-        return new Portal();                                                                                                                //in case of database error return a default portal
+        return new Portal();                                                                                                                //in case of portal was not found or database error return a default portal instance
     }
     protected Portal() { }
+
+    private void ensureInitialized() {
+        if (!Hibernate.isInitialized(location))
+            Hibernate.initialize(location);
+        if (!Hibernate.isInitialized(routes))
+            Hibernate.initialize(routes);
+        return;
+    }
 
     public String getBigMapXml() {                                                                                                          //generate an object for the bigmap (city and/or portal)
         StringJoiner sj = new StringJoiner("");

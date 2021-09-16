@@ -64,32 +64,34 @@ public class Chat {
 	}
 
 	public void removeMe() {																									 		    //send every room-mate that user has left the room
-		UserManager.getRoomMates(this.user).forEach(dude -> dude.sendMsgChat(String.format("<D t=\"%s\" /> ", user.getLogin())));
+		UserManager.getRoomMates(this.user).forEach(dude -> dude.sendMsgChat(String.format("<D t=\"%s\"/> ", user.getLogin())));
 		return;
 	}
 
-	public void updateMyStatus() {					 																			   			//send every room-mate the user has arrived, or if it's status has been changed
-		if (user.isInGame())
-			UserManager.getRoomMates(this.user).forEach(dude -> dude.sendMsgChat(String.format("<A t=\"%s/%s/%d/%s/%s/%d\"/> ", user.getParamStr(User.Params.battleid), user.getParamStr(User.Params.group), chatStatus(dude, user), user.getParamStr(User.Params.clan), user.getLogin(), user.getParamInt(User.Params.level))));
+	public void updateMyStatus() {					 																			   			//send every room-mate the info about the user that has arrived, or if his status has been changed
+		if (user.isInGame())																												//battleId, group, status, clan, login, level, rank
+			UserManager.getRoomMates(this.user).forEach(dude -> dude.sendMsgChat(String.format("<A t=\"%s/%s/%d/%s/%s/%d/%d\"/> ", user.getParamStr(User.Params.battleid), user.getParamStr(User.Params.group), chatStatus(dude, user), user.getParamStr(User.Params.clan), user.getLogin(), user.getParamInt(User.Params.level), user.getParamInt(User.Params.rank_points))));
 		else
 			removeMe();
 		return;
 	}
 
 	private int chatStatus(User forU, User aboutU) {																						//make chat status for toU about aboutU
-		int MASK_ONLINE = 1, MASK_SLEEP = 2, MASK_BANDIT = 4, MASK_CLAIM = 8, MASK_BATTLE = 16, MASK_BOT = 2048, MASK_FRIEND = 4096, MASK_WOMAN = 8192;
+		int MASK_ONLINE = 1, MASK_SLEEP = 2, MASK_BANDIT = 4, MASK_CLAIM = 8, MASK_BATTLE = 16, MASK_GROUP = 24, MASK_BOT = 2048, MASK_FRIEND = 4096, MASK_WOMAN = 8192, MASK_CASINO = 16384;
 		int status = 0;
 
 		String contactGroup =  getContactGroup(forU, aboutU);																				//PDA contacts group name containing aboutU or an empty string if contact is not in a group
 		status |= (aboutU.getParamInt(User.Params.nochat) ^ 1) * MASK_ONLINE;																//neighbor has his chat on/off
 		status |= aboutU.getParamInt(User.Params.chatblock) > System.currentTimeMillis() / 1000L ?  MASK_SLEEP : 0;				    		//neighbor's chat is blocked by police (read only)
-		status |= contactGroup.equalsIgnoreCase("ДРУЗЬЯ") ? MASK_FRIEND : 0;																//check if aboutU is a friend (in group FRIENDS)
 		status |= contactGroup.equalsIgnoreCase("ВРАГИ") || contactGroup.equalsIgnoreCase("АВТОНАПАДЕНИЕ") ? MASK_BANDIT : 0;	    		//aboutU is bad guy for ForU
-		status |= aboutU.getParamInt(User.Params.pro) << 5;																					//user's profession
-		status |= aboutU.isInClaim() ?  MASK_CLAIM : 0;																						//user is in a claim
-		status |= aboutU.isInBattle() ?  MASK_BATTLE : 0;																					//user is in a battle
-		status |= aboutU.getParamInt(User.Params.bot) * MASK_BOT;																			//user is a bot
+		status |= aboutU.isInClaim() ? MASK_CLAIM : 0;																						//user is in a arena claim
+		status |= aboutU.isInBattle() ? MASK_BATTLE : 0;																					//user is in a battle
+		status |= aboutU.getParamInt(User.Params.bot) * MASK_BOT;																			//user is a bot or human
+		status |= contactGroup.equalsIgnoreCase("ДРУЗЬЯ") ? MASK_FRIEND : 0;																//check if aboutU is a friend (in group FRIENDS)
 		status |= (aboutU.getParamInt(User.Params.man) ^ 1) * MASK_WOMAN;																	//this is a woman (man = 0)
+		status |= 0 * MASK_CASINO;																											//user is playing in a casino
+		status |= 0 * MASK_GROUP;																											//user is in group, the group number will be taken from a second argument of <A> or <R> message
+		status |= aboutU.getParamInt(User.Params.pro) << 5;																					//user's profession
 		return status;
 	}
 
@@ -99,16 +101,15 @@ public class Chat {
 		return StringUtils.stripStart(splitted.stream().filter(e -> e.startsWith("$") && splitted.indexOf(e) < splitted.indexOf(contact.getLogin())).reduce((st, nd) -> nd).orElse(""), "$");	//strip the very first symbol $
 	}
 
-
 	public void showMeRoom() {																												//send room (location) info and room-mates list to the user
 		Location locData = user.getLocation();
 
 		String roomData = String.format("Location [%d/%d] %s", locData.getLocalX(), locData.getLocalY() , (!locData.getParamStr(Location.Params.name).isEmpty()) ? " | " + locData.getParamStr(Location.Params.name) : "");
 		roomData += String.format("%s", user.getParamInt(User.Params.Z) != 0 ? " | " + locData.getBuilding(user.getParamInt(User.Params.Z)).getParamStr(Building.Params.txt) : "");	//add a building visible name in case a user is inside a building
-		roomData += user.getParamInt(User.Params.ROOM) != 0 ?  String.format(" | Room %d", user.getParamInt(User.Params.ROOM)) : "";												//add a room data in case a user is inside some room within a house
+		roomData += user.getParamInt(User.Params.ROOM) != 0 ?  String.format(" | Room %d", user.getParamInt(User.Params.ROOM)) : "";		//add a room data in case a user is inside some room within a building
 
-		StringJoiner sj = new StringJoiner(",", "<R t=\"" + roomData +"\t",  "\"/>");																								//create result string
-		UserManager.getRoomMates(this.user).forEach(dude -> sj.add(String.format("%s/%s/%d/%s/%s/%d", dude.getParamStr(User.Params.battleid), dude.getParamStr(User.Params.group), chatStatus(user, dude), dude.getParamStr(User.Params.clan), dude.getLogin(), dude.getParamInt(User.Params.level))));
+		StringJoiner sj = new StringJoiner(",", "<R t=\"" + roomData +"\t", "\"/>");														//create a result string <R/> 	battleId, group, status, clan, login, level, rank
+		UserManager.getRoomMates(this.user).forEach(dude -> sj.add(String.format("%s/%s/%d/%s/%s/%d/%d", dude.getParamStr(User.Params.battleid), dude.getParamStr(User.Params.group), chatStatus(user, dude), dude.getParamStr(User.Params.clan), dude.getLogin(), dude.getParamInt(User.Params.level), dude.getParamInt(User.Params.rank_points))));
 		user.sendMsgChat(sj.toString());
 		return;
 	}

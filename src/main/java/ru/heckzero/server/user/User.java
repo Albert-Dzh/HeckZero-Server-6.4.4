@@ -11,9 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.query.Query;
 import ru.heckzero.server.Chat;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.world.Building;
@@ -214,20 +212,9 @@ public class User {
         return;
     }
 
-    public void com_BIGMAP() {
-        Session session = ServerMain.sessionFactory.openSession();
+    public void com_BIGMAP() {                                                                                                              //The world map - cities portals and routes
         StringJoiner sj = new StringJoiner("", "<BIGMAP>", "</BIGMAP>");
-        List <Portal> portals = new ArrayList<>();
-
-        try (session) {
-            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr inner join fetch p.location where cast(p.bigmap_shown as integer) = 1", Portal.class).setCacheable(true);
-            portals = query.list();
-            portals.forEach(p -> p.getLocation().getX());
-            portals.forEach(p -> p.getRoutes().size());
-        } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load bigmap data: %s", e.getMessage());
-            e.printStackTrace();
-        }
+        List <Portal> portals = Portal.getAllPortals();
         portals.forEach(p -> sj.add(p.getBigMapXml()));
         sendMsg(sj.toString());
         return;
@@ -259,8 +246,8 @@ public class User {
         return;
     }
 
-    public void com_PR() {
-        logger.info("processing <PR/> from %s", getLogin());
+    public void com_PR() {                                                                                                                  //user - portal exchanging
+        logger.debug("processing <PR/> from %s", getLogin());
         Portal portal = Portal.getPortal(getBuilding().getId());
         logger.info("got portal %s", portal);
 
