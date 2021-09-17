@@ -240,7 +240,7 @@ public class User {
         }
 
         int bldType = bld.getParamInt(Building.Params.name);                                                                                //building type
-        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 0);                                        //TODO implement checking if user is a building owner
+        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 1);                                        //TODO implement checking if user is a building owner
         setBuilding(n, bldType);                                                                                                            //place the user inside the building (set proper params)
         sendMsg(resultXML);
         return;
@@ -249,7 +249,13 @@ public class User {
     public void com_PR() {                                                                                                                  //user - portal exchanging
         logger.debug("processing <PR/> from %s", getLogin());
         Portal portal = Portal.getPortal(getBuilding().getId());
-        logger.info("got portal %s", portal);
+
+        StringJoiner sj = new StringJoiner("", "", "</PR>");
+        String portalXml = String.format("<PR p1=\"10,20,30\" %s >", portal.getPortalXml());
+        sj.add(portalXml);
+
+        sj.add("<O txt=\"jopa\" X=\"10\" Y=\"10\" cost=\"5\" ds=\"15\" city=\"Prisone\" />");
+        sendMsg(sj.toString());
 
         return;
     }

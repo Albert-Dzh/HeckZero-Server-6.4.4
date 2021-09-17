@@ -125,7 +125,7 @@ public class Location {
         StringJoiner sj = new StringJoiner("", "", "</L>");
         String locationParamsXml = golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<L ", ">")); // add location data
         sj.add(locationParamsXml);
-        buildings.forEach(b -> sj.add(b.getBuildingXml()));                                                                                 //add buildings data
+        buildings.forEach(bld -> sj.add(bld.getXml()));                                                                                     //add buildings data
         return sj.toString();
     }
 

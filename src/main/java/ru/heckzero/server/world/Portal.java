@@ -12,10 +12,7 @@ import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity(name = "Portal")
@@ -26,14 +23,14 @@ public class Portal extends Building {
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum PortalParams {cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
-    private static final EnumSet<PortalParams> portalParams = EnumSet.of(PortalParams.cash, PortalParams.ds, PortalParams.city, PortalParams.p1, PortalParams.p2, PortalParams.bigmap_city, PortalParams.bigmap_shown);
+//    public enum Params {cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
+    private static final EnumSet<Params> portalParams = EnumSet.of(Params.cash, Params.ds, Params.city, Params.p1, Params.p2);
 
-    private int cash;                                                                                                                       //portal cash
-    private String ds;                                                                                                                      //discount (%) for citizens
-    private String city;                                                                                                                    //of that city
-    private String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
-    private String p2;                                                                                                                      //corsair clone price
+    protected int cash;                                                                                                                       //portal cash
+    protected String ds;                                                                                                                      //discount (%) for citizens
+    protected String city;                                                                                                                    //of that city
+    protected String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
+    protected String p2;                                                                                                                      //corsair clone price
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
     private boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
 
@@ -53,7 +50,7 @@ public class Portal extends Building {
             logger.error("can't load bigmap data: %s", e.getMessage());
             e.printStackTrace();
         }
-        return new ArrayList<Portal>(0);
+        return Collections.emptyList();
     }
 
     public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
@@ -89,6 +86,8 @@ public class Portal extends Building {
             sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\" linked=\"%s;\"/>", getParamStr(Building.Params.txt), getLocation().getLocalX(), getLocation().getLocalY(), routes));
         return sj.toString();
     }
+//    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
 
     @Override
     public String toString() {

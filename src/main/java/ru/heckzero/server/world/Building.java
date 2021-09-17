@@ -22,7 +22,7 @@ public class Building {
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum Params {X, Y, Z, txt, maxHP, HP, name, upg, maxl, repair, clan};
+    public enum Params {X, Y, Z, txt, maxHP, HP, name, upg, maxl, repair, clan,      cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
     private static final EnumSet<Params> bldParams = EnumSet.of(Params.X, Params.Y, Params.Z, Params.txt, Params.maxHP, Params.HP, Params.name, Params.upg, Params.maxl, Params.repair, Params.clan);
 
     @Id
@@ -58,8 +58,8 @@ public class Building {
     public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
-    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-    public String getBuildingXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
+    protected String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    public String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
     private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
         List<Field> fields = getAllFields(this.getClass());
@@ -75,7 +75,7 @@ public class Building {
         return StringUtils.EMPTY;
     }
 
-    private List<Field> getAllFields(Class clazz) {
+    private List<Field> getAllFields(Class clazz) {                                                                                         //get all declared field from child and parent classes
         if (clazz == null)
             return Collections.emptyList();
         List<Field> result = new ArrayList<>(getAllFields(clazz.getSuperclass()));
