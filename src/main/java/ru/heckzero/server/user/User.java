@@ -250,11 +250,12 @@ public class User {
         logger.debug("processing <PR/> from %s", getLogin());
         Portal portal = Portal.getPortal(getBuilding().getId());
 
-        StringJoiner sj = new StringJoiner("", "", "</PR>");
-        String portalXml = String.format("<PR p1=\"10,20,30\" %s >", portal.getPortalXml());
+        StringJoiner sj = new StringJoiner("", "<PR ", "</PR>");
+        String portalXml = String.format("%s>", portal.getPortalXml());
         sj.add(portalXml);
 
-        sj.add("<O txt=\"jopa\" X=\"10\" Y=\"10\" cost=\"5\" ds=\"15\" city=\"Prisone\" />");
+        sj.add("<O txt=\"jopa\" X=\"10\" Y=\"10\" cost=\"5\" ds=\"23\" city=\"Prisone\" />");
+        sj.add("<O name=\"b2-s1\" count=\"10\" txt=\"source1\" />");
         sendMsg(sj.toString());
 
         return;

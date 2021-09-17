@@ -26,11 +26,11 @@ public class Portal extends Building {
 //    public enum Params {cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
     private static final EnumSet<Params> portalParams = EnumSet.of(Params.cash, Params.ds, Params.city, Params.p1, Params.p2);
 
-    protected int cash;                                                                                                                       //portal cash
-    protected String ds;                                                                                                                      //discount (%) for citizens
-    protected String city;                                                                                                                    //of that city
-    protected String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
-    protected String p2;                                                                                                                      //corsair clone price
+    protected int cash;                                                                                                                     //portal cash
+    protected String ds;                                                                                                                    //discount (%) for citizens
+    protected String city;                                                                                                                  //of that city
+    protected String p1;                                                                                                                    //resources needed to teleport 1000 weight units ?
+    protected String p2;                                                                                                                    //corsair clone price
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
     private boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
 
