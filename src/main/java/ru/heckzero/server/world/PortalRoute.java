@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
+import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
@@ -25,7 +26,7 @@ public class PortalRoute {
     private Integer id;
 
     @Column(name = "\"ROOM\"") private int ROOM;                                                                                            //room inside the building this route goes to
-    private int cost;                                                                                                                       //1000 weight units teleportation price
+    private double cost;                                                                                                                    //1000 weight units teleportation price
     private boolean enabled;                                                                                                                //this route is enabled
     private boolean bigmap_enabled;                                                                                                         //include this route into bigmap data
 
@@ -37,14 +38,29 @@ public class PortalRoute {
     @JoinColumn(name = "p_id_dst")
     private Portal dstPortal;                                                                                                               //Portal id this route goes to (foreign key to portals b_id)
 
-    public static List<PortalRoute> getComeinRoutes(int p_id) {                                                                             //incoming routes for portal p_id
+    public static PortalRoute getRoute(int route_id) {                                                                                      //get PortalRoute by the given id
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.srcPortal p_src inner join fetch pr.dstPortal p_dst inner join fetch p_src.location where p_dst.id = :id", PortalRoute.class).setParameter("id", p_id).setCacheable(true);
+            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.dstPortal p_dst inner join p_dst.location loc_dst where pr.id = :id", PortalRoute.class).setParameter("id", route_id).setCacheable(true);
+            PortalRoute route = query.getSingleResult();
+            if (route != null) {
+                Hibernate.initialize(route.getDstPortal().getLocation());
+                return route;
+            }else
+                logger.error("cant find portal route with id %d in database. Check it out!", route_id);
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load portal route with id %d from database: %s", route_id, e.getMessage());
+        }
+        return null;
+    }
+
+    public static List<PortalRoute> getComeinRoutes(int p_dst_id) {                                                                         //get routes with the given destination portal id
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.srcPortal p_src inner join fetch pr.dstPortal p_dst inner join fetch p_src.location where p_dst.id = :id", PortalRoute.class).setParameter("id", p_dst_id).setCacheable(true);
             List<PortalRoute> comeinRoutes = query.list();
-            comeinRoutes.forEach(r -> Hibernate.initialize(r.srcPortal.getLocation()));                                                     //initialize included fields on subsequent queries
+            comeinRoutes.forEach(r -> Hibernate.initialize(r.srcPortal.getLocation()));                                                     //initialize included fields on subsequent queries from L2 cache
             return comeinRoutes;
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't get incoming routes for portal id %d: %s", p_id, e.getMessage());
+            logger.error("can't get incoming routes for destination portal id %d: %s", p_dst_id, e.getMessage());
         }
         return Collections.emptyList();
     }
@@ -54,9 +70,26 @@ public class PortalRoute {
     public boolean isEnabled() {return enabled;}
     public boolean isBigmapEnabled() {return bigmap_enabled;}
 
+    public int getROOM() {return ROOM;}
     public Portal getDstPortal() {return dstPortal; }
 
-    public String getXmlPortal() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%d\" ds=\"%d\" city=\"%s\"/>", dstPortal.getId(), dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
-    public String getXmlComein() {return String.format("<O id=\"%d\" txt=\"%s [%d/%d]\" cost=\"%d\"/>", id, srcPortal.getTxt(), srcPortal.getLocation().getLocalX(), srcPortal.getLocation().getLocalY(), cost);}
-    public String getBigMapData(){return String.format("%d,%d", dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY());}  //get route coordinates for the BigMap
+    public void setCost(double cost) { this.cost = cost; }
+
+    public void dbSync() {
+        Transaction tx = null;
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            tx  = session.beginTransaction();
+            session.merge(this);
+            tx.commit();
+        }catch (Exception e) {
+            if (tx != null && tx.isActive())
+                tx.rollback();
+            logger.error("cant save portal route id %d: %s", id, e.getMessage());
+        }
+        return;
+    }
+
+    public String getXmlPR() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%.1f\" ds=\"%d\" city=\"%s\"/>", id, dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
+    public String getXmlComein() {return String.format("<O id=\"%d\" txt=\"%s [%d/%d]\" cost=\"%.1f\"/>", id, srcPortal.getTxt(), srcPortal.getLocation().getLocalX(), srcPortal.getLocation().getLocalY(), cost);}
+    public String getBigMap(){return String.format("%d,%d", dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY());}     //get route coordinates for the BigMap
 }

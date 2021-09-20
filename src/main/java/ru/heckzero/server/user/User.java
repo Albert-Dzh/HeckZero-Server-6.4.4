@@ -7,6 +7,7 @@ import org.apache.commons.beanutils.converters.DoubleConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.LongConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
@@ -242,15 +243,18 @@ public class User {
         }
 
         int bldType = bld.getParamInt(Building.Params.name);                                                                                //building type
-        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 1);                                        //TODO check if user is a building owner (has a master key)
+        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, BooleanUtils.toInteger(isBuildMaster(bld)));
         setBuilding(n, bldType);                                                                                                            //place the user inside the building (set proper params)
         sendMsg(resultXML);
         return;
     }
 
-    public void com_PR(String comein, String to) {                                                                                          //portal workflow
+    public void com_PR(String comein, String id, String new_cost, String to) {                                                              //portal workflow
         logger.debug("processing <PR/> from %s", getLogin());
-        Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is in now in
+
+        Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is now in
+        if (portal == null)                                                                                                                 //can't get the current portal, nothing to do
+            return;
 
         if (comein != null) {                                                                                                               //incoming routes request
             StringJoiner sj = new StringJoiner("", "<PR comein=\"1\">", "</PR>");
@@ -260,13 +264,26 @@ public class User {
             return;
         }
 
+        if (id != null && new_cost != null) {                                                                                               //change incoming route cost
+            PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));
+            if (route == null)
+                return;
+            logger.info("setting a new cost for the route id %s = %s", id, new_cost);
+            route.setCost(NumberUtils.toDouble(new_cost));
+            route.dbSync();
+            return;
+        }
+
         if (to != null) {
-            Portal dstPortal = Portal.getPortal(NumberUtils.toInt(to));
+            PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(to));
+            if (route == null)                                                                                                              //can't get the route user wants flying to
+                return;
+            Portal dstPortal = route.getDstPortal();
             int X = dstPortal.getLocation().getX();
             int Y = dstPortal.getLocation().getY();
             int Z = dstPortal.getZ();
             int hz = dstPortal.getName();
-            int ROOM = 0;
+            int ROOM = route.getROOM();
 
             setRoom(X, Y, Z, hz, ROOM);
             sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
@@ -274,8 +291,8 @@ public class User {
         }
 
         StringJoiner sj = new StringJoiner("", "", "</PR>");
-        sj.add(portal.getXmlPortal());                                                                                                      //add portal options
-        sj.add(portal.getXmlRoutes());
+        sj.add(portal.getXmlPR());                                                                                                          //add portal options
+        sj.add(portal.getXmlRoutesPR());
         sendMsg(sj.toString());
         return;
     }
@@ -294,6 +311,13 @@ public class User {
         else
             logger.warn("invalid <POST/> command received from user %s, t = %s, got nothing to process", getLogin(), t);
         return;
+    }
+
+    public boolean isBuildMaster(Building bld) {return isBuildMaster(bld.getX(), bld.getY(), bld.getZ());}
+    private boolean isBuildMaster(int X, int Y, int Z) {                                                                                    //check if user has a master key to the building with given coordinates
+        if (isGod())
+            return true;
+        return true;                                                                                                                        //TODO check if user got a master key for that building
     }
 
     public void setRoom() {setRoom(-1, -1, 0, 0, 0);}                                                                                       //coming out

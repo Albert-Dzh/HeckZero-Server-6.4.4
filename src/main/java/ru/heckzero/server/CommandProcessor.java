@@ -120,10 +120,12 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private void com_GAME_PR(Attributes attrs) {                                                                                            //portal operations
-        String to = attrs.getValue("to");
         String comein = attrs.getValue("comein");
+        String id = attrs.getValue("id");
+        String new_cost = attrs.getValue("new_cost");
+        String to = attrs.getValue("to");
 
-        user.com_PR(comein, to);
+        user.com_PR(comein, id, new_cost, to);
         return;
     }
 

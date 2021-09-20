@@ -9,7 +9,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
-import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
@@ -95,15 +94,12 @@ public class UserManager {                                                      
 
     private static User getDbUser(String login) {                                                                                           //instantiate a User from a database
         Session session = ServerMain.sessionFactory.openSession();
-        Transaction tx = session.beginTransaction();
         Query<User> query = session.createQuery("select u from User u where lower(u.params.login) = lower(:login)", User.class).setParameter("login", login);
         try (session) {
             User user = query.uniqueResult();
-            tx.commit();
             return (user == null) ? new User() : user;                                                                                      //return a user or an empty user if none found
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't execute query %s: %s", query.getQueryString(), e.getMessage());
-            tx.rollback();
+            logger.error("can't load user %s from database: %s", login, e.getMessage());
         }
         return null;                                                                                                                        //in case of database error
     }
