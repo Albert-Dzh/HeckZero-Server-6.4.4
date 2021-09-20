@@ -1,7 +1,5 @@
 package ru.heckzero.server.world;
 
-import org.apache.commons.beanutils.converters.IntegerConverter;
-import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,29 +18,27 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class Portal extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
-    private static final IntegerConverter intConv = new IntegerConverter(0);
-
-//    public enum Params {cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
     private static final EnumSet<Params> portalParams = EnumSet.of(Params.cash, Params.ds, Params.city, Params.p1, Params.p2);
 
     protected int cash;                                                                                                                     //portal cash
-    protected String ds;                                                                                                                    //discount (%) for citizens
+    protected int ds;                                                                                                                       //discount (%) for citizens arriving to this portal
     protected String city;                                                                                                                  //of that city
     protected String p1;                                                                                                                    //resources needed to teleport 1000 weight units ?
     protected String p2;                                                                                                                    //corsair clone price
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
-    private boolean bigmap_shown;                                                                                                           //should this portal be shown on a bigmap
+    private boolean bigmap_enabled;                                                                                                         //should this portal be shown on a bigmap
 
     @OneToMany(mappedBy = "srcPortal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
+    public String getCity() { return city; }
+    public int getDs() { return ds;}
     public List<PortalRoute> getRoutes() {return routes;}
 
-    public static List<Portal> getAllPortals() {
+    public static List<Portal> getBigmapPortals() {
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr inner join fetch p.location where cast(p.bigmap_shown as integer) = 1", Portal.class).setCacheable(true);
+            Query<Portal> query = session.createQuery("select p from Portal p inner join fetch p.location l left join fetch p.routes pr where p.bigmap_enabled = true", Portal.class).setCacheable(true);
             List<Portal> portals = query.list();
             portals.forEach(Portal::ensureInitialized);                                                                                     //initialize location and routes on subsequent queries from L2 cache
             return portals;
@@ -54,9 +50,9 @@ public class Portal extends Building {
     }
 
     public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
-        Session session = ServerMain.sessionFactory.openSession();
-        try (session) {
-            Portal portal = session.get(Portal.class, id);
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr left join fetch pr.dstPortal p_dst left join fetch p_dst.location where p.id = :id", Portal.class).setParameter("id", id).setCacheable(true);
+            Portal portal = query.getSingleResult();
             if (portal != null) {
                 portal.ensureInitialized();
                 return portal;
@@ -66,40 +62,27 @@ public class Portal extends Building {
         }
         return new Portal();                                                                                                                //in case of portal was not found or database error return a default portal instance
     }
+
     protected Portal() { }
 
-    private void ensureInitialized() {
-        if (!Hibernate.isInitialized(location))
-            Hibernate.initialize(location);
-        if (!Hibernate.isInitialized(routes))
-            Hibernate.initialize(routes);
+    protected void ensureInitialized() {
+        Hibernate.initialize(getLocation());
+        routes.forEach(r -> Hibernate.initialize(r.getDstPortal().getLocation()));
         return;
     }
 
-    public String getBigMapXml() {                                                                                                          //generate an object for the bigmap (city and/or portal)
-        StringJoiner sj = new StringJoiner("");
+    public String getXmlBigmap() {                                                                                                          //generate an object for the bigmap (city and/or portal)
+        StringBuilder sb = new StringBuilder();
         if (StringUtils.isNotBlank(bigmap_city))                                                                                            //this portal "represents" a city on bigmap
-            sj.add(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, getLocation().getLocalX(), getLocation().getLocalY()));
+            sb.append(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, getLocation().getLocalX(), getLocation().getLocalY()));
 
-        String routes = this.routes.stream().map(PortalRoute::getBigMapData).filter(StringUtils::isNoneBlank).collect(Collectors.joining(";")); //get portal routes (from this portal)
+        String routes = this.routes.stream().filter(PortalRoute::isBigmapEnabled).map(PortalRoute::getBigMapData).collect(Collectors.joining(";")); //get portal routes (from this portal)
         if (!routes.isEmpty())
-            sj.add(String.format("<portal name=\"%s\" xy=\"%d,%d\" linked=\"%s;\"/>", getParamStr(Building.Params.txt), getLocation().getLocalX(), getLocation().getLocalY(), routes));
-        return sj.toString();
+            sb.append(String.format("<portal name=\"%s\" xy=\"%d,%d\" linked=\"%s;\"/>", getParamStr(Building.Params.txt), getLocation().getLocalX(), getLocation().getLocalY(), routes));
+        return sb.toString();
     }
-//    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-    public String getPortalXml() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
 
-    @Override
-    public String toString() {
-        return "Portal{" +
-                "cash=" + cash +
-                ", ds='" + ds + '\'' +
-                ", city='" + city + '\'' +
-                ", p1='" + p1 + '\'' +
-                ", p2='" + p2 + '\'' +
-                ", bigmap_city='" + bigmap_city + '\'' +
-                ", bigmap_shown=" + bigmap_shown +
-                ", portalRoutes=" + routes +
-                '}';
-    }
+    public String getXmlPortal() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"));}
+    public String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXmlPortal).collect(Collectors.joining()); }
+
 }

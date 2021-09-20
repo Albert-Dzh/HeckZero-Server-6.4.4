@@ -121,7 +121,7 @@ public class Location {
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-    public String getLocationXml() {                                                                                                        //format location description in XML
+    public String getXml() {                                                                                                                //location XML representation
         StringJoiner sj = new StringJoiner("", "", "</L>");
         String locationParamsXml = golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<L ", ">")); // add location data
         sj.add(locationParamsXml);

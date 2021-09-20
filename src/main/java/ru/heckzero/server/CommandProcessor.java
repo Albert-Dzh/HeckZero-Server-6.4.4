@@ -120,7 +120,10 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private void com_GAME_PR(Attributes attrs) {                                                                                            //portal operations
-        user.com_PR();
+        String to = attrs.getValue("to");
+        String comein = attrs.getValue("comein");
+
+        user.com_PR(comein, to);
         return;
     }
 
@@ -130,7 +133,7 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GAME_SILUET(Attributes attrs) {                                                                                        //user changes it's body look
+    private void com_GAME_SILUET(Attributes attrs) {                                                                                        //user changes its body look
         logger.debug("processing <SILUET/> command from %s", user.getLogin());
         String slt = attrs.getValue("slt");                                                                                                 //siluet attributes
         String set = attrs.getValue("set");

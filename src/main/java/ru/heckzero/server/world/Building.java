@@ -22,7 +22,7 @@ public class Building {
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum Params {X, Y, Z, txt, maxHP, HP, name, upg, maxl, repair, clan,      cash, ds, city, p1, p2, bigmap_city, bigmap_shown};
+    public enum Params {X, Y, Z, txt, maxHP, HP, name, upg, maxl, repair, clan,      cash, ds, city, p1, p2, clon, bigmap_city, bigmap_shown};
     private static final EnumSet<Params> bldParams = EnumSet.of(Params.X, Params.Y, Params.Z, Params.txt, Params.maxHP, Params.HP, Params.name, Params.upg, Params.maxl, Params.repair, Params.clan);
 
     @Id
@@ -34,7 +34,7 @@ public class Building {
     @Column(name = "\"Y\"") private int Y = 8;
     @Column(name = "\"Z\"") private int Z = 0;                                                                                              //unique building number withing a location
 
-    private String txt = "!!!STUB!!!";                                                                                                      //building visible name
+    private String txt = "!!!STUB!!!";                                                                                                      //the building visible name
     @Column(name = "\"maxHP\"") private String maxHP;
     @Column(name = "\"HP\"") private String HP;
     private int name = 188;                                                                                                                 //building type - ruins by default
@@ -45,37 +45,39 @@ public class Building {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "l_id")
-    protected Location location;                                                                                                              //location association
+    private Location location;                                                                                                              //location association
 
     protected Building() { }
 
     public boolean isEmpty() {return id == null;}
 
-    public Integer getId() {
-        return id;
-    }
+    public Integer getId() { return id; }
+    public int getZ() {return Z; }
+    public int getName() { return name; }
+    public String getTxt() { return txt; }
 
     public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     protected String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
-    public String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
+    protected String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
     private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
-        List<Field> fields = getAllFields(this.getClass());
-        Field field = fields.stream().filter(f -> f.getName().equals(paramName.toString())).findFirst().orElse(null);
-        if (field == null) {
-            logger.error("can't get building (%s) param %s: such field does not exist", this.getClass().getSimpleName(), paramName.toString());
-            return StringUtils.EMPTY;
+        List<Field> fields = getAllFields(this.getClass());                                                                                 //get all declared fields from parent and child classes
+        Field field = fields.stream().filter(f -> f.getName().equals(paramName.toString())).findFirst().orElse(null);                       //try to find needed field by its name
+        if (field == null) {                                                                                                                //field is not found
+            logger.warn("can't get param %s, the field is not defined is class %s", paramName.toString(), this.getClass().getSimpleName());
+            return StringUtils.EMPTY;                                                                                                       //return a default value - empty string
         }
         try {
-            return field.get(this);                                                                                                         //and return it (or an empty string if null)
-        } catch (Exception e) {logger.error("can't get building (%s) param %s: %s", this.getClass().getSimpleName(), paramName.toString(), e.getMessage());}
-
+            return field.get(this);                                                                                                         //and return the field value or an empty string in case of some error
+        } catch (Exception e) {
+            logger.error("can't get building (%s) param %s: %s", this.getClass().getSimpleName(), paramName.toString(), e.getMessage());
+        }
         return StringUtils.EMPTY;
     }
 
-    private List<Field> getAllFields(Class clazz) {                                                                                         //get all declared field from child and parent classes
+    private List<Field> getAllFields(Class clazz) {                                                                                         //recursively get all declared field from a child and parent classes
         if (clazz == null)
             return Collections.emptyList();
         List<Field> result = new ArrayList<>(getAllFields(clazz.getSuperclass()));

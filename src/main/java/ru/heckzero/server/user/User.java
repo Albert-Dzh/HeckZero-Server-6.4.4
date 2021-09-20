@@ -17,6 +17,7 @@ import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.world.Building;
 import ru.heckzero.server.world.Location;
 import ru.heckzero.server.world.Portal;
+import ru.heckzero.server.world.PortalRoute;
 
 import javax.persistence.*;
 import java.lang.reflect.Method;
@@ -32,8 +33,8 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by onlineGame() and onlineChat() methods
-    public enum Params {time, tdt, nochat, level, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
-    public static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
+    public enum Params {time, tdt, nochat, level, battleid, group, kupol, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
+    public static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
 
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
@@ -75,6 +76,7 @@ public class User {
     private String getParam_group() {return StringUtils.EMPTY;}
     private int getParam_level() {return 17;}
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
+    private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}
 
     public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
@@ -191,14 +193,14 @@ public class User {
             Long locTime = Instant.now().getEpochSecond() + Math.max(locationToGo.getParamInt(Location.Params.tm), 5);                      //compute a new loc_time for user(now + the location loc_time (location tm parameter))
             setParam(Params.loc_time, locTime);                                                                                             //set the new loc_time for a user
             setLocation(locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));                          //actually change user coordinates to new location
-            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, locationToGo.getParamInt(Location.Params.b) ^ 1);
+            String reply = String.format("<MYPARAM loc_time=\"%d\" kupol=\"%d\"/>", locTime, getParamInt(Params.kupol));
             sendMsg(reply);
         }
         sj.add(locationToGo.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));      //add m (monster) to <GOLOC> from the current location
 
         if (d != null) {                                                                                                                    //user requests nearest location description
             List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(btn -> btn == 5 ? locationToGo : getLocation(btn)).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
-            locations.forEach(l -> sj.add(l.getLocationXml()));
+            locations.forEach(l -> sj.add(l.getXml()));
         }
         sendMsg(sj.toString());                                                                                                             //send a <GOLOC/> reply
         return;
@@ -207,15 +209,15 @@ public class User {
     public void com_MMP(String param) {
         StringJoiner sj = new StringJoiner("", "<MMP>", "</MMP>");                                                                          //MMP - Big map (5x5) request
         List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(this::getLocation).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "param")
-        locations.forEach(l -> sj.add(l.getLocationXml()));
+        locations.forEach(l -> sj.add(l.getXml()));
         sendMsg(sj.toString());
         return;
     }
 
     public void com_BIGMAP() {                                                                                                              //The world map - cities portals and routes
         StringJoiner sj = new StringJoiner("", "<BIGMAP>", "</BIGMAP>");
-        List <Portal> portals = Portal.getAllPortals();
-        portals.forEach(p -> sj.add(p.getBigMapXml()));
+        List <Portal> portals = Portal.getBigmapPortals();                                                                                  //get all portal with their routes and locations
+        portals.forEach(p -> sj.add(p.getXmlBigmap()));
         sendMsg(sj.toString());
         return;
     }
@@ -240,24 +242,41 @@ public class User {
         }
 
         int bldType = bld.getParamInt(Building.Params.name);                                                                                //building type
-        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 1);                                        //TODO implement checking if user is a building owner
+        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, 1);                                        //TODO check if user is a building owner (has a master key)
         setBuilding(n, bldType);                                                                                                            //place the user inside the building (set proper params)
         sendMsg(resultXML);
         return;
     }
 
-    public void com_PR() {                                                                                                                  //user - portal exchanging
+    public void com_PR(String comein, String to) {                                                                                          //portal workflow
         logger.debug("processing <PR/> from %s", getLogin());
-        Portal portal = Portal.getPortal(getBuilding().getId());
+        Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is in now in
 
-        StringJoiner sj = new StringJoiner("", "<PR ", "</PR>");
-        String portalXml = String.format("%s>", portal.getPortalXml());
-        sj.add(portalXml);
+        if (comein != null) {                                                                                                               //incoming routes request
+            StringJoiner sj = new StringJoiner("", "<PR comein=\"1\">", "</PR>");
+            List<PortalRoute> comeinRoutes = PortalRoute.getComeinRoutes(portal.getId());                                                   //get incoming routes for the current portal
+            comeinRoutes.forEach(r -> sj.add(r.getXmlComein()));
+            sendMsg(sj.toString());
+            return;
+        }
 
-        sj.add("<O txt=\"jopa\" X=\"10\" Y=\"10\" cost=\"5\" ds=\"23\" city=\"Prisone\" />");
-        sj.add("<O name=\"b2-s1\" count=\"10\" txt=\"source1\" />");
+        if (to != null) {
+            Portal dstPortal = Portal.getPortal(NumberUtils.toInt(to));
+            int X = dstPortal.getLocation().getX();
+            int Y = dstPortal.getLocation().getY();
+            int Z = dstPortal.getZ();
+            int hz = dstPortal.getName();
+            int ROOM = 0;
+
+            setRoom(X, Y, Z, hz, ROOM);
+            sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
+            return;
+        }
+
+        StringJoiner sj = new StringJoiner("", "", "</PR>");
+        sj.add(portal.getXmlPortal());                                                                                                      //add portal options
+        sj.add(portal.getXmlRoutes());
         sendMsg(sj.toString());
-
         return;
     }
 
