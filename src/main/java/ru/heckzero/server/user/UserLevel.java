@@ -1,7 +1,8 @@
 package ru.heckzero.server.user;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
-
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ru.heckzero.server.ServerMain;
 
@@ -9,12 +10,17 @@ import javax.persistence.*;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
+import java.util.List;
 
 @Entity(name = "UserLevel")
 @Table(name = "users_level")
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
+//TODO  remove @Column annotation, rename fields, load table data into usersLevels list in a static {}  block
+
 public class UserLevel {
+    private static final Logger logger = LogManager.getFormatterLogger();
+    private static List<UserLevel> userLevels;
 
     @Id
     private int exp;
@@ -37,14 +43,22 @@ public class UserLevel {
     @Column(name = "quest_diff4") private int questDiff4;
     @Column(name = "quest_diff5") private int questDiff5;
 
+    static {
+        //read all table users_level select * from users_level
+        userLevels.forEach(logger::info);
+    }
+
     public UserLevel() { }
+
+
+
 
     public static UserLevel getFrom(User user) {
         int userExp = user.getParamInt(User.Params.exp);
 
         UserLevel lvl = null;
-        Session ses = ServerMain.sessionFactory.openSession();
-        try (ses) {
+
+        try (Session ses = ServerMain.sessionFactory.openSession()) {
             CriteriaBuilder cb = ses.getCriteriaBuilder();
             CriteriaQuery<UserLevel> cr = cb.createQuery(UserLevel.class);
             Root<UserLevel> from = cr.from(UserLevel.class);
@@ -54,7 +68,6 @@ public class UserLevel {
             lvl = ses.createQuery(cr).getResultList().get(0);
         }
         catch (NoResultException ex) { ex.printStackTrace(); }
-        finally { if (ses.isOpen()) ses.close(); }
 
         return lvl;
     }
