@@ -65,28 +65,27 @@ class UserParams {
     private String dismiss;                                                                                                                 //user block reason, we treat the user as blocked if it's not empty
     private int chatblock, forumblock;                                                                                                      //time till user is blocked (banned) on chat or forum by moderator
 
-
-    void setParam(User.Params paramName, Object paramValue) {                                                                               //set user param value
+    boolean setParam(User.Params paramName, Object paramValue) {                                                                            //set a user param
         try {
             Field field = this.getClass().getDeclaredField(paramName.toString());                                                           //find a field with a name paramName
-            Class fieldType = field.getType();                                                                                              //found field type
-            Class valueType = paramValue.getClass();                                                                                        //value type
+            Class<?> fieldType = field.getType();                                                                                           //found field type
+            Class<?> valueType = paramValue.getClass();                                                                                     //value type
             if (fieldType.equals(valueType)) {                                                                                              //if they are equals, just set the value
                 field.set(this, paramValue);
-                return;
+                return true;
             }
             String strValue = paramValue instanceof String ? (String)paramValue : paramValue.toString();                                    //cast or convert paramValue to String
-            switch (fieldType.getSimpleName()) {                                                                                            //a short field type name (Integer, String, etc.)
-                case "String" -> field.set(this, strValue);                                                                                 //just set a String value to String field type
-                case "int" -> field.set(this, NumberUtils.isParsable(strValue) ? Math.toIntExact(Math.round(Double.parseDouble(strValue))) : 0); //convert String value to field type
-                case "long" -> field.set(this, NumberUtils.isParsable(strValue) ? Math.round(Double.parseDouble(strValue)) : 0L);
-                case "double" -> field.set(this, NumberUtils.isParsable(strValue) ? Math.round(Double.parseDouble(strValue) * 1000D) / 1000D  : 0D);
-                default -> logger.error("can't set param %s, param type '%s' is not supported", paramName, fieldType.getSimpleName());
-            }
+            return switch (fieldType.getSimpleName()) {                                                                                     //a short field type name (Integer, String, etc.)
+                case "String" -> {field.set(this, strValue); yield true;}                                                                   //just set a String value to String field type
+                case "int" -> {field.set(this, NumberUtils.isParsable(strValue) ? Math.toIntExact(Math.round(Double.parseDouble(strValue))) : 0); yield true;} //convert String value to field type
+                case "long" -> {field.set(this, NumberUtils.isParsable(strValue) ? Math.round(Double.parseDouble(strValue)) : 0L); yield true;}
+                case "double" -> {field.set(this, NumberUtils.isParsable(strValue) ? Math.round(Double.parseDouble(strValue) * 1000D) / 1000D  : 0D); yield true;}
+                default -> {logger.error("can't set param %s, param type '%s' is not supported", paramName, fieldType.getSimpleName()); yield false;}
+            };
         } catch (NoSuchFieldException | SecurityException | IllegalAccessException e) {
-            logger.warn("cannot set param %s to value %s: %s", paramName, paramValue, e.getMessage());
+            logger.warn("cannot set param %s to value %s: %s:%s", paramName, paramValue, e.getClass().getSimpleName(), e.getMessage());
         }
-        return;
+        return false;
     }
 
     Object getParam(User.Params paramName) throws NoSuchFieldException, IllegalAccessException {                                            //try to find a field with the name equals to paramName

@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Entity(name = "User")
@@ -46,6 +47,7 @@ public class User {
     private static final LongConverter longConv = new LongConverter(0L);
     private static final DoubleConverter doubleConv = new DoubleConverter(0D);
 
+    @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                                      //user need to be sync (params have been modified)
     @Transient private final Chat chat = new Chat(this);
     @Transient private ScheduledFuture<?> futureSync = null;
 
@@ -98,7 +100,7 @@ public class User {
     private Object getParam(Params param) {                                                                                                 //get user param (param must be in Params enum)
         try {                                                                                                                               //try to find param in UserParam instance
             return params.getParam(param);
-        } catch (Exception e) {logger.debug("cannot find param %s in User.Params params, looking for a special method which computes that param", param.toString());}
+        } catch (Exception e) {logger.debug("can't find param %s in User.Params params, looking for a special method which computes that param", param.toString());}
 
         String paramName = param.toString();                                                                                                //param name as a String
         String methodName = String.format("getParam_%s", paramName);
@@ -106,26 +108,21 @@ public class User {
             Method method = this.getClass().getDeclaredMethod(methodName);
             return method.invoke(this);
         } catch (Exception e) {
-            logger.warn("cannot find or compute param %s, neither in User.UserParams nor by a dedicated method: %s", paramName, e.getMessage());
+            logger.warn("can't get or compute param %s, neither in User.UserParams nor by a dedicated method: %s", paramName, e.getMessage());
         }
         return StringUtils.EMPTY;                                                                                                           //return an empty string as a default value
     }
 
-    public void setParam(Params paramName, Object paramValue) {
-        params.setParam(paramName, paramValue);
-        if (!isOnlineGame())
+    public void setParam(Params paramName, Object paramValue) {                                                                             //set a user param
+        if (params.setParam(paramName, paramValue))                                                                                         //delegate setting param to UserParams
+            needSync.compareAndSet(false, true);
+        if (!isInGame())                                                                                                                    //sync the user if he is offline and is not in a battle
             sync();
         return;
     }
-    /*
-    public void setParam(Params paramName, String paramValue) {params.setParam(paramName, paramValue);}                                     //set param to String value
-    public void setParam(Params paramName, int paramValue) {params.setParam(paramName, paramValue);}                                        //set param to Integer value
-    public void setParam(Params paramName, long paramValue) {params.setParam(paramName, paramValue);}                                       //set param to Long value
-    public void setParam(Params paramName, double paramValue) {params.setParam(paramName, paramValue);}                                     //set param to Double value
-*/
+
     synchronized void onlineGame(Channel ch) {
         logger.debug("setting user '%s' game channel online", getLogin());
-
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
         this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "'");                                              //replace a channel representation string to 'user <login>' instead of IP:port
@@ -141,10 +138,10 @@ public class User {
 
     synchronized void offlineGame() {
         logger.debug("setting user '%s' game channel offline", getLogin());
+        setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
         futureSync.cancel(false);                                                                                                           //cancel db sync task
         disconnectChat();                                                                                                                   //chat without a game is ridiculous
-        setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         chat.updateMyStatus();                                                                                                              //will remove user from room
         sync();                                                                                                                             //update the user in database
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
@@ -266,7 +263,6 @@ public class User {
 
     public void com_PR(String comein, String id, String new_cost, String to) {                                                              //portal workflow
         logger.debug("processing <PR/> from %s", getLogin());
-
         Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is now in
         if (portal == null)                                                                                                                 //can't get the current portal, nothing to do
             return;
@@ -359,8 +355,11 @@ public class User {
     }
 
     public void sync() {                                                                                                                    //update the user in database
-        logger.info("syncing user %s", getLogin());
-        ServerMain.sync(this);
+        if (needSync.compareAndSet(true, false)) {                                                                                          //sync only if needSync is true
+            logger.info("syncing user %s", getLogin());
+            ServerMain.sync(this);
+        } else
+            logger.info("skipping syncing user %s cause he is clean (AFK?)", getLogin());
         return;
     }
 
