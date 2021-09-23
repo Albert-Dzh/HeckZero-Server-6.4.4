@@ -220,9 +220,6 @@ public class User {
         List <Portal> portals = Portal.getBigmapPortals();                                                                                  //get all portal with their routes and locations
         portals.forEach(p -> sj.add(p.getXmlBigmap()));
         sendMsg(sj.toString());
-
-        UserLevel ulvl = UserLevel.getFrom(this);
-        System.out.printf("%n%n%n%s%n%n%n", ulvl);
         return;
     }
 
