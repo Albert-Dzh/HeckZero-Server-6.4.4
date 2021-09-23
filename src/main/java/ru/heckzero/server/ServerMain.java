@@ -27,6 +27,7 @@ import org.hibernate.service.ServiceRegistry;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserLevel;
 import ru.heckzero.server.world.Building;
 import ru.heckzero.server.world.Location;
 import ru.heckzero.server.world.Portal;
@@ -120,7 +121,7 @@ public class ServerMain {
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
-                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(PortalRoute.class);
+                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(PortalRoute.class).addAnnotatedClass(UserLevel.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
