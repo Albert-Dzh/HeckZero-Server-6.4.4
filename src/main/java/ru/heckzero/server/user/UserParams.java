@@ -68,7 +68,7 @@ class UserParams {
 
     void setParam(User.Params paramName, Object paramValue) {                                                                               //set user param value
         try {
-            Field field = this.getClass().getDeclaredField(paramName.toString());                                                           //find a field of name paramName
+            Field field = this.getClass().getDeclaredField(paramName.toString());                                                           //find a field with a name paramName
             Class fieldType = field.getType();                                                                                              //found field type
             Class valueType = paramValue.getClass();                                                                                        //value type
             if (fieldType.equals(valueType)) {                                                                                              //if they are equals, just set the value

@@ -18,7 +18,9 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataBuilder;
 import org.hibernate.boot.MetadataSources;
@@ -57,7 +59,7 @@ public class ServerMain {
 
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
-    public static final ScheduledExecutorService mainScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                      //scheduled executor used in various classes
+    public static final ScheduledExecutorService userTasksScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                        //scheduled executor used in various classes
 
     public static XMLConfiguration hzConfiguration = null;
     public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
@@ -108,9 +110,9 @@ public class ServerMain {
         } catch (Exception e) {
             logger.error("can't bootstrap the server: %s:%s", e.toString(), e.getMessage());
         }
-        group.shutdownGracefully();                                                                                                         //shut down the event group
-        execGroup.shutdownGracefully();
-        mainScheduledExecutor.shutdownNow();
+        group.shutdownGracefully();                                                                                                         //shut down the main event group
+        execGroup.shutdownGracefully();                                                                                                     //shut down the offload event group
+        userTasksScheduledExecutor.shutdownNow();
         return;
     }
 
@@ -126,6 +128,22 @@ public class ServerMain {
         sessionFactory = metadata.getSessionFactoryBuilder().build();
         return sessionFactory;
     }
+
+    public static void sync(Object entity) {
+        Transaction tx = null;
+        logger.debug("saving entity of type: %s", entity.getClass().getSimpleName());
+        try (Session session = sessionFactory.openSession()) {
+            tx  = session.beginTransaction();
+            session.saveOrUpdate(entity);
+            tx.commit();
+        }catch (Exception e) {
+            if (tx != null && tx.isActive())
+                tx.rollback();
+            logger.error("can't save entity %s", entity.toString());
+        }
+        return;
+    }
+
 
     private boolean readServerConfig() {                                                                                                    //read properties from a configuration file
         logger.info("reading server settings from %s%s%s", CONF_DIR, File.separatorChar, CONF_FILE);

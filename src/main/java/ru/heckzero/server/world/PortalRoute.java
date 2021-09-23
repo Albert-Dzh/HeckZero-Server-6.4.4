@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
-import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
@@ -71,23 +70,11 @@ public class PortalRoute {
     public boolean isBigmapEnabled() {return bigmap_enabled;}
 
     public int getROOM() {return ROOM;}
-    public Portal getDstPortal() {return dstPortal; }
+    public Portal getDstPortal() {return dstPortal;}
 
-    public void setCost(double cost) { this.cost = cost; }
+    public void setCost(double cost) {this.cost = cost;}
 
-    public void dbSync() {
-        Transaction tx = null;
-        try (Session session = ServerMain.sessionFactory.openSession()) {
-            tx  = session.beginTransaction();
-            session.merge(this);
-            tx.commit();
-        }catch (Exception e) {
-            if (tx != null && tx.isActive())
-                tx.rollback();
-            logger.error("cant save portal route id %d: %s", id, e.getMessage());
-        }
-        return;
-    }
+    public void sync() { ServerMain.sync(this); }
 
     public String getXmlPR() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%.1f\" ds=\"%d\" city=\"%s\"/>", id, dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
     public String getXmlComein() {return String.format("<O id=\"%d\" txt=\"%s [%d/%d]\" cost=\"%.1f\"/>", id, srcPortal.getTxt(), srcPortal.getLocation().getLocalX(), srcPortal.getLocation().getLocalY(), cost);}

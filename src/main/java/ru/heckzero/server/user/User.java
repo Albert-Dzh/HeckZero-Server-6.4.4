@@ -8,6 +8,7 @@ import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.LongConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +25,8 @@ import javax.persistence.*;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Entity(name = "User")
@@ -36,6 +39,7 @@ public class User {
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by onlineGame() and onlineChat() methods
     public enum Params {time, tdt, nochat, level, battleid, group, kupol, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
     public static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
+    private static final int DB_SYNC_TIME_SEC = 300;                                                                                        //user db sync interval in seconds
 
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
@@ -43,13 +47,14 @@ public class User {
     private static final DoubleConverter doubleConv = new DoubleConverter(0D);
 
     @Transient private final Chat chat = new Chat(this);
+    @Transient private ScheduledFuture<?> futureSync = null;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
     @SequenceGenerator(name = "user_generator_sequence", sequenceName = "users_id_seq", allocationSize = 1)
     private Integer id;
 
-    @Embedded                                                                                                                               //TODO can it be declared static???
+    @Embedded
     private final UserParams params = new UserParams();                                                                                     //user params that can be set (read-write) are placed there
 
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
@@ -101,16 +106,23 @@ public class User {
             Method method = this.getClass().getDeclaredMethod(methodName);
             return method.invoke(this);
         } catch (Exception e) {
-            logger.warn("cannot find or compute param %s, neither in User params nor by a dedicated method: %s", paramName, e.getMessage());
+            logger.warn("cannot find or compute param %s, neither in User.UserParams nor by a dedicated method: %s", paramName, e.getMessage());
         }
         return StringUtils.EMPTY;                                                                                                           //return an empty string as a default value
     }
+
+    public void setParam(Params paramName, Object paramValue) {
+        params.setParam(paramName, paramValue);
+        if (!isOnlineGame())
+            sync();
+        return;
+    }
+    /*
     public void setParam(Params paramName, String paramValue) {params.setParam(paramName, paramValue);}                                     //set param to String value
     public void setParam(Params paramName, int paramValue) {params.setParam(paramName, paramValue);}                                        //set param to Integer value
     public void setParam(Params paramName, long paramValue) {params.setParam(paramName, paramValue);}                                       //set param to Long value
     public void setParam(Params paramName, double paramValue) {params.setParam(paramName, paramValue);}                                     //set param to Double value
-
-
+*/
     synchronized void onlineGame(Channel ch) {
         logger.debug("setting user '%s' game channel online", getLogin());
 
@@ -121,7 +133,8 @@ public class User {
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.loc_time, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time)); //compute client loc_time - time he is allowed to leave his location
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
-        sendMsg(resultMsg);
+        futureSync = ch.eventLoop().scheduleWithFixedDelay(this::sync, RandomUtils.nextInt(DB_SYNC_TIME_SEC / 2, DB_SYNC_TIME_SEC * 2), DB_SYNC_TIME_SEC, TimeUnit.SECONDS);               //start syncing the user with a database every DB_SYNC_TIME_SEC interval
+        sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
         chat.updateMyStatus();                                                                                                              //will add user to room
         return;
     }
@@ -129,9 +142,11 @@ public class User {
     synchronized void offlineGame() {
         logger.debug("setting user '%s' game channel offline", getLogin());
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
+        futureSync.cancel(false);                                                                                                           //cancel db sync task
         disconnectChat();                                                                                                                   //chat without a game is ridiculous
         setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         chat.updateMyStatus();                                                                                                              //will remove user from room
+        sync();                                                                                                                             //update the user in database
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
         logger.info("user '%s' game channel logged out", getLogin());
         return;
@@ -265,12 +280,12 @@ public class User {
         }
 
         if (id != null && new_cost != null) {                                                                                               //change incoming route cost
-            PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));
+            PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));                                                                //get the route to change cost for
             if (route == null)
                 return;
             logger.info("setting a new cost for the route id %s = %s", id, new_cost);
             route.setCost(NumberUtils.toDouble(new_cost));
-            route.dbSync();
+            route.sync();                                                                                                                   //sync the route with a database
             return;
         }
 
@@ -291,8 +306,8 @@ public class User {
         }
 
         StringJoiner sj = new StringJoiner("", "", "</PR>");
-        sj.add(portal.getXmlPR());                                                                                                          //add portal options
-        sj.add(portal.getXmlRoutesPR());
+        sj.add(portal.getXmlPR());                                                                                                          //add portal description
+        sj.add(portal.getXmlRoutesPR());                                                                                                    //add portal routes
         sendMsg(sj.toString());
         return;
     }
@@ -340,6 +355,12 @@ public class User {
 
         chat.updateMyStatus();
         chat.showMeRoom();
+        return;
+    }
+
+    public void sync() {                                                                                                                    //update the user in database
+        logger.info("syncing user %s", getLogin());
+        ServerMain.sync(this);
         return;
     }
 
