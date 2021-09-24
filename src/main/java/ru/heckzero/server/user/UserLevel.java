@@ -32,22 +32,36 @@ public class UserLevel {
 
     //make sure list of UserLevel objects initialized
     private static void ensureInitialized() {
-        if (userLevels != null) return;
+        if (userLevels != null)
+            return;
         try (Session ses = ServerMain.sessionFactory.openSession()) {
-            userLevels = ses.createQuery("select ulvl from UserLevel ulvl", UserLevel.class).list();
+            userLevels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
         }
-        catch (NoResultException ex) { ex.printStackTrace(); }
+        catch (NoResultException ex) { logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage()); }
         userLevels.forEach(logger::info);
     }
 
     //get UserLevel state by User
-    public static UserLevel getUserStatus(User usr) {
+    private static UserLevel getUserStatus(User usr) {
         ensureInitialized();
         return userLevels.stream()
                 .filter(ulvl -> usr.getParamInt(User.Params.exp) >= ulvl.exp)
                 .max(Comparator.comparingInt(o -> o.exp))
                 .orElseGet(UserLevel::new);
     }
+
+    public static int getLevel(User u) {
+        return 0;
+    }
+
+    public static int getMaxHP(User u) {
+        return 0;
+    }
+
+    public static int getMaxPsy(User u) {
+        return 0;
+    }
+
 
     //main stats
     public int getExp()         { return exp;           }
