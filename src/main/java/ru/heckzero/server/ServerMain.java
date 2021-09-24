@@ -59,13 +59,14 @@ public class ServerMain {
 
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
-    public static final ScheduledExecutorService userTasksScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                        //scheduled executor used in various classes
+    public static final ScheduledExecutorService userTasksScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                 //scheduled executor used in various classes
 
     public static XMLConfiguration hzConfiguration = null;
-    public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
+    public static SessionFactory sessionFactory = null;                                                                                     //Hibernate SessionFactory used across the server
 
     static {
         ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
+        dbInit();                                                                                                                           //bootstrap the hibernate and 2nd level cache and create a SessionFactory
     }
 
     public static void main(String[] args) {
@@ -77,7 +78,6 @@ public class ServerMain {
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", VERSION);
         if (!readServerConfig())                                                                                                            //can't read config file
             return;
-        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create a SessionFactory
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
         EventExecutorGroup execGroup = new DefaultEventExecutorGroup(hzConfiguration.getInt("MaxWorkerThreads", DEF_MAX_WORKER_THREADS));   //DefaultEventLoopGroup will offload operations from the EventLoop
         int listenPort = hzConfiguration.getInt("ServerSetup.ListenPort", DEF_LISTEN_PORT);                                                 //port the server will be listening on
@@ -116,9 +116,9 @@ public class ServerMain {
         return;
     }
 
-    private SessionFactory dbInit() {                                                                                                       //bootstrap the Hibernate
+    private static void dbInit() {                                                                                                          //bootstrap the Hibernate
         StandardServiceRegistryBuilder standardServiceRegistryBuilder = new StandardServiceRegistryBuilder().configure(hbnateCfg);          //read hibernate configuration from file
-        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to ehcache config file name)
+        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to point to ehcache config file name)
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
@@ -126,7 +126,7 @@ public class ServerMain {
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
-        return sessionFactory;
+        return;
     }
 
     public static void sync(Object entity) {

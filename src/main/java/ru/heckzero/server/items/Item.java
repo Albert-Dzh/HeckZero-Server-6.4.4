@@ -27,5 +27,9 @@ public class Item {
     String type;
     String damage;
 
+    protected Item() {  }
 
+    public static void getItem() {
+
+    }
 }

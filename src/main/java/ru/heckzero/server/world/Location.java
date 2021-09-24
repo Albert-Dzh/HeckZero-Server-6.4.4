@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 @Entity(name = "Location")
 @Table(name = "locations")
 @Cacheable
-@NaturalIdCache
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class Location {
     private static final Logger logger = LogManager.getFormatterLogger();
