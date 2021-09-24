@@ -220,6 +220,9 @@ public class User {
         List <Portal> portals = Portal.getBigmapPortals();                                                                                  //get all portal with their routes and locations
         portals.forEach(p -> sj.add(p.getXmlBigmap()));
         sendMsg(sj.toString());
+
+        var pPoints = UserLevel.getUserStatus(this).getPerkPoints();
+        System.out.printf("%n%n%ncurrent perk points of this user are %d%n%n%n", pPoints);
         return;
     }
 

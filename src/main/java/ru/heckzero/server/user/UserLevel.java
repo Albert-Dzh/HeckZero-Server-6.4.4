@@ -4,59 +4,77 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.Immutable;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 import java.util.Comparator;
 import java.util.List;
 
+@Cacheable
+@Immutable
 @Entity(name = "UserLevel")
 @Table(name = "users_level")
-@Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
-//TODO  remove @Column annotation, rename fields, load table data into usersLevels list in a static {}  block
-
 public class UserLevel {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static List<UserLevel> userLevels;
 
     @Id
     private int exp;
-    private int level;
-    private int stat;
-    private int maxrank;
-    private int perkpoints;
-    private int statup;
-    private int max_hp_man;
-    private int max_psy_man;
-    private int exp_pve_man;
-    private int exp_pvp_man;
-    private int max_hp_woman;
-    private int max_psy_woman;
-    private int exp_pve_woman;
-    private int exp_pvp_woman;
-    private int quest_diff1;
-    private int quest_diff2;
-    private int quest_diff3;
-    private int quest_diff4;
-    private int quest_diff5;
+    private int level,          stat,           maxrank,        perkpoints,     statup;
+    private int max_hp_man,     max_psy_man,    exp_pve_man,    exp_pvp_man;
+    private int max_hp_woman,   max_psy_woman,  exp_pve_woman,  exp_pvp_woman;
+    private int quest_diff1,    quest_diff2,    quest_diff3,    quest_diff4,    quest_diff5;
 
-    static {
+
+    public UserLevel() { }
+
+    //make sure list of UserLevel objects initialized
+    private static void ensureInitialized() {
+        if (userLevels != null) return;
         try (Session ses = ServerMain.sessionFactory.openSession()) {
-            userLevels = ses.createQuery("select ul from UserLevel ul", UserLevel.class).list();
+            userLevels = ses.createQuery("select ulvl from UserLevel ulvl", UserLevel.class).list();
         }
         catch (NoResultException ex) { ex.printStackTrace(); }
         userLevels.forEach(logger::info);
     }
 
-    public UserLevel() { }
-
-    public static UserLevel getClosestState(User usr) {
+    //get UserLevel state by User
+    public static UserLevel getUserStatus(User usr) {
+        ensureInitialized();
         return userLevels.stream()
                 .filter(ulvl -> usr.getParamInt(User.Params.exp) >= ulvl.exp)
                 .max(Comparator.comparingInt(o -> o.exp))
                 .orElseGet(UserLevel::new);
     }
+
+    //main stats
+    public int getExp()         { return exp;           }
+    public int getLevel()       { return level;         }
+    public int getStat()        { return stat;          }
+    public int getMaxRank()     { return maxrank;       }
+    public int getPerkPoints()  { return perkpoints;    }
+    public int getStatUp()      { return statup;        }
+
+    //man
+    public int getMax_hp_man()  { return max_hp_man;    }
+    public int getMax_psy_man() { return max_psy_man;   }
+    public int getExp_pve_man() { return exp_pve_man;   }
+    public int getExp_pvp_man() { return exp_pvp_man;   }
+
+    //woman
+    public int getMax_hp_woman()    { return max_hp_woman;  }
+    public int getMax_psy_woman()   { return max_psy_woman; }
+    public int getExp_pve_woman()   { return exp_pve_woman; }
+    public int getExp_pvp_woman()   { return exp_pvp_woman; }
+
+    //quest
+    public int getQuest_diff1() { return quest_diff1; }
+    public int getQuest_diff2() { return quest_diff2; }
+    public int getQuest_diff3() { return quest_diff3; }
+    public int getQuest_diff4() { return quest_diff4; }
+    public int getQuest_diff5() { return quest_diff5; }
 
     @Override
     public String toString() {

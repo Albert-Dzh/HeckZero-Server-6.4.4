@@ -60,11 +60,13 @@ public class ServerMain {
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
     public static final ScheduledExecutorService mainScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                      //scheduled executor used in various classes
 
-    public static XMLConfiguration hzConfiguration = null;
+    public static XMLConfiguration hzConfiguration;
     public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
 
     static {
         ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
+        readServerConfig();
+        dbInit();
     }
 
     public static void main(String[] args) {
@@ -74,9 +76,6 @@ public class ServerMain {
 
     public void startOperation() {                                                                                                          //mainly bootstrapping the netty stuff
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", VERSION);
-        if (!readServerConfig())                                                                                                            //can't read config file
-            return;
-        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create a SessionFactory
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
         EventExecutorGroup execGroup = new DefaultEventExecutorGroup(hzConfiguration.getInt("MaxWorkerThreads", DEF_MAX_WORKER_THREADS));   //DefaultEventLoopGroup will offload operations from the EventLoop
         int listenPort = hzConfiguration.getInt("ServerSetup.ListenPort", DEF_LISTEN_PORT);                                                 //port the server will be listening on
@@ -85,7 +84,7 @@ public class ServerMain {
         try {
             NetInHandlerMain netInHandlerMain = new NetInHandlerMain();                                                                     //an inbound handler (will do client command processing)
             NetOutHandler netOutHandler = new NetOutHandler();                                                                              //an outbound handler (server response massage)
-
+            if (hzConfiguration == null) return;
             ServerBootstrap b = new ServerBootstrap();                                                                                      //TCP server bootstrapping procedure (netty)
             b.group(group).                                                                                                                 //an event loop group used by server and client threads
                     channel(IS_UNIX ? EpollServerSocketChannel.class : NioServerSocketChannel.class).
@@ -115,7 +114,7 @@ public class ServerMain {
         return;
     }
 
-    private SessionFactory dbInit() {                                                                                                       //bootstrap the Hibernate
+    private static void dbInit() {                                                                                                       //bootstrap the Hibernate
         StandardServiceRegistryBuilder standardServiceRegistryBuilder = new StandardServiceRegistryBuilder().configure(hbnateCfg);          //read hibernate configuration from file
         standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to ehcache config file name)
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
@@ -125,19 +124,15 @@ public class ServerMain {
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
-        return sessionFactory;
     }
 
-    private boolean readServerConfig() {                                                                                                    //read properties from a configuration file
+    private static void readServerConfig() {                                                                                                    //read properties from a configuration file
         logger.info("reading server settings from %s%s%s", CONF_DIR, File.separatorChar, CONF_FILE);
         try {
             hzConfiguration = new Configurations().xml(confFile);
             logger.info("server settings have been read ok");
         } catch (ConfigurationException e) {
             logger.error("cant read config file %s, check if the server config file  exists and contains correct settings: %s", confFile.getPath(), e.getMessage());
-            return false;
         }
-        return true;
     }
-
 }
