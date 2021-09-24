@@ -22,7 +22,7 @@ public class UserLevel {
 
     @Id
     private int exp;
-    private int level,          stat,           maxrank,        perkpoints,     statup;
+    private int level,          stat,           statup,         maxrank,        perkpoints;
     private int max_hp_man,     max_psy_man,    exp_pve_man,    exp_pvp_man;
     private int max_hp_woman,   max_psy_woman,  exp_pve_woman,  exp_pvp_woman;
     private int quest_diff1,    quest_diff2,    quest_diff3,    quest_diff4,    quest_diff5;
@@ -38,7 +38,6 @@ public class UserLevel {
             userLevels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
         }
         catch (NoResultException ex) { logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage()); }
-        userLevels.forEach(logger::info);
     }
 
     //get UserLevel state by User
@@ -50,45 +49,27 @@ public class UserLevel {
                 .orElseGet(UserLevel::new);
     }
 
-    public static int getLevel(User u) {
-        return 0;
+    public static int getLevel(User u)      { return getUserStatus(u).level;        }
+    public static int getStat(User u)       { return getUserStatus(u).stat;         }
+    public static int getStatUp(User u)     { return getUserStatus(u).statup;       }
+    public static int getMaxRank(User u)    { return getUserStatus(u).maxrank;      }
+    public static int getPerkPoints(User u) { return getUserStatus(u).perkpoints;   }
+
+
+    public static int getMaxHP(User u)      { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).max_hp_woman  : getUserStatus(u).max_hp_man;  }
+    public static int getMaxPsy(User u)     { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).max_psy_woman : getUserStatus(u).max_psy_man; }
+    public static int getMaxExpPvE(User u)  { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).exp_pve_woman : getUserStatus(u).exp_pve_man; }
+    public static int getMaxExpPvP(User u)  { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).exp_pvp_woman : getUserStatus(u).exp_pvp_man; }
+
+    public static int getQuestDiffRevard(User u, int diffLvl) {
+        return switch (diffLvl) {
+            default -> getUserStatus(u).quest_diff1;
+            case 2  -> getUserStatus(u).quest_diff2;
+            case 3  -> getUserStatus(u).quest_diff3;
+            case 4  -> getUserStatus(u).quest_diff4;
+            case 5  -> getUserStatus(u).quest_diff5;
+        };
     }
-
-    public static int getMaxHP(User u) {
-        return 0;
-    }
-
-    public static int getMaxPsy(User u) {
-        return 0;
-    }
-
-
-    //main stats
-    public int getExp()         { return exp;           }
-    public int getLevel()       { return level;         }
-    public int getStat()        { return stat;          }
-    public int getMaxRank()     { return maxrank;       }
-    public int getPerkPoints()  { return perkpoints;    }
-    public int getStatUp()      { return statup;        }
-
-    //man
-    public int getMax_hp_man()  { return max_hp_man;    }
-    public int getMax_psy_man() { return max_psy_man;   }
-    public int getExp_pve_man() { return exp_pve_man;   }
-    public int getExp_pvp_man() { return exp_pvp_man;   }
-
-    //woman
-    public int getMax_hp_woman()    { return max_hp_woman;  }
-    public int getMax_psy_woman()   { return max_psy_woman; }
-    public int getExp_pve_woman()   { return exp_pve_woman; }
-    public int getExp_pvp_woman()   { return exp_pvp_woman; }
-
-    //quest
-    public int getQuest_diff1() { return quest_diff1; }
-    public int getQuest_diff2() { return quest_diff2; }
-    public int getQuest_diff3() { return quest_diff3; }
-    public int getQuest_diff4() { return quest_diff4; }
-    public int getQuest_diff5() { return quest_diff5; }
 
     @Override
     public String toString() {
