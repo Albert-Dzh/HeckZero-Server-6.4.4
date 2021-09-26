@@ -34,7 +34,6 @@ public class Portal extends Building {
 
     public String getCity() { return city; }
     public int getDs() { return ds;}
-    public List<PortalRoute> getRoutes() {return routes;}
 
     public static List<Portal> getBigmapPortals() {
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -82,6 +81,5 @@ public class Portal extends Building {
     }
 
     public String getXmlPR() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"));}
-    public String getXmlRoutesPR() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXmlPR).collect(Collectors.joining()); }
-
+    public String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXmlPR).collect(Collectors.joining()); }
 }

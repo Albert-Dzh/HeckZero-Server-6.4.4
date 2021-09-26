@@ -45,7 +45,7 @@ public class PortalRoute {
                 Hibernate.initialize(route.getDstPortal().getLocation());
                 return route;
             }else
-                logger.error("cant find portal route with id %d in database. Check it out!", route_id);
+                logger.error("can't find portal route with id %d in database. Check it out!", route_id);
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load portal route with id %d from database: %s", route_id, e.getMessage());
         }

@@ -16,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ru.heckzero.server.Chat;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.world.Building;
 import ru.heckzero.server.world.Location;
 import ru.heckzero.server.world.Portal;
@@ -47,7 +48,7 @@ public class User {
     private static final LongConverter longConv = new LongConverter(0L);
     private static final DoubleConverter doubleConv = new DoubleConverter(0D);
 
-    @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                                      //user need to be sync (params have been modified)
+    @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //user need to be synced - some params have been modified
     @Transient private final Chat chat = new Chat(this);
     @Transient private ScheduledFuture<?> futureSync = null;
 
@@ -61,9 +62,7 @@ public class User {
 
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
-
-    public Channel getGameChannel() {return this.gameChannel;}
-    public Channel getChatChannel() {return this.chatChannel;}
+    @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first get
 
     public User() { }
 
@@ -77,6 +76,8 @@ public class User {
     public boolean isGod() {return getParamInt(Params.god) == 1;}                                                                           //this is a privileged user (admin)
     public boolean isCop() {return getParamStr(Params.clan).equals("police");}                                                              //user is a cop (is a member of police clan)
 
+    public Channel getGameChannel() {return this.gameChannel;}
+    public Channel getChatChannel() {return this.chatChannel;}
     public String getLogin() {return getParamStr(Params.login);}                                                                            //just a shortcut
     private long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
     private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
@@ -86,16 +87,16 @@ public class User {
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}
 
-    public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
-    public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
-    public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
-
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     public long getParamLong(Params param) {return longConv.convert(Long.class, getParam(param));}
     public double getParamDouble(Params param) {return doubleConv.convert(Double.class, getParam(param));}
     private String getParamXml(Params param, boolean appendEmpty) {return getParamStr(param).transform(s -> (!s.isEmpty() || appendEmpty) ? String.format("%s=\"%s\"", param == Params.intu ? "int" : param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     private String getParamsXml(EnumSet<Params> params, boolean appendEmpty) {return params.stream().map(p -> getParamXml(p, appendEmpty)).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
+
+    public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
+    public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
+    public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
     private Object getParam(Params param) {                                                                                                 //get user param (param must be in Params enum)
         try {                                                                                                                               //try to find param in UserParam instance
@@ -114,11 +115,17 @@ public class User {
     }
 
     public void setParam(Params paramName, Object paramValue) {                                                                             //set a user param
-        if (params.setParam(paramName, paramValue))                                                                                         //delegate setting param to UserParams
+        if (params.setParam(paramName, paramValue))                                                                                         //delegate param setting to UserParams
             needSync.compareAndSet(false, true);
         if (!isInGame())                                                                                                                    //sync the user if he is offline and is not in a battle
             sync();
         return;
+    }
+
+    public ItemBox getItemBox() {
+        if (itemBox == null)
+            itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id);
+        return itemBox;
     }
 
     synchronized void onlineGame(Channel ch) {
@@ -129,7 +136,7 @@ public class User {
         this.gameChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME))); //replace read timeout handler to a new one with a longer timeout defined for authorized user
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.loc_time, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time)); //compute client loc_time - time he is allowed to leave his location
-        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //send OK with a chat auth key in ses attribute (using already existing key)
+        String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
         futureSync = ch.eventLoop().scheduleWithFixedDelay(this::sync, RandomUtils.nextInt(DB_SYNC_TIME_SEC / 2, DB_SYNC_TIME_SEC * 2), DB_SYNC_TIME_SEC, TimeUnit.SECONDS);               //start syncing the user with a database every DB_SYNC_TIME_SEC interval
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
         chat.updateMyStatus();                                                                                                              //will add user to room
@@ -169,8 +176,10 @@ public class User {
 
     public void com_MYPARAM() {                                                                                                             //provision the client initial params as a reply for <GETME/>
         logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
-        StringJoiner xmlGetme = new StringJoiner(" ", "<MYPARAM ", "></MYPARAM>").add(getParamsXml(getmeParams, false));
-        sendMsg(xmlGetme.toString());
+        StringJoiner sj = new StringJoiner(" ", "<MYPARAM ", "</MYPARAM>");
+        sj.add(getParamsXml(getmeParams, false)).add(">");
+        sj.add(getItemBox().getXml());
+        sendMsg(sj.toString());
         return;
     }
 
@@ -303,7 +312,7 @@ public class User {
 
         StringJoiner sj = new StringJoiner("", "", "</PR>");
         sj.add(portal.getXmlPR());                                                                                                          //add portal description
-        sj.add(portal.getXmlRoutesPR());                                                                                                    //add portal routes
+        sj.add(portal.getXmlRoutes());                                                                                                    //add portal routes
         sendMsg(sj.toString());
         return;
     }
@@ -321,6 +330,17 @@ public class User {
             chat.post(t);
         else
             logger.warn("invalid <POST/> command received from user %s, t = %s, got nothing to process", getLogin(), t);
+        return;
+    }
+
+    public void com_N(String id1, String id2, String i1) {                                                                                  //compare items id counters between server and a client
+        String s_id1 = getParamStr(Params.id1);                                                                                             //s_ -> server values
+        String s_id2 = getParamStr(Params.id2);
+        String s_i1 = getParamStr(Params.i1);
+        if (!(s_id1.equals(id1) && s_id2.equals(id2) && s_i1.equals(i1))) {
+            logger.error("!!!!!!!!MISTIMING!!!!!!!! user %s id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s, disconnecting user", id1, s_i1, id2, s_id2, i1, s_i1);
+            disconnect();
+        }
         return;
     }
 
@@ -359,7 +379,7 @@ public class User {
             logger.info("syncing user %s", getLogin());
             ServerMain.sync(this);
         } else
-            logger.info("skipping syncing user %s cause he is clean (AFK?)", getLogin());
+            logger.info("skipping syncing user %s cause he haven't been changed (AFK?)", getLogin());
         return;
     }
 

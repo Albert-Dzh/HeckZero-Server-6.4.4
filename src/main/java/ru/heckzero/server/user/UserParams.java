@@ -49,10 +49,10 @@ class UserParams {
     private String siluet;                                                                                                                  //siluet description
     private int bot;                                                                                                                        //0 - player is a human, 1- bot
     private String name, city, about, note;                                                                                                 //user self-given params in "about" section of PDA
-    private String list;                                                                                                                    //user contact list
+    private String list;                                                                                                                    //contact list
     private String plist;                                                                                                                   //perk list
-    @Column(name = "\"ODratio\"") private int ODratio;                                                                                      //OD ratio affected on user
-    private int virus;                                                                                                                      //biological infection
+    @Column(name = "\"ODratio\"") private int ODratio;                                                                                      //OD ratio currently affected on user
+    private int virus;                                                                                                                      //user got a biological infection
     private String brokenslots;                                                                                                             //broken slots list. each slot represents by a single letter
     private int poisoning;                                                                                                                  //poison level
     private int ill;                                                                                                                        //infection with the virus X (-1...1)

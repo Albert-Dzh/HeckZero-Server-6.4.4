@@ -143,9 +143,13 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-
     private void com_GAME_N(Attributes attrs) {                                                                                             //NOP (keep alive) packet from the game socket
         logger.debug("processing <N/> command from %s", user.getLogin());
+        String id1 = attrs.getValue("id1");
+        String id2 = attrs.getValue("id2");
+        String i1 = attrs.getValue("i1");
+        if (id1 != null && id2 != null && i1 != null)
+            user.com_N(id1, id2, i1);                                                                                                       //compare the values
         return;
     }
 
