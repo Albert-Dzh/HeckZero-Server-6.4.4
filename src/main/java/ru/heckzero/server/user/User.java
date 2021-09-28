@@ -126,7 +126,7 @@ public class User {
         if (itemBox == null)
             itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id);
         logger.info("got itembox for user %s", getLogin());
-        logger.info(itemBox);
+//        logger.info(itemBox);
         return itemBox;
     }
 
@@ -180,8 +180,8 @@ public class User {
         logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         StringJoiner sj = new StringJoiner(" ", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
-//        getItemBox();
-        sj.add(getItemBox().getXml());
+        getItemBox();
+//        sj.add(getItemBox().getXml());
         sendMsg(sj.toString());
 
         return;

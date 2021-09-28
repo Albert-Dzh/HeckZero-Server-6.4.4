@@ -5,12 +5,14 @@ import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.hibernate.Hibernate;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id", cacheable = false)
@@ -23,13 +25,13 @@ public class Item {
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum Params {id,     section, slot,     name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
+    public enum Params {id, pid,    section, slot,     name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
     private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
     @Id
     private Integer id;
 
-//    int pid;
+    int pid;                                                                                                                                //parent item id
     String name;                                                                                                                            //item name in a client (.swf and sprite)
     String txt;                                                                                                                             //item text representation
     int massa;
@@ -70,6 +72,12 @@ public class Item {
 
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid - this.id
 
+    public boolean isParent() {return pid == 0;}
+
+    public Integer getId() { return id; }
+    public int getPid() {return pid; }
+    public ItemBox getIncluded() { return included; }
+
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
     private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
@@ -103,8 +111,9 @@ public class Item {
     public String toString() {
         return "Item{" +
                 "id=" + id +
+                ", pid=" + pid +
                 ", txt='" + txt + '\'' +
-                ", included=" + (Hibernate.isInitialized(included) ? included : "[]") +
-                '}';
+                ", included=" + included +
+                "}";
     }
 }

@@ -6,14 +6,14 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ItemBox {
     private static final Logger logger = LogManager.getFormatterLogger();
     public enum boxType  {USER, ITEM, BUILDING}
-    private List<Item> items = Collections.emptyList();
+    private List<Item> items = new ArrayList<>();
 
     public static ItemBox getItemBox(boxType boxType, int id) {
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -22,7 +22,7 @@ public class ItemBox {
 
             return new ItemBox(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load itembox of type %s by id %d from database: %s, generating a default empty ItemBox", boxType, id, e.getMessage());
+            logger.error("can't load itembox of type %s by id %d from database: %s:%s, generating a default empty ItemBox", boxType, id, e.getClass().getSimpleName(), e.getMessage());
         }
         return new ItemBox();
     }
@@ -30,7 +30,28 @@ public class ItemBox {
     public ItemBox() { }
 
     private ItemBox(List<Item> items) {
+        for (Item item: items) {
+            int pid = item.getPid();
+            if (pid == 0)
+                continue;
+            logger.info("item %s is a child", item);
+            Item parent = items.stream().filter(i -> i.getId() == pid).findFirst().orElse(null);
+            if (parent == null)
+                logger.warn("can't find parent item with id %d for Item id %d", pid, item.getId());
+            else{
+                parent.getIncluded().addItem(item);
+                logger.info("found parent item %s", parent);
+            }
+        }
+        items.removeIf(i -> !i.isParent());
         this.items = items;
+    }
+
+    public boolean isEmpty() {return items.isEmpty();}
+
+    public void addItem(Item item) {
+        this.items.add(item);
+        return;
     }
 
     public String getXml() {
@@ -40,7 +61,7 @@ public class ItemBox {
     @Override
     public String toString() {
         return "ItemBox{" +
-                "items=" + items +
+                "items=" + (items.isEmpty() ? "[]" : items) +
                 '}';
     }
 }
