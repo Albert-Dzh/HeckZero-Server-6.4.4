@@ -215,9 +215,7 @@ public class UserManager {                                                      
                 }
             }
             user.onlineGame(ch);                                                                                                            //perform initial procedures to set the user game channel online
-            synchronized (cachedUsers) {
-                cachedUsers.addIfAbsent(user);                                                                                              //add a user to cached user list
-            }
+            cachedUsers.addIfAbsent(user);                                                                                                  //add a user to cached user list
             logger.info("phase 5 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("sockStr")).get());
         }
         return;
