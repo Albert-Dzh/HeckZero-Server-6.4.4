@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class UserLevel {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static List<UserLevel> userLevels = new ArrayList<>();                                                                                       //store all data from db here for further usage
+    private static final List<UserLevel> userLevels = new ArrayList<>();                                                                                       //store all data from db here for further usage
     private static AtomicBoolean initialized = new AtomicBoolean(false);
 
     @Id
@@ -35,26 +35,30 @@ public class UserLevel {
     private static void ensureInitialized() {                                                                                               //make sure list of UserLevel objects initialized
         if (initialized.compareAndSet(false, true)) {
             try (Session ses = ServerMain.sessionFactory.openSession()) {
-                userLevels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
+                userLevels.addAll(ses.createQuery("select u from UserLevel u", UserLevel.class).list());
             } catch (NoResultException ex) {
                 logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage());
             }
+            synchronized (userLevels) {
+                userLevels.notifyAll();
+            }
         }
-        userLevels.notifyAll();
         return;
     }
 
     private static UserLevel getUserStatus(User usr) {                                                                                      //get curr User state (UserLevel) by his "exp" status
         ensureInitialized();
-        while (userLevels.isEmpty()) {
-            synchronized (userLevels) {
+        synchronized (userLevels) {
+            while (userLevels.isEmpty()) {
+                logger.info("userLevels is not initialized, waiting...");
                 try {
                     userLevels.wait();
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    logger.error("interrupted while waiting fo the userLevels to initialize: %s:%s", e.getClass().getSimpleName(), e.getMessage());
                 }
             }
         }
+
         return userLevels.stream()
                 .filter(ulvl -> usr.getParamInt(User.Params.exp) >= ulvl.exp)
                 .max(Comparator.comparingInt(o -> o.exp))
