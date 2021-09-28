@@ -83,7 +83,7 @@ public class User {
     private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
     private String getParam_battleid() {return StringUtils.EMPTY;}
     private String getParam_group() {return StringUtils.EMPTY;}
-    private int getParam_level() {return 17;}
+    private int getParam_level() {return UserLevel.getLevel(this);}
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}
 

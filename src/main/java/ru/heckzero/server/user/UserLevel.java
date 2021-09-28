@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Entity(name = "UserLevel")
 @Table(name = "users_level")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
-public class UserLevel {
+class UserLevel {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final List<UserLevel> userLevels = new ArrayList<>();                                                                                       //store all data from db here for further usage
     private static AtomicBoolean initialized = new AtomicBoolean(false);
