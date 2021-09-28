@@ -125,6 +125,8 @@ public class User {
     public ItemBox getItemBox() {
         if (itemBox == null)
             itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id);
+        logger.info("got itembox for user %s", getLogin());
+        logger.info(itemBox);
         return itemBox;
     }
 
@@ -178,8 +180,10 @@ public class User {
         logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         StringJoiner sj = new StringJoiner(" ", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
+//        getItemBox();
         sj.add(getItemBox().getXml());
         sendMsg(sj.toString());
+
         return;
     }
 
@@ -273,8 +277,10 @@ public class User {
     public void com_PR(String comein, String id, String new_cost, String to) {                                                              //portal workflow
         logger.debug("processing <PR/> from %s", getLogin());
         Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is now in
-        if (portal == null)                                                                                                                 //can't get the current portal, nothing to do
+        if (portal == null) {                                                                                                               //can't get the current portal, nothing to do
+            disconnect();
             return;
+        }
 
         if (comein != null) {                                                                                                               //incoming routes request
             StringJoiner sj = new StringJoiner("", "<PR comein=\"1\">", "</PR>");
@@ -284,7 +290,7 @@ public class User {
             return;
         }
 
-        if (id != null && new_cost != null) {                                                                                               //change incoming route cost
+        if (id != null && new_cost != null) {                                                                                               //change incoming route cost request
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));                                                                //get the route to change cost for
             if (route == null)
                 return;
@@ -294,7 +300,7 @@ public class User {
             return;
         }
 
-        if (to != null) {
+        if (to != null) {                                                                                                                   //flight ticket request
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(to));
             if (route == null)                                                                                                              //can't get the route user wants flying to
                 return;
@@ -310,10 +316,7 @@ public class User {
             return;
         }
 
-        StringJoiner sj = new StringJoiner("", "", "</PR>");
-        sj.add(portal.getXmlPR());                                                                                                          //add portal description
-        sj.add(portal.getXmlRoutes());                                                                                                    //add portal routes
-        sendMsg(sj.toString());
+        sendMsg(portal.getXmlPR());                                                                                                         //user just entering a portal, sending info about the portal and routes
         return;
     }
 
