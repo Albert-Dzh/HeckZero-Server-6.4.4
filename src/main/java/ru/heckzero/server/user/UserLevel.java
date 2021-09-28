@@ -8,8 +8,10 @@ import org.hibernate.annotations.Immutable;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Cacheable
 @Immutable
@@ -18,7 +20,8 @@ import java.util.List;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class UserLevel {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static List<UserLevel> userLevels;                                                                                                      //store all data from db here for further usage
+    private static List<UserLevel> userLevels = new ArrayList<>();                                                                                       //store all data from db here for further usage
+    private static AtomicBoolean initialized = new AtomicBoolean(false);
 
     @Id
     private int exp;
@@ -27,20 +30,31 @@ public class UserLevel {
     private int max_hp_woman,   max_psy_woman,  exp_pve_woman,  exp_pvp_woman;
     private int quest_diff1,    quest_diff2,    quest_diff3,    quest_diff4,    quest_diff5;
 
-
     public UserLevel() { }
 
-    private static void ensureInitialized() {                                                                                                       //make sure list of UserLevel objects initialized
-        if (userLevels != null)
-            return;
-        try (Session ses = ServerMain.sessionFactory.openSession()) {
-            userLevels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
+    private static void ensureInitialized() {                                                                                               //make sure list of UserLevel objects initialized
+        if (initialized.compareAndSet(false, true)) {
+            try (Session ses = ServerMain.sessionFactory.openSession()) {
+                userLevels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
+            } catch (NoResultException ex) {
+                logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage());
+            }
         }
-        catch (NoResultException ex) { logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage()); }
+        userLevels.notifyAll();
+        return;
     }
 
-    private static UserLevel getUserStatus(User usr) {                                                                                              //get curr User state (UserLevel) by his "exp" status
+    private static UserLevel getUserStatus(User usr) {                                                                                      //get curr User state (UserLevel) by his "exp" status
         ensureInitialized();
+        while (userLevels.isEmpty()) {
+            synchronized (userLevels) {
+                try {
+                    userLevels.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         return userLevels.stream()
                 .filter(ulvl -> usr.getParamInt(User.Params.exp) >= ulvl.exp)
                 .max(Comparator.comparingInt(o -> o.exp))
