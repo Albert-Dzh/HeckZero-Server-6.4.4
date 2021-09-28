@@ -75,7 +75,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
         String chStr = (String) ctx.channel().attr(AttributeKey.valueOf("chStr")).get();                                                    //set sender from string - login or socket address if a User is unknown
 
         if (cause instanceof ReadTimeoutException) {                                                                                        //read timeout has happened
-            logger.warn("read timeout from %s", chStr);
+            logger.info("read timeout from %s", chStr);
         } else {
                 logger.error("Houston, we've had a problem");
                 if (cause instanceof SAXException) {                                                                                        //malformed XML was received from a client
