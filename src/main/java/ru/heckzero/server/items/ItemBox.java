@@ -34,13 +34,13 @@ public class ItemBox {
             int pid = item.getPid();
             if (pid == 0)
                 continue;
-            logger.info("item %s is a child", item);
+//            logger.info("item %s is a child", item);
             Item parent = items.stream().filter(i -> i.getId() == pid).findFirst().orElse(null);
             if (parent == null)
                 logger.warn("can't find parent item with id %d for Item id %d", pid, item.getId());
             else{
                 parent.getIncluded().addItem(item);
-                logger.info("found parent item %s", parent);
+//                logger.info("found parent item %s", parent);
             }
         }
         items.removeIf(i -> !i.isParent());

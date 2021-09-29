@@ -7,7 +7,10 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Immutable;
 import ru.heckzero.server.ServerMain;
 
-import javax.persistence.*;
+import javax.persistence.Cacheable;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -18,9 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Entity(name = "UserLevel")
 @Table(name = "users_level")
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
-class UserLevel {
+public class UserLevel {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final List<UserLevel> userLevels = new ArrayList<>();                                                                                       //store all data from db here for further usage
+    private static final List<UserLevel> userLevels = new ArrayList<>();                                                                    //store all data from db here for further usage
     private static AtomicBoolean initialized = new AtomicBoolean(false);
 
     @Id
@@ -35,8 +38,9 @@ class UserLevel {
     private static void ensureInitialized() {                                                                                               //make sure list of UserLevel objects initialized
         if (initialized.compareAndSet(false, true)) {
             try (Session ses = ServerMain.sessionFactory.openSession()) {
-                userLevels.addAll(ses.createQuery("select u from UserLevel u", UserLevel.class).list());
-            } catch (NoResultException ex) {
+                List<UserLevel> levels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
+                userLevels.addAll(levels);
+            } catch (Exception ex) {
                 logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage());
             }
             synchronized (userLevels) {
@@ -47,10 +51,10 @@ class UserLevel {
     }
 
     private static UserLevel getUserStatus(User usr) {                                                                                      //get curr User state (UserLevel) by his "exp" status
+        logger.info("getUserStatus for user %s", usr.getLogin());
         ensureInitialized();
         synchronized (userLevels) {
             while (userLevels.isEmpty()) {
-                logger.info("userLevels is not initialized, waiting...");
                 try {
                     userLevels.wait();
                 } catch (InterruptedException e) {
