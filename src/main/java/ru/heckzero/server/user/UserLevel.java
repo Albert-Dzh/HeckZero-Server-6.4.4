@@ -53,6 +53,9 @@ public class UserLevel {
     public static int getMaxRank(User u)    { return getUserStatus(u).maxrank;      }
     public static int getPerkPoints(User u) { return getUserStatus(u).perkpoints;   }
 
+    public static int getExpLastLvl(User u) { return getExpStatus(u.getParamInt(User.Params.level)); }
+    public static int getExpNextLvl(User u) { return getExpStatus(u.getParamInt(User.Params.level) + 1); }
+
     public static int getMaxHP(User u)      { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).max_hp_woman  : getUserStatus(u).max_hp_man;  }
     public static int getMaxPsy(User u)     { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).max_psy_woman : getUserStatus(u).max_psy_man; }
     public static int getMaxExpPvE(User u)  { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).exp_pve_woman : getUserStatus(u).exp_pve_man; }
@@ -66,6 +69,14 @@ public class UserLevel {
             case 4  -> getUserStatus(u).quest_diff4;
             case 5  -> getUserStatus(u).quest_diff5;
         };
+    }
+    
+    private static int getExpStatus(int userLvl) {              // вернуть кол-во опыта по уровню ("нижняя ступенька")
+        return userLevels.stream()                              // поток
+                .filter(ulvl -> ulvl.level == userLvl)          // фильтр строго по след уровню
+                .min(Comparator.comparingInt(o -> o.exp))       // взять наименьшее из выборки
+                .orElseGet(UserLevel::new)                      // или болванку
+                .exp;                                           // получить поле опыта
     }
 
     @Override
