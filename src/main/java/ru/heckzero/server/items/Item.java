@@ -9,10 +9,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id", cacheable = false)
@@ -26,7 +23,7 @@ public class Item {
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
     public enum Params {id, pid,    section, slot,     name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
-    private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
+    private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.range, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
     @Id
     private Integer id;
@@ -50,13 +47,13 @@ public class Item {
     String max_count;                                                                                                                       //max number of included items allowed
     String up;
     String grouping;
-    String range;
+    String range;                                                                                                                           //range of action
     String nt;                                                                                                                              //no transfer, this item can't be transferred
     String build_in;
     String c;                                                                                                                               //item category
     String radius;
     String cost, cost2;                                                                                                                     //something related to shop sales
-    String s1, s2, s3, s4;
+    String s1, s2, s3, s4;                                                                                                                  //s4 - LANG[perk_group_1]
     String count;                                                                                                                           //item count
     String lb;
     String dt;                                                                                                                              //expiry date
@@ -67,7 +64,7 @@ public class Item {
     String ln;                                                                                                                              //long name text
 
     int user_id;                                                                                                                            //user id this item belongs to
-    int section;                                                                                                                            //the section number in user box or building warehouse
+    String section;                                                                                                                         //the section number in user box or building warehouse
     String slot;                                                                                                                            //user slot this item is on
 
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid - this.id
@@ -86,9 +83,7 @@ public class Item {
     public String getXml(boolean withIncluded) {
         StringJoiner sj = new StringJoiner("", "", "</O>");
         sj.add(itemParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<O ", ">")));
-//        logger.warn("item %s had %d included item: %s", id, Hibernate.isInitialized(included) ? included.size() : 0, Hibernate.isInitialized(included) ? included : "[]");
-//        if (withIncluded && Hibernate.isInitialized(included))
-//            included.forEach(i -> sj.add(i.getXml()));
+        sj.add(withIncluded ? included.getXml() : StringUtils.EMPTY);
         return sj.toString();
     }
 
@@ -114,6 +109,6 @@ public class Item {
                 ", pid=" + pid +
                 ", txt='" + txt + '\'' +
                 ", included=" + included +
-                "}";
+                "}\n";
     }
 }

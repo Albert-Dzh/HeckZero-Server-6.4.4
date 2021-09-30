@@ -51,7 +51,6 @@ public class UserLevel {
     }
 
     private static UserLevel getUserStatus(User usr) {                                                                                      //get curr User state (UserLevel) by his "exp" status
-        logger.info("getUserStatus for user %s", usr.getLogin());
         ensureInitialized();
         synchronized (userLevels) {
             while (userLevels.isEmpty()) {

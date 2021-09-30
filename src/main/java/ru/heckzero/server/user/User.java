@@ -62,7 +62,7 @@ public class User {
 
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
-    @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first get
+    @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
 
     public User() { }
 
@@ -125,12 +125,8 @@ public class User {
         return;
     }
 
-    public ItemBox getItemBox() {
-        if (itemBox == null)
-            itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id);
-        logger.info("got itembox for user %s", getLogin());
-//        logger.info(itemBox);
-        return itemBox;
+    public ItemBox getItemBox() {                                                                                                           //return user itembox or get it
+        return itemBox != null ? itemBox : (itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id));
     }
 
     synchronized void onlineGame(Channel ch) {
@@ -181,10 +177,10 @@ public class User {
 
     public void com_MYPARAM() {                                                                                                             //provision the client initial params as a reply for <GETME/>
         logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
-        StringJoiner sj = new StringJoiner(" ", "<MYPARAM ", "</MYPARAM>");
+        StringJoiner sj = new StringJoiner("", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
-        getItemBox();
-//        sj.add(getItemBox().getXml());
+//        logger.error("itembox %s", getItemBox());
+        sj.add(getItemBox().getXml());
         sendMsg(sj.toString());
 
         return;

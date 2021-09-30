@@ -16,10 +16,10 @@ public class ItemBox {
     private List<Item> items = new ArrayList<>();
 
     public static ItemBox getItemBox(boxType boxType, int id) {
+        logger.info("getting itembox for user_id %d", id);
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.name()), Item.class).setParameter("id", id);
             List<Item> items = query.list();
-
             return new ItemBox(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load itembox of type %s by id %d from database: %s:%s, generating a default empty ItemBox", boxType, id, e.getClass().getSimpleName(), e.getMessage());
@@ -34,14 +34,11 @@ public class ItemBox {
             int pid = item.getPid();
             if (pid == 0)
                 continue;
-//            logger.info("item %s is a child", item);
             Item parent = items.stream().filter(i -> i.getId() == pid).findFirst().orElse(null);
             if (parent == null)
                 logger.warn("can't find parent item with id %d for Item id %d", pid, item.getId());
-            else{
+            else
                 parent.getIncluded().addItem(item);
-//                logger.info("found parent item %s", parent);
-            }
         }
         items.removeIf(i -> !i.isParent());
         this.items = items;
@@ -61,7 +58,7 @@ public class ItemBox {
     @Override
     public String toString() {
         return "ItemBox{" +
-                "items=" + (items.isEmpty() ? "[]" : items) +
+                "items=" + items +
                 '}';
     }
 }
