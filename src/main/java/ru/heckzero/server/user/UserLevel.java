@@ -73,7 +73,7 @@ public class UserLevel {
     
     private static int getExpStatus(int userLvl) {              // вернуть кол-во опыта по уровню ("нижняя ступенька")
         return userLevels.stream()                              // поток
-                .filter(ulvl -> ulvl.level == userLvl)          // фильтр строго по след уровню
+                .filter(ulvl -> ulvl.level == userLvl)          // оставить только нужный уровень (с его промежуточными "ступеньками")
                 .min(Comparator.comparingInt(o -> o.exp))       // взять наименьшее из выборки
                 .orElseGet(UserLevel::new)                      // или болванку
                 .exp;                                           // получить поле опыта
