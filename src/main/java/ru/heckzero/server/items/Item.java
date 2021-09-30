@@ -69,11 +69,10 @@ public class Item {
 
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid - this.id
 
-    public boolean isParent() {return pid == 0;}
+    public boolean isChild() {return pid != 0;}
 
     public Integer getId() { return id; }
     public int getPid() {return pid; }
-    public ItemBox getIncluded() { return included; }
 
     public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
     public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
@@ -102,6 +101,9 @@ public class Item {
         return StringUtils.EMPTY;
     }
 
+    public void include(Item item) {
+        included.add(item);
+    }
     @Override
     public String toString() {
         return "Item{" +

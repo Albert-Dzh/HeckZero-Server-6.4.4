@@ -6,14 +6,14 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 public class ItemBox {
     private static final Logger logger = LogManager.getFormatterLogger();
-    public enum boxType  {USER, ITEM, BUILDING}
-    private List<Item> items = new ArrayList<>();
+    public enum boxType  {USER, BUILDING}
+    private List<Item> items = new CopyOnWriteArrayList<>();
 
     public static ItemBox getItemBox(boxType boxType, int id) {
         logger.info("getting itembox for user_id %d", id);
@@ -38,22 +38,31 @@ public class ItemBox {
             if (parent == null)
                 logger.warn("can't find parent item with id %d for Item id %d", pid, item.getId());
             else
-                parent.getIncluded().addItem(item);
+                parent.include(item);
         }
-        items.removeIf(i -> !i.isParent());
+
+
+        items.removeIf(Item::isChild);
         this.items = items;
     }
 
     public boolean isEmpty() {return items.isEmpty();}
 
-    public void addItem(Item item) {
+
+    public void add(Item item) {
+/*
+        if (item.isChild()) {
+            logger.warn("item %s is not a parent item, won't add it to the itembox", item);
+            return;
+        }
+*/
         this.items.add(item);
         return;
     }
 
-    public String getXml() {
-        return items.stream().map(Item::getXml).collect(Collectors.joining());
-    }
+    public Item getItem(int id) { return items.stream().filter(i -> i.getId() == id).findFirst().orElse(null); }                            //get an Item by id
+
+    public String getXml() { return items.stream().map(Item::getXml).collect(Collectors.joining()); }
 
     @Override
     public String toString() {
