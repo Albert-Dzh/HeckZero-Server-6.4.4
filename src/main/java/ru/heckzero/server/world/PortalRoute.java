@@ -45,7 +45,7 @@ public class PortalRoute {
                 Hibernate.initialize(route.getDstPortal().getLocation());
                 return route;
             }else
-                logger.error("cant find portal route with id %d in database. Check it out!", route_id);
+                logger.error("can't find portal route with id %d in database. Check it out!", route_id);
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load portal route with id %d from database: %s", route_id, e.getMessage());
         }
@@ -76,7 +76,7 @@ public class PortalRoute {
 
     public void sync() { ServerMain.sync(this); }
 
-    public String getXmlPR() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%.1f\" ds=\"%d\" city=\"%s\"/>", id, dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
+    public String getXml() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%.1f\" ds=\"%d\" city=\"%s\"/>", id, dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
     public String getXmlComein() {return String.format("<O id=\"%d\" txt=\"%s [%d/%d]\" cost=\"%.1f\"/>", id, srcPortal.getTxt(), srcPortal.getLocation().getLocalX(), srcPortal.getLocation().getLocalY(), cost);}
     public String getBigMap(){return String.format("%d,%d", dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY());}     //get route coordinates for the BigMap
 }

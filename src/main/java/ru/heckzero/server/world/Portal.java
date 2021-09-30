@@ -34,7 +34,6 @@ public class Portal extends Building {
 
     public String getCity() { return city; }
     public int getDs() { return ds;}
-    public List<PortalRoute> getRoutes() {return routes;}
 
     public static List<Portal> getBigmapPortals() {
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -57,18 +56,19 @@ public class Portal extends Building {
                 portal.ensureInitialized();
             return portal;
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load portal with id %d from database: %s, generating a default Portal instance", id, e.getMessage());
+            logger.error("can't load portal with id %d from database: %s", id, e.getMessage());
         }
         return null;                                                                                                                        //in case of portal was not found or database error return a default portal instance
     }
 
     protected Portal() { }
 
-    protected void ensureInitialized() {                                                                                                    //initialize portal fields from L2 cache
+    private void ensureInitialized() {                                                                                                      //initialize portal fields from L2 cache
         Hibernate.initialize(getLocation());
         routes.forEach(r -> Hibernate.initialize(r.getDstPortal().getLocation()));
         return;
     }
+    private String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXml).collect(Collectors.joining()); }
 
     public String getXmlBigmap() {                                                                                                          //generate an object for the bigmap (city and/or portal)
         StringBuilder sb = new StringBuilder();
@@ -81,7 +81,10 @@ public class Portal extends Building {
         return sb.toString();
     }
 
-    public String getXmlPR() {return portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"));}
-    public String getXmlRoutesPR() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXmlPR).collect(Collectors.joining()); }
-
+    public String getXmlPR() {
+        StringJoiner sj = new StringJoiner("", "", "</PR>");
+        sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
+        sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
+        return sj.toString();
+    }
 }

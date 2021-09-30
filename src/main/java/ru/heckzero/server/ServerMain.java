@@ -26,9 +26,11 @@ import org.hibernate.boot.MetadataBuilder;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.ServiceRegistry;
+import ru.heckzero.server.items.Item;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserLevel;
 import ru.heckzero.server.world.Building;
 import ru.heckzero.server.world.Location;
 import ru.heckzero.server.world.Portal;
@@ -40,13 +42,13 @@ import java.util.concurrent.ScheduledExecutorService;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final String VERSION = "0.4";
+    private static final String VERSION = "0.5";
     private static final String CONF_DIR = "conf";                                                                                          //configuration directory
     private static final String CONF_FILE = "heckzero.xml";                                                                                 //server configuration file
     private static final Integer DEF_MAX_WORKER_THREADS = 8;                                                                                //MAX threads in EventExecutorGroup for the offloading EventLoop threads
     private static final String DEF_LISTEN_HOST = "0.0.0.0";                                                                                //default IP (host) to listen may be IP or FQDN
     private static final Integer DEF_LISTEN_PORT = 5190;                                                                                    //default port to listen
-    private static final Integer DEF_MAX_PACKET_SIZE = 1500;                                                                                //max packet length to parse by DelimiterBasedFrameDecoder handler
+    private static final Integer DEF_MAX_PACKET_SIZE = 21500;                                                                                //max packet length to parse by DelimiterBasedFrameDecoder handler
     private static final Integer DEF_MAX_SOCKET_IDLE_TIME = 5;                                                                              //default socket(non an authorized user) idle timeout (sec)
     public static final Integer DEF_MAX_USER_IDLE_TIME = 32;                                                                                //Max user timeout
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
@@ -59,13 +61,14 @@ public class ServerMain {
 
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
     private static final boolean IS_UNIX = (OS.contains("nix") || OS.contains("nux")) ;                                                     //if the running OS is Linux/Unix family
-    public static final ScheduledExecutorService userTasksScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                        //scheduled executor used in various classes
+    public static final ScheduledExecutorService userTasksScheduledExecutor = Executors.newSingleThreadScheduledExecutor();                 //scheduled executor used in various classes
 
     public static XMLConfiguration hzConfiguration = null;
-    public static SessionFactory sessionFactory;                                                                                            //Hibernate SessionFactory used across the server
+    public static SessionFactory sessionFactory = null;                                                                                     //Hibernate SessionFactory used across the server
 
     static {
         ((LoggerContext) LogManager.getContext(false)).setConfigLocation(log4jCfg.toURI());                                                 //set and read log4j configuration file name
+        dbInit();                                                                                                                           //bootstrap the hibernate and 2nd level cache and create a SessionFactory
     }
 
     public static void main(String[] args) {
@@ -77,7 +80,6 @@ public class ServerMain {
         logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", VERSION);
         if (!readServerConfig())                                                                                                            //can't read config file
             return;
-        sessionFactory = dbInit();                                                                                                          //init hibernate and 2nd level cache and create a SessionFactory
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)
         EventExecutorGroup execGroup = new DefaultEventExecutorGroup(hzConfiguration.getInt("MaxWorkerThreads", DEF_MAX_WORKER_THREADS));   //DefaultEventLoopGroup will offload operations from the EventLoop
         int listenPort = hzConfiguration.getInt("ServerSetup.ListenPort", DEF_LISTEN_PORT);                                                 //port the server will be listening on
@@ -99,7 +101,7 @@ public class ServerMain {
                             pl.addLast("socketIdleHandler", new ReadTimeoutHandler(hzConfiguration.getInt("ServerSetup.MaxSocketIdleTime", DEF_MAX_SOCKET_IDLE_TIME)));  //set a read timeout handler
                             pl.addLast(netOutHandler);                                                                                      //adding 0x00 byte terminator to an outbound XML string for the sake of XML Flash requirements
 
-                            pl.addLast(new DelimiterBasedFrameDecoder(DEF_MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                     //Flash XML Socket 0x0 byte terminator detection
+                            pl.addLast(new DelimiterBasedFrameDecoder(DEF_MAX_PACKET_SIZE, Delimiters.nulDelimiter()));                     //Adobe Flash XML Socket 0x0 byte terminator detection
                             pl.addLast(execGroup, netInHandlerMain);                                                                        //the inbound handler will be executed in separate event exec group
                         }
                     });
@@ -116,17 +118,17 @@ public class ServerMain {
         return;
     }
 
-    private SessionFactory dbInit() {                                                                                                       //bootstrap the Hibernate
+    private static void dbInit() {                                                                                                          //bootstrap the Hibernate
         StandardServiceRegistryBuilder standardServiceRegistryBuilder = new StandardServiceRegistryBuilder().configure(hbnateCfg);          //read hibernate configuration from file
-        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to ehcache config file name)
+        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to point to ehcache config file name)
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
-                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(PortalRoute.class);
+                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(UserLevel.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
-        return sessionFactory;
+        return;
     }
 
     public static void sync(Object entity) {
@@ -139,7 +141,7 @@ public class ServerMain {
         }catch (Exception e) {
             if (tx != null && tx.isActive())
                 tx.rollback();
-            logger.error("can't save entity %s", entity.toString());
+            logger.error("can't save entity %s: %s:%s", entity.toString(), e.getClass().getSimpleName(), e.getMessage());
         }
         return;
     }

@@ -7,9 +7,14 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Immutable;
 import ru.heckzero.server.ServerMain;
 
-import javax.persistence.*;
+import javax.persistence.Cacheable;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Cacheable
 @Immutable
@@ -18,7 +23,8 @@ import java.util.List;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class UserLevel {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static List<UserLevel> userLevels;                                                                                                      //store all data from db here for further usage
+    private static final List<UserLevel> userLevels = new ArrayList<>();                                                                    //store all data from db here for further usage
+    private static AtomicBoolean initialized = new AtomicBoolean(false);
 
     @Id
     private int exp;
@@ -30,17 +36,38 @@ public class UserLevel {
 
     public UserLevel() { }
 
-    private static void ensureInitialized() {                                                                                                       //make sure list of UserLevel objects initialized
-        if (userLevels != null)
-            return;
-        try (Session ses = ServerMain.sessionFactory.openSession()) {
-            userLevels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
+    private static void ensureInitialized() {                                                                                               //make sure list of UserLevel objects initialized
+        if (initialized.compareAndSet(false, true)) {
+            try (Session ses = ServerMain.sessionFactory.openSession()) {
+                List<UserLevel> levels = ses.createQuery("select u from UserLevel u", UserLevel.class).list();
+                userLevels.addAll(levels);
+            } catch (Exception ex) {
+                logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage());
+            }
+            synchronized (userLevels) {
+                userLevels.notifyAll();
+            }
         }
         catch (NoResultException ex) { logger.error("can't load user level table: %s:%s", ex.getClass().getSimpleName(), ex.getMessage()); }
     }
 
+<<<<<<<<< Temporary merge branch 1
+    //get UserLevel state by User
+    private static UserLevel getUserStatus(User usr) {
+=========
     private static UserLevel getUserStatus(User usr) {                                                                                              //get curr User state (UserLevel) by his "exp" status
+>>>>>>>>> Temporary merge branch 2
         ensureInitialized();
+        synchronized (userLevels) {
+            while (userLevels.isEmpty()) {
+                try {
+                    userLevels.wait();
+                } catch (InterruptedException e) {
+                    logger.error("interrupted while waiting fo the userLevels to initialize: %s:%s", e.getClass().getSimpleName(), e.getMessage());
+                }
+            }
+        }
+
         return userLevels.stream()
                 .filter(ulvl -> usr.getParamInt(User.Params.exp) >= ulvl.exp)
                 .max(Comparator.comparingInt(o -> o.exp))
@@ -61,7 +88,11 @@ public class UserLevel {
     public static int getMaxExpPvE(User u)  { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).exp_pve_woman : getUserStatus(u).exp_pve_man; }
     public static int getMaxExpPvP(User u)  { return u.getParamInt(User.Params.man) == 0 ? getUserStatus(u).exp_pvp_woman : getUserStatus(u).exp_pvp_man; }
 
+<<<<<<<<< Temporary merge branch 1
+    public static int getQuestDiffRevard(User u, int diffLvl) {
+=========
     public static int getQuestDiffReward(User u, int diffLvl) {
+>>>>>>>>> Temporary merge branch 2
         return switch (diffLvl) {
             default -> getUserStatus(u).quest_diff1;
             case 2  -> getUserStatus(u).quest_diff2;
@@ -70,7 +101,7 @@ public class UserLevel {
             case 5  -> getUserStatus(u).quest_diff5;
         };
     }
-    
+
     private static int getExpStatus(int userLvl) {              // вернуть кол-во опыта по уровню ("нижняя ступенька")
         return userLevels.stream()                              // поток
                 .filter(ulvl -> ulvl.level == userLvl)          // оставить только нужный уровень (с его промежуточными "ступеньками")
@@ -82,6 +113,27 @@ public class UserLevel {
     @Override
     public String toString() {
         return "UserLevel{" +
+<<<<<<<<< Temporary merge branch 1
+                "exp=" + exp +
+                ", level=" + level +
+                ", stat=" + stat +
+                ", maxHPMan=" + max_hp_man +
+                ", maxPsyMan=" + max_psy_man +
+                ", expPvEMan=" + exp_pve_man +
+                ", expPvPMan=" + exp_pvp_man +
+                ", maxHPWoman=" + max_hp_woman +
+                ", maxPsyWoman=" + max_psy_woman +
+                ", expPvEWoman=" + exp_pve_woman +
+                ", expPvPWoman=" + exp_pvp_woman +
+                ", maxrank=" + maxrank +
+                ", perkpoints=" + perkpoints +
+                ", statup=" + statup +
+                ", qestDiff1=" + quest_diff1 +
+                ", qestDiff2=" + quest_diff2 +
+                ", qestDiff3=" + quest_diff3 +
+                ", qestDiff4=" + quest_diff4 +
+                ", qestDiff5=" + quest_diff5 +
+=========
                 "exp="              + exp +
                 ", level="          + level +
                 ", stat="           + stat +
@@ -101,6 +153,7 @@ public class UserLevel {
                 ", qestDiff3="      + quest_diff3 +
                 ", qestDiff4="      + quest_diff4 +
                 ", qestDiff5="      + quest_diff5 +
+>>>>>>>>> Temporary merge branch 2
                 '}';
     }
 }

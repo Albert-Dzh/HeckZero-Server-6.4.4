@@ -6,11 +6,14 @@ import org.apache.logging.log4j.Logger;
 
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.Transient;
 import java.lang.reflect.Field;
 
 @Embeddable
 class UserParams {
     private static Logger logger = LogManager.getFormatterLogger();
+
+    @Transient int stamina = 100;                                                                                                           //stamina initial value 100, it makes sense only in a battle and is not persistent
 
     private String login, password, email;                                                                                                  //ask the Captain Obvious about that params
     private long reg_time;                                                                                                                  //user registration time (epoch)
@@ -32,8 +35,8 @@ class UserParams {
     private int man;                                                                                                                        //man - 1, woman - 0
     @Column(name = "\"HP\"")   private int HP;                                                                                              //Health Points (HP)
     private int psy;                                                                                                                        //psychic energy level
-    private int stamina, str, dex, pow, acc, intel;                                                                                         //user "stats" stamina, strength, dexterity, accuracy, intellect
-    @Column(name = "int")      private int intu;                                                                                            //intuition ("int" in db, "intu" here, cause the word "int" is reserved in java)
+    private int str, dex, pow, acc, intel;                                                                                                  //user "stats" strength, dexterity, accuracy, intellect
+    @Column(name = "int")      private int intu;                                                                                            //intuition ("int" in db and for client, "intu" here, cause the word "int" is reserved in java)
     private int sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12;                                                         //skills level
     @Column(name = "\"X\"")    private int X;                                                                                               //X coordinate
     @Column(name = "\"Y\"")    private int Y;                                                                                               //Y coordinate
@@ -49,10 +52,10 @@ class UserParams {
     private String siluet;                                                                                                                  //siluet description
     private int bot;                                                                                                                        //0 - player is a human, 1- bot
     private String name, city, about, note;                                                                                                 //user self-given params in "about" section of PDA
-    private String list;                                                                                                                    //user contact list
+    private String list;                                                                                                                    //contact list
     private String plist;                                                                                                                   //perk list
-    @Column(name = "\"ODratio\"") private int ODratio;                                                                                      //OD ratio affected on user
-    private int virus;                                                                                                                      //biological infection
+    @Column(name = "\"ODratio\"") private int ODratio;                                                                                      //OD ratio currently affected on user
+    private int virus;                                                                                                                      //user got a biological infection
     private String brokenslots;                                                                                                             //broken slots list. each slot represents by a single letter
     private int poisoning;                                                                                                                  //poison level
     private int ill;                                                                                                                        //infection with the virus X (-1...1)
