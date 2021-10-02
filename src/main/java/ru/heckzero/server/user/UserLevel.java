@@ -57,7 +57,7 @@ public class UserLevel {
                 try {
                     userLevels.wait();
                 } catch (InterruptedException e) {
-                    logger.error("interrupted while waiting fo the userLevels to initialize: %s:%s", e.getClass().getSimpleName(), e.getMessage());
+                    logger.error("interrupted in waiting fo the userLevels to initialize: %s:%s", e.getClass().getSimpleName(), e.getMessage());
                 }
             }
         }

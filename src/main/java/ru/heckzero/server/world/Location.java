@@ -1,22 +1,18 @@
 package ru.heckzero.server.world;
 
-import org.apache.commons.beanutils.converters.IntegerConverter;
-import org.apache.commons.beanutils.converters.StringConverter;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
-import org.hibernate.annotations.*;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.NaturalId;
+import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 
-import javax.persistence.CascadeType;
-import javax.persistence.Entity;
-import javax.persistence.Table;
 import javax.persistence.*;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -29,9 +25,6 @@ import java.util.stream.Collectors;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
 public class Location {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
-    private static final IntegerConverter intConv = new IntegerConverter(0);
-
     public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
     private static final EnumSet<Params> golocParams = EnumSet.of(Params.X, Params.Y, Params.tm, Params.t, Params.m, Params.n, Params.r, Params.name, Params.b, Params.z, Params.o, Params.p, Params.repair);
 
@@ -108,7 +101,7 @@ public class Location {
     public int getLocalX() {return normalLocToLocal(getParamInt(Params.X));}                                                                //get location local coordinates X,Y (for the client)
     public int getLocalY() {return normalLocToLocal(getParamInt(Params.Y));}
 
-    public int getLocBtnNum(User user) {                                                                                                    //return the minimap button number this location can be placed on
+    public int getLocBtnNum(User user) {                                                                                                    //return the minimap button number this location is corresponding to
         int userX = user.getParamInt(User.Params.X);                                                                                        //current user coordinates
         int userY = user.getParamInt(User.Params.Y);
 
@@ -117,22 +110,15 @@ public class Location {
         return ArrayUtils.get(ArrayUtils.get(locNums, row), col, ArrayUtils.INDEX_NOT_FOUND);                                               //get locNum value or -1 if indexes are out of bounds
     }
 
-    public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
-    private String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());}                                        //get user param value as different type
+    public int getParamInt(Params param) {return ParamUtils.getParamInt(this, param.toString());}
+    private String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString());}                                       //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+
     public String getXml() {                                                                                                                //location XML representation
         StringJoiner sj = new StringJoiner("", "", "</L>");
         String locationParamsXml = golocParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<L ", ">")); // add location data
         sj.add(locationParamsXml);
         buildings.forEach(bld -> sj.add(bld.getXml()));                                                                                     //add buildings data
         return sj.toString();
-    }
-
-    private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
-        try {
-            Field field = this.getClass().getDeclaredField(paramName.toString());
-            return field.get(this);                                                                                                         //and return it (or an empty string if null)
-        } catch (Exception e) {logger.error("can't get location param %s: %s", paramName.toString(), e.getMessage()); }
-        return StringUtils.EMPTY;
     }
 }

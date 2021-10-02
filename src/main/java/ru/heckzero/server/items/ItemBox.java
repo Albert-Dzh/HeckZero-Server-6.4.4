@@ -16,46 +16,34 @@ public class ItemBox {
     private List<Item> items = new CopyOnWriteArrayList<>();
 
     public static ItemBox getItemBox(boxType boxType, int id) {
-        logger.info("getting itembox for user_id %d", id);
+        ItemBox itemBox = new ItemBox();
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.name()), Item.class).setParameter("id", id);
             List<Item> items = query.list();
-            return new ItemBox(items);
+            itemBox.init(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load itembox of type %s by id %d from database: %s:%s, generating a default empty ItemBox", boxType, id, e.getClass().getSimpleName(), e.getMessage());
         }
-        return new ItemBox();
+        return itemBox;
     }
 
     public ItemBox() { }
 
-    private ItemBox(List<Item> items) {
-        for (Item item: items) {
-            int pid = item.getPid();
-            if (pid == 0)
-                continue;
-            Item parent = items.stream().filter(i -> i.getId() == pid).findFirst().orElse(null);
-            if (parent == null)
-                logger.warn("can't find parent item with id %d for Item id %d", pid, item.getId());
-            else
-                parent.include(item);
+
+    public void init(List<Item> items) {
+        List <Item> childItems = items.stream().filter(Item::isChild).toList();
+        for (Item child : childItems) {
+            Item parent = items.stream().filter(i -> i.getId() == child.getPid()).findFirst().orElseGet(Item::new);
+            parent.insertItem(child);
         }
-
-
-        items.removeIf(Item::isChild);
+        items.removeAll(childItems);
         this.items = items;
+        return;
     }
 
     public boolean isEmpty() {return items.isEmpty();}
 
-
     public void add(Item item) {
-/*
-        if (item.isChild()) {
-            logger.warn("item %s is not a parent item, won't add it to the itembox", item);
-            return;
-        }
-*/
         this.items.add(item);
         return;
     }

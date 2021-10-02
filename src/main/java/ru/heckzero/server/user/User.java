@@ -3,10 +3,7 @@ package ru.heckzero.server.user;
 import io.netty.channel.Channel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
-import org.apache.commons.beanutils.converters.DoubleConverter;
-import org.apache.commons.beanutils.converters.IntegerConverter;
-import org.apache.commons.beanutils.converters.LongConverter;
-import org.apache.commons.beanutils.converters.StringConverter;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -15,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ru.heckzero.server.Chat;
+import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.world.Building;
@@ -23,7 +21,6 @@ import ru.heckzero.server.world.Portal;
 import ru.heckzero.server.world.PortalRoute;
 
 import javax.persistence.*;
-import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ScheduledFuture;
@@ -39,18 +36,16 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by onlineGame() and onlineChat() methods
-    public enum Params {time, tdt, nochat, level, predlevel, nextlevel, maxHP, maxPsy, battleid, group, kupol, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
+    public enum Params {time, tdt, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
     public static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
     private static final int DB_SYNC_TIME_SEC = 300;                                                                                        //user db sync interval in seconds
-
-    private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
-    private static final IntegerConverter intConv = new IntegerConverter(0);
-    private static final LongConverter longConv = new LongConverter(0L);
-    private static final DoubleConverter doubleConv = new DoubleConverter(0D);
 
     @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //user need to be synced - some params have been modified
     @Transient private final Chat chat = new Chat(this);
     @Transient private ScheduledFuture<?> futureSync = null;
+    @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
+    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
+    @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -59,10 +54,6 @@ public class User {
 
     @Embedded
     private final UserParams params = new UserParams();                                                                                     //user params that can be set (read-write) are placed there
-
-    @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
-    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
-    @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
 
     public User() { }
 
@@ -79,23 +70,24 @@ public class User {
     public Channel getGameChannel() {return this.gameChannel;}
     public Channel getChatChannel() {return this.chatChannel;}
     public String getLogin() {return getParamStr(Params.login);}                                                                            //just a shortcut
-    private long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
-    private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
     private String getParam_battleid() {return StringUtils.EMPTY;}
     private String getParam_group() {return StringUtils.EMPTY;}
 
-    private int getParam_level() {return UserLevel.getLevel(this);}
-    private int getParam_predlevel() {return UserLevel.getExpLastLvl(this);}
-    private int getParam_nextlevel() {return UserLevel.getExpNextLvl(this);}
+    private long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
+    private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
+    private int getParam_level() {return UserLevel.getLevel(this);}                                                                         //compute the user level by its experience value
+    private int getParam_predlevel() {return UserLevel.getExpLastLvl(this);}                                                                //get the experience value of current level beginning
+    private int getParam_nextlevel() {return UserLevel.getExpNextLvl(this);}                                                                //get the experience value of current level end
     private int getParam_maxHP() {return UserLevel.getMaxHP(this);}
     private int getParam_maxPsy() {return UserLevel.getMaxPsy(this);}
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
-    private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}
+    private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
 
-    public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
-    public long getParamLong(Params param) {return longConv.convert(Long.class, getParam(param));}
-    public double getParamDouble(Params param) {return doubleConv.convert(Double.class, getParam(param));}
+    public String getParamStr(Params param) {return ParamUtils.getParamStr(params, this, param.toString());}                                //get user param value as different type
+    public int getParamInt(Params param) {return ParamUtils.getParamInt(params, this, param.toString());}                                   //get user param value as different type
+    public long getParamLong(Params param) {return ParamUtils.getParamLong(params, this, param.toString());}                                //get user param value as different type
+    public double getParamDouble(Params param) {return ParamUtils.getParamDouble(params, this, param.toString());}                          //get user param value as different type
+
     private String getParamXml(Params param, boolean appendEmpty) {return getParamStr(param).transform(s -> (!s.isEmpty() || appendEmpty) ? String.format("%s=\"%s\"", param == Params.intu ? "int" : param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     private String getParamsXml(EnumSet<Params> params, boolean appendEmpty) {return params.stream().map(p -> getParamXml(p, appendEmpty)).filter(StringUtils::isNotBlank).collect(Collectors.joining(" "));}
 
@@ -103,24 +95,8 @@ public class User {
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
-    private Object getParam(Params param) {                                                                                                 //get user param (param must be in Params enum)
-        try {                                                                                                                               //try to find param in UserParam instance
-            return params.getParam(param);
-        } catch (Exception e) {logger.debug("can't find param %s in User.Params params, looking for a special method which computes that param", param.toString());}
-
-        String paramName = param.toString();                                                                                                //param name as a String
-        String methodName = String.format("getParam_%s", paramName);
-        try {                                                                                                                               //if not found in params. try to compute the param value via the dedicated method
-            Method method = this.getClass().getDeclaredMethod(methodName);
-            return method.invoke(this);
-        } catch (Exception e) {
-            logger.warn("can't get or compute param %s, neither in User.UserParams nor by a dedicated method: %s", paramName, e.getMessage());
-        }
-        return StringUtils.EMPTY;                                                                                                           //return an empty string as a default value
-    }
-
     public void setParam(Params paramName, Object paramValue) {                                                                             //set a user param
-        if (params.setParam(paramName, paramValue))                                                                                         //delegate param setting to UserParams
+        if (ParamUtils.setParam(params, paramName.toString(), paramValue))                                                                  //delegate param setting to UserParams
             needSync.compareAndSet(false, true);
         if (!isInGame())                                                                                                                    //sync the user if he is offline and is not in a battle
             sync();
@@ -131,7 +107,7 @@ public class User {
         return itemBox != null ? itemBox : (itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id));
     }
 
-    synchronized void onlineGame(Channel ch) {
+    synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
         logger.debug("setting user '%s' game channel online", getLogin());
         this.gameChannel = ch;                                                                                                              //set user game channel
         this.gameChannel.attr(AttributeKey.valueOf("chType")).set(ChannelType.GAME);                                                        //set the user channel type to GAME
@@ -146,7 +122,7 @@ public class User {
         return;
     }
 
-    synchronized void offlineGame() {
+    synchronized void offlineGame() {                                                                                                       //the user game channel disconnected
         logger.debug("setting user '%s' game channel offline", getLogin());
         setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
@@ -201,7 +177,7 @@ public class User {
         StringJoiner sj = new StringJoiner("", "<GOLOC", "</GOLOC>");                                                                       //start formatting a <GOLOC> reply
         if (btnNum != 5) {                                                                                                                  //user moves to another location
             if (locationToGo.getLocBtnNum(this) != btnNum) {                                                                                //getLocBtnNum() must return the same btnNum as user has tapped
-                logger.warn("user %s tried to move to inapplicable location from %d/%d to %d/%d", getLogin(), getParam(Params.X), getParam(Params.Y), locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));
+                logger.warn("user %s tried to move to inapplicable location from %d/%d to %d/%d", getLogin(), getParamInt(Params.X), getParamInt(Params.Y), locationToGo.getParamInt(Location.Params.X), locationToGo.getParamInt(Location.Params.Y));
                 sendMsg("<ERRGO />");                                                                                                       //Вы не смогли перейти в этом направлении
                 return;
             }
@@ -226,7 +202,7 @@ public class User {
         sj.add(locationToGo.getParamStr(Location.Params.monsters).transform(s -> s.isEmpty() ? ">" : String.format(" m=\"%s\">", s)));      //add m (monster) to <GOLOC> from the current location
 
         if (d != null) {                                                                                                                    //user requests nearest location description
-            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(btn -> btn == 5 ? locationToGo : getLocation(btn)).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
+            List<Location> locations = Arrays.stream(d.split("")).mapToInt(NumberUtils::toInt).mapToObj(btn -> btn == 5 ? locationToGo : getLocation(btn)).filter(l -> l.getLocBtnNum(this) != ArrayUtils.INDEX_NOT_FOUND).collect(Collectors.toList()); //get the list if requested location (for each number in "d")
             locations.forEach(l -> sj.add(l.getXml()));
         }
         sendMsg(sj.toString());                                                                                                             //send a <GOLOC/> reply
@@ -235,7 +211,7 @@ public class User {
 
     public void com_MMP(String param) {
         StringJoiner sj = new StringJoiner("", "<MMP>", "</MMP>");                                                                          //MMP - Big map (5x5) request
-        List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(this::getLocation).filter(l -> l.getLocBtnNum(this) != -1).collect(Collectors.toList()); //get the list if requested location (for each number in "param")
+        List<Location> locations = Arrays.stream(param.split(",")).mapToInt(NumberUtils::toInt).mapToObj(this::getLocation).filter(l -> l.getLocBtnNum(this) != ArrayUtils.INDEX_NOT_FOUND).collect(Collectors.toList()); //get the list if requested location (for each number in "param")
         locations.forEach(l -> sj.add(l.getXml()));
         sendMsg(sj.toString());
         return;
