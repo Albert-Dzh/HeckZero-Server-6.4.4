@@ -88,11 +88,11 @@ public class Item {
     }
 
     public ItemBox getExpired() {
-        logger.info("check for expired of item id %d", getId());
+//        logger.info("check for expired of item id %d", getId());
         ItemBox expired = new ItemBox();
         long dt = getParamLong(Params.dt);
         if (dt > 0 && dt <= Instant.now().getEpochSecond()) {
-            logger.warn("item %d is expired", getId());
+//            logger.warn("item %d is expired", getId());
             expired.add(this);
         }
         expired.add(included.getExpired());

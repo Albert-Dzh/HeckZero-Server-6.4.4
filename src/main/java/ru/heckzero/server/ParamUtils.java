@@ -56,12 +56,12 @@ public class ParamUtils {
 
     private static Object getParam(Object obj, String paramName) {                                                                          //try to find a field with the name equals to paramName
         List<Field> fieldList = FieldUtils.getAllFieldsList(obj.getClass());                                                                //gets all fields of the given class and its parents (if any)
-        logger.info("phase1: try to find a param %s from the list of the fields", paramName);
+        logger.debug("phase1: try to find a param %s from the list of the fields", paramName);
         Field paramField = fieldList.stream().filter(f -> f.getName().equals(paramName)).findFirst().orElse(null);                          //try to find a field with a name of paramName in the fieldList
         if (paramField != null)                                                                                                             //Field found in obj;
             return readField(obj, paramField);                                                                                              //try to read value of that field or return null in case of read exception
 
-        logger.info("phase2: try to find a field %s inside a params object", paramName);
+        logger.debug("phase2: try to find a field %s inside a params object", paramName);
         Field paramsField = fieldList.stream().filter(f -> f.getName().equals("params")).findFirst().orElse(null);                          //get a field by name "params" from the fieldList
         if (paramsField != null) {                                                                                                          //the field "params" is found
             Object paramsObject = readField(obj, paramsField);                                                                              //get the params object this field refers to

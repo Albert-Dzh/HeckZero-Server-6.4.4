@@ -50,7 +50,7 @@ public class ItemBox {
     public String getXml() {return items.stream().map(Item::getXml).collect(Collectors.joining());}
 
     public ItemBox getExpired() {
-        logger.info("get expired items of itembox");
+//        logger.info("get expired items of itembox");
         ItemBox expired = new ItemBox();
         items.forEach(i -> expired.add(i.getExpired()));
         return expired;
