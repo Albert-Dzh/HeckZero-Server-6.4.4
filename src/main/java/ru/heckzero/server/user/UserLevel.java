@@ -62,8 +62,9 @@ public class UserLevel {
             }
         }
 
+        int userExp = usr.getParamInt(User.Params.exp);
         return userLevels.stream()
-                .filter(ulvl -> usr.getParamInt(User.Params.exp) >= ulvl.exp)
+                .filter(ulvl -> userExp >= ulvl.exp)
                 .max(Comparator.comparingInt(o -> o.exp))
                 .orElseGet(UserLevel::new);
     }

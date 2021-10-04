@@ -6,10 +6,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ru.heckzero.server.ParamUtils;
 
 import javax.persistence.*;
-import java.lang.reflect.Field;
-import java.util.*;
+import java.util.EnumSet;
 import java.util.stream.Collectors;
 
 @Entity(name = "Building")
@@ -55,36 +55,12 @@ public class Building {
     public int getX() {return location.getX(); }
     public int getY() {return location.getY(); }
     public int getZ() {return Z; }
-    public int getName() { return name; }
-    public String getTxt() { return txt; }
+    public int getName() {return name;}
+    public String getTxt() {return txt;}
 
     public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
-    public String getParamStr(Params param) {return strConv.convert(String.class, getParam(param));}                                        //get user param value as different type
-    public int getParamInt(Params param) {return intConv.convert(Integer.class, getParam(param));}
-    protected String getParamXml(Params param) {return getParamStr(param).transform(s -> !s.isEmpty() ? String.format("%s=\"%s\"", param.toString(), s) : StringUtils.EMPTY); } //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());};
+    public int getParamInt(Params param) {return intConv.convert(Integer.class, ParamUtils.getParamInt(this, param.toString()));}
+    protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()); }                                      //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     protected String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
-
-    private Object getParam(Params paramName) {                                                                                             //try to find a field with the name equals to paramName
-        List<Field> fields = getAllFields(this.getClass());                                                                                 //get all declared fields from parent and child classes
-        Field field = fields.stream().filter(f -> f.getName().equals(paramName.toString())).findFirst().orElse(null);                       //try to find needed field by its name
-        if (field == null) {                                                                                                                //field is not found
-            logger.warn("can't get param %s, the field is not defined is class %s", paramName.toString(), this.getClass().getSimpleName());
-            return StringUtils.EMPTY;                                                                                                       //return a default value - empty string
-        }
-        try {
-            return field.get(this);                                                                                                         //and return the field value or an empty string in case of some error
-        } catch (Exception e) {
-            logger.error("can't get building (%s) param %s: %s", this.getClass().getSimpleName(), paramName.toString(), e.getMessage());
-        }
-        return StringUtils.EMPTY;
-    }
-
-    private List<Field> getAllFields(Class clazz) {                                                                                         //recursively get all declared field from a child and parent classes
-        if (clazz == null)
-            return Collections.emptyList();
-        List<Field> result = new ArrayList<>(getAllFields(clazz.getSuperclass()));
-        result.addAll(Arrays.asList(clazz.getDeclaredFields()));
-        return result;
-    }
-
 }

@@ -7,6 +7,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ru.heckzero.server.ParamUtils;
 
 import javax.persistence.*;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -25,11 +26,11 @@ public class Item {
     @Id
     private Long id;
 
-    private long pid;                                                                                                                       //parent item id
-    private String name;                                                                                                                    //item name in a client (.swf and sprite)
-    private String txt;                                                                                                                     //item text representation
-    private int massa;
-    private String st;                                                                                                                      //appropriate slots this item can be wear on
+    private long pid = -1;                                                                                                                  //parent item id (-1 means no parent, a master item)
+    private String name = "foobar";                                                                                                         //item name in a client (.swf and sprite)
+    private String txt = "Unknown";                                                                                                         //item text representation for human
+    private int massa;                                                                                                                      //item weight
+    private String st;                                                                                                                      //slots- appropriate slots this item can be wear on
     private String made;                                                                                                                    //made by
     private String min;                                                                                                                     //minimal requirements
     private String protect;                                                                                                                 //item protection properties
@@ -42,10 +43,10 @@ public class Item {
     private String shot;
     private String nskill;                                                                                                                  //category (perk?) name-skill?
     private String max_count;                                                                                                               //max number of included items allowed
-    private String up;
+    private String up;                                                                                                                      //user parameters this item does influence on
     private String grouping;
     private String range;                                                                                                                   //range of action
-    private String nt;                                                                                                                      //no transfer, this item can't be transferred
+    private String nt = "1";                                                                                                                //no transfer, this item can't be transferred
     private String build_in;
     private String c;                                                                                                                       //item category
     private String radius;
@@ -68,8 +69,10 @@ public class Item {
 
     public boolean isChild() {return pid != -1;}
 
+
     public Long getId() { return id; }
     public long getPid() {return pid; }
+    public ItemBox getIncluded() {return included;}
 
     public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());};
     public int getParamInt(Params param) {return ParamUtils.getParamInt(this, param.toString());};
@@ -82,6 +85,18 @@ public class Item {
         sj.add(itemParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<O ", ">")));
         sj.add(withIncluded ? included.getXml() : StringUtils.EMPTY);
         return sj.toString();
+    }
+
+    public ItemBox getExpired() {
+        logger.info("check for expired of item id %d", getId());
+        ItemBox expired = new ItemBox();
+        long dt = getParamLong(Params.dt);
+        if (dt > 0 && dt <= Instant.now().getEpochSecond()) {
+            logger.warn("item %d is expired", getId());
+            expired.add(this);
+        }
+        expired.add(included.getExpired());
+        return expired;
     }
 
     public void insertItem(Item sub) {
