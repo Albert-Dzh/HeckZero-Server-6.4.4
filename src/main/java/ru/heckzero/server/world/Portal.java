@@ -37,7 +37,7 @@ public class Portal extends Building {
 
     public static List<Portal> getBigmapPortals() {
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Portal> query = session.createQuery("select p from Portal p inner join fetch p.location l left join fetch p.routes pr where p.bigmap_enabled = true", Portal.class).setCacheable(true);
+            Query<Portal> query = session.createQuery("select p from Portal p inner join fetch p.location l left join fetch p.routes pr where p.bigmap_enabled = true", Portal.class).setCacheable(true).setReadOnly(true);
             List<Portal> portals = query.list();
             portals.forEach(Portal::ensureInitialized);                                                                                     //initialize location and routes on subsequent queries from L2 cache
             return portals;

@@ -119,6 +119,13 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_DROP(Attributes attrs) {                                                                                          //drop an Item from user Box
+        String id = attrs.getValue("id");
+        String count = attrs.getValue("count");
+        user.com_DROP(id, count);
+        return;
+    }
+
     private void com_GAME_PR(Attributes attrs) {                                                                                            //portal operations
         String comein = attrs.getValue("comein");
         String id = attrs.getValue("id");
@@ -126,6 +133,11 @@ public class CommandProcessor extends DefaultHandler {
         String to = attrs.getValue("to");
 
         user.com_PR(comein, id, new_cost, to);
+        return;
+    }
+
+    private void com_GAME_CHECK(Attributes attrs) {                                                                                         //check the expired items
+        user.com_CHECK();
         return;
     }
 

@@ -7,6 +7,7 @@ import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -20,7 +21,7 @@ public class ItemBox {
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id);
             List<Item> items = query.list();
-            itemBox.init(items);
+            itemBox.load(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load itembox of type %s by id %d from database: %s:%s, generating a default empty ItemBox", boxType, id, e.getClass().getSimpleName(), e.getMessage());
         }
@@ -31,13 +32,13 @@ public class ItemBox {
 
     public boolean isEmpty() {return items.isEmpty();}
 
-    public void init(List<Item> items) {
-        List <Item> childItems = items.stream().filter(Item::isChild).toList();                                                             //get all child items in the list
-        for (Item child : childItems) {
+    public void load(List<Item> items) {
+        List <Item> included = items.stream().filter(Item::isIncluded).toList();                                                             //get all child items in the list
+        for (Item child : included) {
             Item parent = items.stream().filter(i -> i.getId() == child.getPid()).findFirst().orElseGet(Item::new);                         //find parent item for each child item
             parent.getIncluded().add(child);                                                                                                //add child into parent included
         }
-        items.removeAll(childItems);                                                                                                        //remove all child items from the list course they all are included in their parents
+        items.removeAll(included);                                                                                                          //remove all child items from the list course they all are included in their parents
         this.items.addAll(items);
         return;
     }
@@ -45,16 +46,28 @@ public class ItemBox {
     public void add(Item item) {this.items.add(item);}                                                                                      //add one item to this ItemBox
     public void add(ItemBox box) {this.items.addAll(box.items);}                                                                            //add all items from box to this ItemBox
 
+    public List<Item> getItems() {return items;}                                                                                            //sad but true
 
-    public Item getItem(int id) {return items.stream().filter(i -> i.getId() == id).findFirst().orElse(null);}                             //get an Item by id
+    public Item findItemById(long id) {return items.stream().filter(i -> i.getId() == id).findFirst().orElse(null);}
+    public Item findItemById2(long id) {return items.stream().map(i -> i.findById(id)).filter(Objects::nonNull).findFirst().orElse(null);}
+
     public String getXml() {return items.stream().map(Item::getXml).collect(Collectors.joining());}
 
-    public ItemBox getExpired() {
-//        logger.info("get expired items of itembox");
+    public ItemBox getExpired() {                                                                                                           //recursively get the expired items
         ItemBox expired = new ItemBox();
         items.forEach(i -> expired.add(i.getExpired()));
         return expired;
     }
+
+    public void deleteItem(long id) {
+        if (items.removeIf(i -> i.getId() == id))
+            Item.delItem(id);
+        else
+            logger.error("can't find item id %d to delete from itembox", id);
+        return;
+    }
+
+    public void sync() {items.forEach(Item::sync);}                                                                                         //recursively sync all items in ItemBox
 
     @Override
     public String toString() {

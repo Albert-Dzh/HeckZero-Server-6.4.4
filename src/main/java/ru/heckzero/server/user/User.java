@@ -17,6 +17,7 @@ import org.hibernate.type.StandardBasicTypes;
 import ru.heckzero.server.Chat;
 import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.world.Building;
 import ru.heckzero.server.world.Location;
@@ -45,7 +46,7 @@ public class User {
 
     private static long getId2() {
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Long> query = session.createSQLQuery("select setval('main_id_seq', nextval('main_id_seq') + 100, false) - 100 as id2").addScalar("id2", StandardBasicTypes.LONG);
+            Query<Long> query = session.createSQLQuery("select setval('main_id_seq', nextval('main_id_seq') + 100, false) - 100 as id2").addScalar("id2", StandardBasicTypes.LONG).setReadOnly(true);
             return query.getSingleResult();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't get id2: %s:%s", e.getClass().getSimpleName(), e.getMessage());
@@ -108,8 +109,28 @@ public class User {
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
+    public long getNewId() {
+        long id1 = getParamLong(Params.id1);
+        long id2 = getParamLong(Params.id2);
+        long i1 = getParamLong(Params.i1);
+        long newId = id1 + i1;
+
+        if (++i1 == 100) {
+            logger.info("user %s i1 became 100, get new Id2 and set new ids", getLogin());
+            long newId2 = getId2();
+            setParam(Params.id1, id2);
+            setParam(Params.id2, newId2);
+            setParam(Params.i1, 0);
+            sendMsg(String.format("<ID2 id=\"%d\"/>", newId2));
+        }else
+            setParam(Params.i1, i1);
+        logger.info("computed new id for user %s, (id1 = %d, id2 = %d, i1 = %d)", getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
+        return newId;
+    }
+
+
     public void setParam(Params paramName, Object paramValue) {                                                                             //set a user param
-        if (ParamUtils.setParam(params, paramName.toString(), paramValue))                                                                  //delegate param setting to UserParams
+        if (ParamUtils.setParam(params, paramName.toString(), paramValue))                                                                  //delegate param setting to ParamUtils
             needSync.compareAndSet(false, true);
         if (!isInGame())                                                                                                                    //sync the user if he is offline and is not in a battle
             sync();
@@ -166,11 +187,27 @@ public class User {
         return;
     }
 
+    public void com_DROP(String id, String count) {
+        long itemId = NumberUtils.toLong(id, 0L);
+        int decCount = NumberUtils.toInt(count, 0);
+
+        if (decCount > 0) {
+            Item item = getItemBox().findItemById(itemId);
+            if (item != null)
+                item.decrease(decCount);
+            else
+                logger.error("can't find an item id %d in user %s itemBox", itemId, getLogin());
+            return;
+        }
+        getItemBox().deleteItem(itemId);
+
+        return;
+    }
+
     public void com_MYPARAM() {                                                                                                             //provision the client initial params as a reply for <GETME/>
         logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         StringJoiner sj = new StringJoiner("", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
-        ItemBox expired = getItemBox().getExpired();
         sj.add(getItemBox().getXml());
         sendMsg(sj.toString());
         return;
@@ -366,12 +403,25 @@ public class User {
         return;
     }
 
-    public void sync() {                                                                                                                    //update the user in database
-        if (needSync.compareAndSet(true, false)) {                                                                                          //sync only if needSync is true
+    public void com_CHECK() {
+        logger.info("checking for the expired items of user %s", getLogin());
+        ItemBox expired = getItemBox().getExpired();
+        List<Item> items = expired.getItems();
+        for (Item item : items) {
+
+        }
+
+        return;
+    }
+
+    public void sync() {sync(false);}
+    public void sync(boolean force) {                                                                                                       //update the user in database
+        if (needSync.compareAndSet(true, false) || force) {                                                                                 //sync if needSync or force is true
             logger.info("syncing user %s", getLogin());
             ServerMain.sync(this);
         } else
-            logger.info("skipping syncing user %s cause he haven't been changed (AFK?)", getLogin());
+            logger.info("skipping syncing user %s cause he hasn't been changed (AFK?)", getLogin());
+        getItemBox().sync();                                                                                                                //sync user items (if needed)
         return;
     }
 

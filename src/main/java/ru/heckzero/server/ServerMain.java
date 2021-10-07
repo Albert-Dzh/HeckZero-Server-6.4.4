@@ -133,7 +133,7 @@ public class ServerMain {
 
     public static void sync(Object entity) {
         Transaction tx = null;
-        logger.debug("saving entity of type: %s", entity.getClass().getSimpleName());
+        logger.debug("saving entity of type: %s, hash = %d", entity.getClass().getSimpleName(), entity.hashCode());
         try (Session session = sessionFactory.openSession()) {
             tx  = session.beginTransaction();
             session.saveOrUpdate(entity);
