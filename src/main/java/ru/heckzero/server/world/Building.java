@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Table(name = "locations_b")
 @Inheritance(strategy = InheritanceType.JOINED)
 @Cacheable
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "default")
 public class Building {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods

@@ -136,7 +136,7 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GAME_CHECK(Attributes attrs) {                                                                                         //check the expired items
+    private void com_GAME_CHECK(Attributes attrs) {                                                                                         //check for the item expiration
         user.com_CHECK();
         return;
     }
@@ -162,6 +162,13 @@ public class CommandProcessor extends DefaultHandler {
         String i1 = attrs.getValue("i1");
         if (id1 != null && id2 != null && i1 != null)
             user.com_N(id1, id2, i1);                                                                                                       //compare the values
+        return;
+    }
+
+    public void com_GAME_TO_SECTION(Attributes attrs) {
+        String id = attrs.getValue("id");
+        String section = attrs.getValue("section");
+        user.com_TO_SECTION(id, section);
         return;
     }
 

@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Entity(name = "Location")
 @Table(name = "locations")
 @Cacheable
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "default")
 public class Location {
     private static final Logger logger = LogManager.getFormatterLogger();
     public enum Params {X, Y, tm, t, m, n, r, name, b, z, battlemap_f, danger, o, p, repair, monsters};
@@ -66,8 +66,8 @@ public class Location {
     private String monsters = "2,2,2;3,3,3";                                                                                                //location monsters type and count (attribute "m" in <GOLOC/> reply)  from the loc_x.swf (monstersX_Y sprite) (see the function AddMonsters() in client)
 
     @OneToMany(mappedBy = "location", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
-    private final List<Building> buildings = new ArrayList<>();
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+    private final List<Building> buildings = new ArrayList<>();                                                                             //Building list on the location
 
     public static Location getLocation(int X, int Y, int btnNum) {return getLocation(shiftCoordinate(X, dxdy[btnNum - 1][0]), shiftCoordinate(Y, dxdy[btnNum - 1][1]));}
     public static Location getLocation(int X, int Y) {                                                                                      //try to get location from a database

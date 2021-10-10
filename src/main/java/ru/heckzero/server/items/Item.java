@@ -16,10 +16,11 @@ import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id order by i.id", cacheable = false)
 //@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i where i.b_id = :id order by i.id", cacheable = false)
-@org.hibernate.annotations.NamedNativeQuery(name = "Item_GetNextMainId", query = "select nextval('main_id_seq')  as nextval", cacheable = false)
-@org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemById", query = "delete from Item i where i.id = :id or i.pid = :id")
+@org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
+@org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
 
 @Entity(name = "Item")
 @Table(name = "items_inventory")
@@ -31,14 +32,14 @@ public class Item {
     public enum Params {id, pid,    section, slot,     name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
     private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.range, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
-    public static void delItem(long id) {                                                                                                   //delete item from database
+    public static void delItem(long id, boolean withSub) {                                                                                                   //delete item from database
         Transaction tx = null;
         try (Session session = ServerMain.sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.createNamedQuery("Item_DeleteItemById").setParameter("id", id).executeUpdate();
+            session.createNamedQuery(withSub ? "Item_DeleteItemByIdWithSub" : "Item_DeleteItemByIdWithoutSub").setParameter("id", id).executeUpdate();
             tx.commit();
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't delete item id %d: %s:%s", id, e.getClass().getSimpleName(), e.getMessage());
+            logger.error("can't delete item id %d from database: %s:%s", id, e.getClass().getSimpleName(), e.getMessage());
             if (tx != null && tx.isActive())
                 tx.rollback();
         }
@@ -48,7 +49,7 @@ public class Item {
     @Transient AtomicBoolean needSync = new AtomicBoolean(false);
 
     @Id
-    private Long id;
+    private long id;
 
     private long pid = -1;                                                                                                                  //parent item id (-1 means no parent, a master item)
     private String name = "foobar";                                                                                                         //item name in a client (.swf and sprite)
@@ -92,6 +93,8 @@ public class Item {
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
 
     public boolean isIncluded() {return pid != -1;}
+    public boolean isExpired() {return getParamInt(Params.dt) > 0 && getParamInt(Params.dt) < Instant.now().getEpochSecond();}
+
     public boolean needCreateNewId(int count) {return count < getParamInt(Params.count) || getParamInt(Params.count) > 0 && getParamDouble(Params.calibre) > 0;}
 
     public Long getId() { return id; }
@@ -109,7 +112,7 @@ public class Item {
     public int getParamInt(Params param) {return ParamUtils.getParamInt(this, param.toString());}
     public long getParamLong(Params param) {return ParamUtils.getParamLong(this, param.toString());}
     public double getParamDouble(Params param) {return ParamUtils.getParamDouble(this, param.toString());}
-    private String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString());}                                      //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    private String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString());}                                       //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
     public String getXml() {return getXml(true);}
     public String getXml(boolean withIncluded) {
@@ -119,26 +122,24 @@ public class Item {
         return sj.toString();
     }
 
-    public ItemBox getExpired() {
+    public ItemBox findExpired() {                                                                                                          //collect the list of expired items, this may be the item itself or some of the included items
         ItemBox expired = new ItemBox();
         long dt = getParamLong(Params.dt);
         if (dt > 0 && dt <= Instant.now().getEpochSecond())
             expired.add(this);
-        expired.add(included.getExpired());
+        expired.addAll(included.findExpired());
         return expired;
     }
-    public Item findById(long id) {
-        return this.id == id ? this : included.findItemById(id);
-    }
+    public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this item or one of the included items, or null
 
-    public void unload() {setParam(Params.pid, -1);}
+    public void unload() {setParam(Params.pid, -1);}                                                                                        //set an item a parent item
 
-    public void decrease(int num) {
+    public void decrease(int num) {                                                                                                         //decrease item count by num
         int count = getParamInt(Params.count);
         if (count > num)
             setParam(Params.count, count - num);
         else
-            logger.error("can't decrease item id %d by num %d, current item count = %d", count);
+            logger.error("can't decrease item id %d by num %d, current item count %d <= %d", count, num);
         return;
     }
 
@@ -159,13 +160,5 @@ public class Item {
     }
 
     @Override
-    public String toString() {
-        return "Item{" +
-                "id=" + id +
-                ", count=" + count +
-                ", pid=" + pid +
-                ", txt='" + txt + '\'' +
-                ", included=" + included +
-                "}\n";
-    }
+    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", included=" + getIncluded().getItemsIds() + "}"; }
 }

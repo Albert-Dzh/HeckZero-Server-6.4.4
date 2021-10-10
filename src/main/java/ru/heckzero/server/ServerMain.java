@@ -42,7 +42,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 public class ServerMain {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final String VERSION = "0.5";
+    private static final String VERSION = "0.6";                                                                                            //server version
     private static final String CONF_DIR = "conf";                                                                                          //configuration directory
     private static final String CONF_FILE = "heckzero.xml";                                                                                 //server configuration file
     private static final Integer DEF_MAX_WORKER_THREADS = 8;                                                                                //MAX threads in EventExecutorGroup for the offloading EventLoop threads

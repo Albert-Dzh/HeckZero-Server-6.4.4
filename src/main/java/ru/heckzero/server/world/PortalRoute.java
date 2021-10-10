@@ -15,7 +15,7 @@ import java.util.List;
 @Entity(name = "PortalRoute")
 @Table(name = "portal_routes")
 @Cacheable
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE, region = "default")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "default")
 public class PortalRoute {
     private static final Logger logger = LogManager.getFormatterLogger();
 

@@ -29,11 +29,11 @@ public class Portal extends Building {
     private boolean bigmap_enabled;                                                                                                         //should this portal be shown on a bigmap
 
     @OneToMany(mappedBy = "srcPortal", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
     public String getCity() { return city; }
-    public int getDs() { return ds;}
+    public int getDs() { return ds;}                                                                                                        //return discount
 
     public static List<Portal> getBigmapPortals() {
         try (Session session = ServerMain.sessionFactory.openSession()) {

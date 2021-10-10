@@ -12,8 +12,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.query.Query;
-import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.type.LongType;
 import ru.heckzero.server.Chat;
 import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
@@ -39,24 +39,25 @@ import java.util.stream.Collectors;
 public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, set on login by onlineGame() and onlineChat() methods
+    public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, which is set on login by onlineGame() and onlineChat() methods
     public enum Params {time, tdt, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
-    public static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
-    private static final int DB_SYNC_TIME_SEC = 300;                                                                                        //user db sync interval in seconds
+    private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
+    private static final int PERIOCIC_TASKS_INTERVAL = 300;                                                                                 //some periodic tasks interval in secconds
 
-    private static long getId2() {
+    private static long getId2() {                                                                                                          //compute next ID2 value for the user
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Long> query = session.createSQLQuery("select setval('main_id_seq', nextval('main_id_seq') + 100, false) - 100 as id2").addScalar("id2", StandardBasicTypes.LONG).setReadOnly(true);
+            NativeQuery<Long> query = session.createSQLQuery("select setval('main_id_seq', nextval('main_id_seq') + 100, false) - 100 as id2").addScalar("id2", LongType.INSTANCE);
             return query.getSingleResult();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't get id2: %s:%s", e.getClass().getSimpleName(), e.getMessage());
         }
-        return 0;
+        return -1;
     }
 
     @Transient private final AtomicBoolean needSync = new AtomicBoolean(false);                                                             //user need to be synced - some params have been modified
     @Transient private final Chat chat = new Chat(this);
-    @Transient private ScheduledFuture<?> futureSync = null;
+    @Transient private ScheduledFuture<?> futureSync = null;                                                                                //future of syncing process
+    @Transient private ScheduledFuture<?> futureItemsCheck = null;                                                                          //future of item expiration checking
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
     @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
@@ -74,8 +75,8 @@ public class User {
     public boolean isEmpty() {return id == null;}                                                                                           //user is a stub with empty params
     public boolean isOnlineGame() {return gameChannel != null;}                                                                             //this user has a game channel assigned
     public boolean isOnlineChat() {return chatChannel != null;}                                                                             //this user has a chat channel assigned
-    public boolean isInBattle() {return false;}                                                                                             //just a stub yet, take some cognac when you are about to change this method
-    public boolean isInGame() {return isOnlineGame() || isInBattle();}                                                                      //user is treated as in game when he is online or is in a battle
+    public boolean isInBattle()   {return getParamInt(Params.battleid) > 0;}                                                                //is user in a battle
+    public boolean isInGame()  {return isOnlineGame() || isInBattle();}                                                                     //user is treated as in game when he is online or is in a battle
     public boolean isInClaim() {return false;}                                                                                              //user is in battle (arena) claim (waiting for a battle to begin)
     public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
     public boolean isGod() {return getParamInt(Params.god) == 1;}                                                                           //this is a privileged user (admin)
@@ -109,7 +110,7 @@ public class User {
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
-    public long getNewId() {
+    private long getNewId() {                                                                                                               //get a new id for an item
         long id1 = getParamLong(Params.id1);
         long id2 = getParamLong(Params.id2);
         long i1 = getParamLong(Params.i1);
@@ -118,21 +119,25 @@ public class User {
         if (++i1 == 100) {
             logger.info("user %s i1 became 100, get new Id2 and set new ids", getLogin());
             long newId2 = getId2();
+            if (newId2 == -1) {
+                disconnect();
+                return - 1;
+            }
             setParam(Params.id1, id2);
             setParam(Params.id2, newId2);
             setParam(Params.i1, 0);
             sendMsg(String.format("<ID2 id=\"%d\"/>", newId2));
         }else
             setParam(Params.i1, i1);
-        logger.info("computed new id for user %s, (id1 = %d, id2 = %d, i1 = %d)", getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
+        logger.info("computed a new id for user %s, (id1 = %d, id2 = %d, i1 = %d)", getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
         return newId;
     }
 
 
     public void setParam(Params paramName, Object paramValue) {                                                                             //set a user param
-        if (ParamUtils.setParam(params, paramName.toString(), paramValue))                                                                  //delegate param setting to ParamUtils
-            needSync.compareAndSet(false, true);
-        if (!isInGame())                                                                                                                    //sync the user if he is offline and is not in a battle
+        if (ParamUtils.setParam(params, paramName.toString(), paramValue))                                                                  //delegate param setting to ParamUtils class
+            needSync.compareAndSet(false, true);                                                                                            //set needSync to true to get this user to be synced on a nex sync() call
+        if (!isInGame())                                                                                                                    //sync the user immediately if he is offline and  not in a battle
             sync();
         return;
     }
@@ -150,9 +155,10 @@ public class User {
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         setParam(Params.loc_time, Math.min(Instant.now().getEpochSecond() + 180, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time))); //compute client loc_time - time when user is allowed to leave his current location
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
-        futureSync = ch.eventLoop().scheduleWithFixedDelay(this::sync, RandomUtils.nextInt(DB_SYNC_TIME_SEC / 2, DB_SYNC_TIME_SEC * 2), DB_SYNC_TIME_SEC, TimeUnit.SECONDS);               //start syncing the user with a database every DB_SYNC_TIME_SEC interval
+        futureSync = ch.eventLoop().scheduleWithFixedDelay(this::sync, RandomUtils.nextInt(PERIOCIC_TASKS_INTERVAL / 2, PERIOCIC_TASKS_INTERVAL * 2), PERIOCIC_TASKS_INTERVAL, TimeUnit.SECONDS);               //start syncing the user with a database every DB_SYNC_TIME_SEC interval
+        futureItemsCheck = ch.eventLoop().scheduleWithFixedDelay(this::com_CHECK, RandomUtils.nextInt(PERIOCIC_TASKS_INTERVAL / 2, PERIOCIC_TASKS_INTERVAL * 2), PERIOCIC_TASKS_INTERVAL, TimeUnit.SECONDS);    //checking users items for the expiration
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
-        chat.updateMyStatus();                                                                                                              //will add user to room
+        chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him
         return;
     }
 
@@ -160,8 +166,9 @@ public class User {
         logger.debug("setting user '%s' game channel offline", getLogin());
         setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
-        futureSync.cancel(false);                                                                                                           //cancel db sync task
-        disconnectChat();                                                                                                                   //chat without a game is ridiculous
+        futureSync.cancel(false);                                                                                                           //cancel the user db sync task
+        futureItemsCheck.cancel(false);                                                                                                     //cancel item expiration checking task
+        disconnectChat();                                                                                                                   //chat without a game channel is ridiculous, so shut the chat down
         chat.updateMyStatus();                                                                                                              //will remove user from room
         sync();                                                                                                                             //update the user in database
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
@@ -191,16 +198,32 @@ public class User {
         long itemId = NumberUtils.toLong(id, 0L);
         int decCount = NumberUtils.toInt(count, 0);
 
-        if (decCount > 0) {
-            Item item = getItemBox().findItemById(itemId);
-            if (item != null)
-                item.decrease(decCount);
-            else
-                logger.error("can't find an item id %d in user %s itemBox", itemId, getLogin());
+        Item item = getItemBox().findItem(itemId);
+        if (item == null) {
+            logger.error("can't find an item id %d from the user %s", itemId, getLogin());
+            disconnect();
             return;
         }
-        getItemBox().deleteItem(itemId);
+        if (decCount > 0)
+            item.decrease(decCount);
+        else {
+            getItemBox().del(itemId);
+            Item.delItem(itemId, true);
+        }
+        return;
+    }
 
+    public void com_TO_SECTION(String id, String section) {                                                                                 //change item section in user box
+        long itemId = NumberUtils.toLong(id);
+        int toSection = NumberUtils.toInt(section);
+
+        Item item = getItemBox().findItem(itemId);
+        if (item == null || item.isIncluded()) {
+            logger.error("can't find an item id %d from the user %s or the item is not a 1st level item", itemId, getLogin());
+            disconnect();
+            return;
+        }
+        item.setParam(Item.Params.section, toSection);
         return;
     }
 
@@ -367,7 +390,7 @@ public class User {
         String s_id2 = getParamStr(Params.id2);
         String s_i1 = getParamStr(Params.i1);
         if (!(s_id1.equals(id1) && s_id2.equals(id2) && s_i1.equals(i1))) {
-            logger.error("!!!!!!!!MISTIMING!!!!!!!! user %s id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s, disconnecting user", id1, s_i1, id2, s_id2, i1, s_i1);
+            logger.error("!!!!!!!!MISTIMING!!!!!!!! user %s id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s, disconnecting user", getLogin(), id1, s_i1, id2, s_id2, i1, s_i1);
             disconnect();
         }
         return;
@@ -404,13 +427,27 @@ public class User {
     }
 
     public void com_CHECK() {
-        logger.info("checking for the expired items of user %s", getLogin());
-        ItemBox expired = getItemBox().getExpired();
-        List<Item> items = expired.getItems();
-        for (Item item : items) {
+        logger.info("checking for the expired items for user %s", getLogin());
 
+        ItemBox expired = getItemBox().findExpired();                                                                                       //all user expired items are here at a 1st level
+        if (expired.size() > 0)
+            logger.info("user %s got %d expired items", getLogin(), expired.size());
+
+        for (Item item : expired.getItems()) {                                                                                              //iterate over the expired items
+            logger.info("user's %s item %s is expired, removing it from item box and database", getLogin(), item);
+            sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
+            Item.delItem(item.getId(), false);                                                                                              //delete the expired item without its subitems from db
+
+            getItemBox().del(item.getId());
+
+            ItemBox included = item.getIncluded();
+            if (!included.isEmpty()) {
+                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.getItemsIds(), getLogin());
+                included.getItems().forEach(Item::unload);
+                getItemBox().addAll(included);
+                included.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));
+            }
         }
-
         return;
     }
 
@@ -436,7 +473,7 @@ public class User {
 
     public void disconnect() {disconnect(gameChannel);}                                                                                     //disconnect (close) the game channel
     public void disconnect(String msg) {sendMsg(msg); disconnect();}                                                                        //send message and disconnect the channel
-    public void disconnectChat() {disconnect(chatChannel);}
+    public void disconnectChat() {disconnect(chatChannel);}                                                                                 //disconnects user's chat channel
     public void disconnectChat(String msg) {sendMsgChat(msg); disconnectChat();}
     private void disconnect(Channel ch) {
         if (ch == null || !ch.isActive())                                                                                                   //nothing to do
