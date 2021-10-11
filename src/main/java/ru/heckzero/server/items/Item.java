@@ -1,5 +1,6 @@
 package ru.heckzero.server.items;
 
+import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -92,13 +93,13 @@ public class Item {
 
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
 
-    public boolean isIncluded() {return pid != -1;}
-    public boolean isExpired() {return getParamInt(Params.dt) > 0 && getParamInt(Params.dt) < Instant.now().getEpochSecond();}
+    public boolean isIncluded() {return pid != -1;}                                                                                         //this item is an included one itself (it has pid = parent.id)
+    public boolean isExpired()  {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}               //the item is expired (has dt < now)
 
     public boolean needCreateNewId(int count) {return count < getParamInt(Params.count) || getParamInt(Params.count) > 0 && getParamDouble(Params.calibre) > 0;}
 
-    public Long getId() { return id; }
-    public long getPid() {return pid; }
+    public Long getId()  {return id; }
+    public long getPid() {return pid;}
     public ItemBox getIncluded() {return included;}
 
     public void setParam(Params paramName, Object paramValue) {                                                                             //set an item param to paramValue
@@ -124,10 +125,9 @@ public class Item {
 
     public ItemBox findExpired() {                                                                                                          //collect the list of expired items, this may be the item itself or some of the included items
         ItemBox expired = new ItemBox();
-        long dt = getParamLong(Params.dt);
-        if (dt > 0 && dt <= Instant.now().getEpochSecond())
+        if (isExpired())                                                                                                                    //add this item to the expired box if it's expired
             expired.add(this);
-        expired.addAll(included.findExpired());
+        expired.addAll(included.findExpired());                                                                                             //search and add all expired items from the included box recursively
         return expired;
     }
     public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this item or one of the included items, or null
