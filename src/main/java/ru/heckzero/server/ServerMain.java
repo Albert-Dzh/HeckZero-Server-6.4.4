@@ -27,14 +27,12 @@ import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.ServiceRegistry;
 import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserLevel;
-import ru.heckzero.server.world.Building;
-import ru.heckzero.server.world.Location;
-import ru.heckzero.server.world.Portal;
-import ru.heckzero.server.world.PortalRoute;
+import ru.heckzero.server.world.*;
 
 import java.io.File;
 import java.util.concurrent.Executors;
@@ -124,7 +122,9 @@ public class ServerMain {
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
-                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(UserLevel.class);
+                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).
+                addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(ItemTemplate.class).addAnnotatedClass(ArsenalLoot.class).
+                addAnnotatedClass(UserLevel.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
@@ -133,7 +133,7 @@ public class ServerMain {
 
     public static void sync(Object entity) {
         Transaction tx = null;
-        logger.debug("saving entity of type: %s, hash = %d", entity.getClass().getSimpleName(), entity.hashCode());
+        logger.debug("saving an entity of type: %s, hash = %d", entity.getClass().getSimpleName(), entity.hashCode());
         try (Session session = sessionFactory.openSession()) {
             tx  = session.beginTransaction();
             session.saveOrUpdate(entity);

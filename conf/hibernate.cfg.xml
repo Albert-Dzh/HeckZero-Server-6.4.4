@@ -30,5 +30,6 @@
         <property name="hibernate.cache.region.factory_class">org.hibernate.cache.jcache.internal.JCacheRegionFactory</property>
         <property name="hibernate.cache.provider_class">org.ehcache.jsr107.EhcacheCachingProvider</property>
 
+
     </session-factory>
 </hibernate-configuration>

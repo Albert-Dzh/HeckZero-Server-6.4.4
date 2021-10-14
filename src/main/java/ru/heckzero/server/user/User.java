@@ -19,10 +19,7 @@ import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
-import ru.heckzero.server.world.Building;
-import ru.heckzero.server.world.Location;
-import ru.heckzero.server.world.Portal;
-import ru.heckzero.server.world.PortalRoute;
+import ru.heckzero.server.world.*;
 
 import javax.persistence.*;
 import java.time.Instant;
@@ -61,6 +58,7 @@ public class User {
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
     @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
+    @Transient ItemBox itemBoxAR = null;                                                                                                    //arsenal items generated for the certain arsenal and user
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -110,7 +108,7 @@ public class User {
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
-    private long getNewId() {                                                                                                               //get a new id for an item
+    public long getNewId() {                                                                                                                //get a new id for an item
         long id1 = getParamLong(Params.id1);
         long id2 = getParamLong(Params.id2);
         long i1 = getParamLong(Params.i1);
@@ -121,7 +119,7 @@ public class User {
             long newId2 = getId2();
             if (newId2 == -1) {
                 disconnect();
-                return - 1;
+                return -1;
             }
             setParam(Params.id1, id2);
             setParam(Params.id2, newId2);
@@ -129,7 +127,7 @@ public class User {
             sendMsg(String.format("<ID2 id=\"%d\"/>", newId2));
         }else
             setParam(Params.i1, i1);
-        logger.info("computed a new id for user %s, (id1 = %d, id2 = %d, i1 = %d)", getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
+        logger.info("computed new id: %d for user %s, (id1 = %d, id2 = %d, i1 = %d)", newId, getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
         return newId;
     }
 
@@ -143,7 +141,7 @@ public class User {
     }
 
     public ItemBox getItemBox() {                                                                                                           //return user itembox or get it
-        return itemBox != null ? itemBox : (itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id));
+        return itemBox != null ? itemBox : (itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id, true));
     }
 
     synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
@@ -204,7 +202,12 @@ public class User {
             disconnect();
             return;
         }
-        if (decCount > 0)
+        if (item.isNoTransfer()) {                                                                                                                  //drop is forbidden, item or one of it included has nt = 1
+            logger.info("can't drop an item id %d, because it or one of its included has nt set to 1");
+            return;
+        }
+
+        if (decCount > 0 && decCount < item.getCount())
             item.decrease(decCount);
         else {
             getItemBox().del(itemId);
@@ -369,6 +372,37 @@ public class User {
         return;
     }
 
+    public void com_AR(String a, String d, String s, String count) {                                                                        //Arsenal workflow
+        if (a != null) {                                                                                                                    //user takes an item from arsenal
+            Item item = itemBoxAR.getSplitItem(NumberUtils.toLong(a), NumberUtils.toInt(count), false, this);                               //find item in the arsenal item box by id
+            if (item == null) {                                                                                                             //we couldn't find an item in arsenal item box
+                disconnect();
+                return;
+            }
+            item.setParam(Item.Params.user_id, this.id);                                                                                    //assign the item to the user by setting user-specific params
+            item.setParam(Item.Params.section, s);
+            getItemBox().add(item);                                                                                                         //add the item to the user's itembox
+            return;                                                                                                                         //we don't have to send <ADD_ONE/> because client adds an item by itself
+        }
+
+        if (d != null) {                                                                                                                    //user puts an item to arsenal from his itembox
+            Item item = getItemBox().getSplitItem(NumberUtils.toLong(d), NumberUtils.toInt(count), false, this);
+            if (item == null) {                                                                                                             //we couldn't find an item
+                disconnect();
+                return;
+            }
+//            if (getItemBox().findItem(NumberUtils.toLong(d)) == null)
+//                Item.delItem(NumberUtils.toLong(d), true);
+            itemBoxAR.add(item);
+            return;
+        }
+
+        itemBoxAR = ArsenalLoot.getLoot(getBuilding().getId());
+        String xml = String.format("<AR>%s</AR>", itemBoxAR.getXml());
+        sendMsg(xml);
+        return;
+    }
+
     public void com_SILUET(String slt, String set) {                                                                                        //set user body type
         logger.debug("processing <SILUET/> from %s", getLogin());
         setParam(Params.siluet, set);
@@ -390,7 +424,7 @@ public class User {
         String s_id2 = getParamStr(Params.id2);
         String s_i1 = getParamStr(Params.i1);
         if (!(s_id1.equals(id1) && s_id2.equals(id2) && s_i1.equals(i1))) {
-            logger.error("!!!!!!!!MISTIMING!!!!!!!! user %s id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s, disconnecting user", getLogin(), id1, s_i1, id2, s_id2, i1, s_i1);
+            logger.error("!!!!!!!!MISTIMING!!!!!!!! user %s id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s, disconnecting user", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
             disconnect();
         }
         return;
@@ -401,6 +435,19 @@ public class User {
         if (isGod())
             return true;
         return true;                                                                                                                        //TODO check if user got a master key for that building
+    }
+
+
+    public void addItems(ItemBox box) {
+        getItemBox().addAll(box);
+        box.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));
+        return;
+    }
+
+    public void addItem(Item item) {
+        getItemBox().add(item);
+        sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", item.getXml()));
+        return;
     }
 
     public void setRoom() {setRoom(-1, -1, 0, 0, 0);}                                                                                       //coming out
@@ -444,8 +491,7 @@ public class User {
             if (!included.isEmpty()) {
                 logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.getItemsIds(), getLogin());
                 included.getItems().forEach(Item::unload);
-                getItemBox().addAll(included);
-                included.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));
+                addItems(included);
             }
         }
         return;

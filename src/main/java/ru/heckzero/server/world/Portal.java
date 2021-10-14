@@ -20,11 +20,11 @@ public class Portal extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final EnumSet<Params> portalParams = EnumSet.of(Params.cash, Params.ds, Params.city, Params.p1, Params.p2);
 
-    protected int cash;                                                                                                                     //portal cash
-    protected int ds;                                                                                                                       //discount (%) for citizens arriving to this portal
-    protected String city;                                                                                                                  //of that city
-    protected String p1;                                                                                                                    //resources needed to teleport 1000 weight units ?
-    protected String p2;                                                                                                                    //corsair clone price
+    private int cash;                                                                                                                       //portal cash
+    private int ds;                                                                                                                         //discount (%) for citizens arriving to this portal
+    private String city;                                                                                                                    //of that city
+    private String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?
+    private String p2;                                                                                                                      //corsair clone price
     private String bigmap_city;                                                                                                             //city on bigmap this portal represents
     private boolean bigmap_enabled;                                                                                                         //should this portal be shown on a bigmap
 
@@ -32,10 +32,10 @@ public class Portal extends Building {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
-    public String getCity() { return city; }
-    public int getDs() { return ds;}                                                                                                        //return discount
+    public String getCity() {return city; }                                                                                                 //these citizens have a discount when they are flying TO this portal
+    public int getDs()      {return ds;}                                                                                                    //discount for citizens
 
-    public static List<Portal> getBigmapPortals() {
+    public static List<Portal> getBigmapPortals() {                                                                                         //generate world map data - cities, portal and routes
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Portal> query = session.createQuery("select p from Portal p inner join fetch p.location l left join fetch p.routes pr where p.bigmap_enabled = true", Portal.class).setCacheable(true).setReadOnly(true);
             List<Portal> portals = query.list();

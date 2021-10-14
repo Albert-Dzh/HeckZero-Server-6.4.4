@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.user.User;
 
 import java.util.List;
 import java.util.Objects;
@@ -15,20 +16,22 @@ public class ItemBox {
     private static final Logger logger = LogManager.getFormatterLogger();
     public enum boxType  {USER, BUILDING}
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
+    private boolean needSync = false;
 
-    public static ItemBox getItemBox(boxType boxType, int id) {
-        ItemBox itemBox = new ItemBox();
+    public static ItemBox getItemBox(boxType boxType, int id, boolean needSync) {
+        ItemBox itemBox = new ItemBox(needSync);                                                                                            //needSync - if a returned ItemBox has to sync its items with a db
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id);
             List<Item> items = query.list();
             itemBox.load(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load itembox of type %s by id %d from database: %s:%s, generating a default empty ItemBox", boxType, id, e.getClass().getSimpleName(), e.getMessage());
+            logger.error("can't load ItemBox type %s by id %d from database: %s:%s, an empty ItemBox will be returned", boxType, id, e.getClass().getSimpleName(), e.getMessage());
         }
         return itemBox;
     }
 
     public ItemBox() { }
+    public ItemBox(boolean needSync) {this.needSync = needSync;}
 
     public boolean isEmpty() {return items.isEmpty();}
 
@@ -51,9 +54,9 @@ public class ItemBox {
     public List<Long> getItemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                        //get just items IDs of the 1st level items
 
 
-    public String getXml() {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                         //get XML list of items as a list of <O/> nodes with the included items
-    public Item findItem(long id) {return items.stream().map(i -> i.findItem(id)).filter(Objects::nonNull).findFirst().orElse(null);}
-    public ItemBox findExpired()  {return items.stream().map(Item::findExpired).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}   //get all expired items with included ones as a 1st level items
+    public String getXml()        {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                  //get XML list of items as a list of <O/> nodes with the included items
+    public Item findItem(long id) {return items.stream().map(i -> i.findItem(id)).filter(Objects::nonNull).findFirst().orElse(null);}       //find an item recursively
+    public ItemBox findExpired()  {return items.stream().map(Item::findExpired).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}   //get all expired items with included ones placed in a 1st level
 
     public void del(long id) {                                                                                                              //delete an item from the box or from the parent's included items
         Item item = findItem(id);                                                                                                           //try to find an item by id
@@ -76,6 +79,26 @@ public class ItemBox {
         return;
     }
 
+    public Item getSplitItem(long id, int count, boolean noSetNewId, User user) {                                                           //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
+        Item item = findItem(id);                                                                                                           //find an item by id
+        if (item == null) {                                                                                                                 //we couldn't find an item by id
+            logger.error("can't find item id %d in the item box", id);
+            return null;
+        }
+        if (count > 0 && count < item.getCount()) {                                                                                         //just split an item
+            logger.debug("splitting the item %d by count %d", id, count);
+            item = item.split(count, noSetNewId, user);
+        }else {                                                                                                                             //return the entire item
+            logger.debug("get the whole pack of ammo");
+            del(id);                                                                                                                        //delete an item from the item box
+            if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                         //set a new id fo the ammo item
+                item.setId(user.getNewId());
+            if (needSync)
+                Item.delItem(id, true);
+        }
+        logger.debug("returning item %s", item);
+        return item;
+    }
     public void sync() {items.forEach(Item::sync);}                                                                                         //recursively sync all items in the ItemBox
 
     @Override

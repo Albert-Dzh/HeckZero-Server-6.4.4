@@ -136,12 +136,21 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
-    private void com_GAME_CHECK(Attributes attrs) {                                                                                         //check for the item expiration
+    private void com_GAME_CHECK(Attributes attrs) {                                                                                         //check user items for the expiration
         user.com_CHECK();
         return;
     }
 
-    public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> handler
+    public void com_GAME_AR(Attributes attrs) {                                                                                             //arsenal operation
+        String a = attrs.getValue("a");                                                                                                     //item id to take from arsenal
+        String d = attrs.getValue("d");                                                                                                     //item id to put to arsenal
+        String s = attrs.getValue("s");                                                                                                     //section to place an item to
+        String c = attrs.getValue("c");                                                                                                     //item count
+        user.com_AR(a, d, s, c);
+        return;
+    }
+
+    public void com_GAME_LOGOUT(Attributes attrs) {                                                                                         //<LOGOUT/> - user game channel has disconnected
         logger.debug("processing <LOGOUT/> command from %s", user.getLogin());
         user.disconnect();                                                                                                                  //just close the channel and let channelInactive in NetInHandler do the job when the channel gets closed
         return;

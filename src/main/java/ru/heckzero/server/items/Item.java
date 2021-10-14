@@ -2,38 +2,66 @@ package ru.heckzero.server.items;
 
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.type.LongType;
 import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.user.User;
 
 import javax.persistence.*;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id order by i.id", cacheable = false)
 //@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i where i.b_id = :id order by i.id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
-
 @Entity(name = "Item")
 @Table(name = "items_inventory")
 @Cacheable
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "default")
-public class Item {
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "item_region")
+public class Item implements Cloneable {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    public enum Params {id, pid,    section, slot,     name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
+    public enum Params {id, pid,    user_id, section, slot,     name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
     private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.range, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
-    public static void delItem(long id, boolean withSub) {                                                                                                   //delete item from database
+    private static long getNextGlobalId() {                                                                                                 //get next main id for the item from the sequence
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            NativeQuery<Long> query = session.createSQLQuery("select nextval('main_id_seq') as nextval").addScalar("nextval", LongType.INSTANCE);
+            return query.getSingleResult();
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't get next main id for the item: %s:%s", e.getClass().getSimpleName(), e.getMessage());
+        }
+        return -1;
+    }
+    public static List<Long> getNextGlobalId(int num) {                                                                                     //get num next main ids from a sequence
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            NativeQuery<Long> query = session.createSQLQuery("select nextval('main_id_seq') from generate_series(1, :num) as nextval").setParameter("num", num).addScalar("nextval", LongType.INSTANCE);
+            return query.list();
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't get next main id for the item: %s:%s", e.getClass().getSimpleName(), e.getMessage());
+        }
+        return LongStream.range(0, num).map(i -> -1L).boxed().toList();                                                                     //will return a list filled by -1
+    }
+
+    public static void delItem(long id, boolean withSub) {                                                                                  //delete item from database
         Transaction tx = null;
         try (Session session = ServerMain.sessionFactory.openSession()) {
             tx = session.beginTransaction();
@@ -87,19 +115,33 @@ public class Item {
     private String tm;
     private String ln;                                                                                                                      //long name text
 
-    private int user_id;                                                                                                                    //user id this item belongs to
-    private String section;                                                                                                                 //the section number in user box or building warehouse
-    private String slot;                                                                                                                    //user's slot this item is on
+    private int user_id = -1;                                                                                                               //user id this item belongs to
+    private String section = StringUtils.EMPTY;                                                                                             //the section number in user box or building warehouse
+    private String slot = StringUtils.EMPTY;                                                                                                //user's slot this item is on
 
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
 
-    public boolean isIncluded() {return pid != -1;}                                                                                         //this item is an included one itself (it has pid = parent.id)
-    public boolean isExpired()  {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}               //the item is expired (has dt < now)
+    protected Item() { }
+    public Item(ItemTemplate itmpl) {                                                                                                       //create an Item from ItemTemplate
+        Field[ ] tmplFields = ItemTemplate.class.getDeclaredFields();
+        Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
+            try {
+                FieldUtils.getField(Item.class, f.getName(), true).set(this, FieldUtils.readField(f, itmpl, true));
+            } catch (IllegalAccessException e) {logger.info("can't create Item from ItemTemplate: %s", e.getMessage()); }
+        });
+        return;
+    }
 
-    public boolean needCreateNewId(int count) {return count < getParamInt(Params.count) || getParamInt(Params.count) > 0 && getParamDouble(Params.calibre) > 0;}
+    public boolean isIncluded()   {return pid != -1;}                                                                                       //this item is an included one itself (it has pid = parent.id)
+    public boolean isExpired()    {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //the item is expired (has dt < now)
+    public boolean isNoTransfer() {return getParamInt(Params.nt) == 1 || included.getItems().stream().mapToInt(i -> i.isNoTransfer() ? 1 : 0).anyMatch(i -> i == 1);} //check if the item or any of its included has nt set to 1
 
-    public Long getId()  {return id; }
-    public long getPid() {return pid;}
+    public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
+
+    public Long getId()   {return id; }                                                                                                     //item id
+    public long getPid()  {return pid;}                                                                                                     //item master's id
+    public int getCount() {return NumberUtils.toInt(count);}                                                                                //item count - 0 if item is not stackable
+
     public ItemBox getIncluded() {return included;}
 
     public void setParam(Params paramName, Object paramValue) {                                                                             //set an item param to paramValue
@@ -108,12 +150,14 @@ public class Item {
         return;
     }
 
+    public void setId(long id)      {this.id = id;}
+    public void setNextGlobalId()   {this.id = getNextGlobalId(); }
 
-    public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());}
-    public int getParamInt(Params param) {return ParamUtils.getParamInt(this, param.toString());}
-    public long getParamLong(Params param) {return ParamUtils.getParamLong(this, param.toString());}
+    public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
+    public int getParamInt(Params param)       {return ParamUtils.getParamInt(this, param.toString());}
+    public long getParamLong(Params param)     {return ParamUtils.getParamLong(this, param.toString());}
     public double getParamDouble(Params param) {return ParamUtils.getParamDouble(this, param.toString());}
-    private String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString());}                                       //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                       //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
     public String getXml() {return getXml(true);}
     public String getXml(boolean withIncluded) {
@@ -132,7 +176,7 @@ public class Item {
     }
     public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this item or one of the included items, or null
 
-    public void unload() {setParam(Params.pid, -1);}                                                                                        //set an item a parent item
+    public void unload() {pid = -1;}                                                                                                        //set an item a parent item
 
     public void decrease(int num) {                                                                                                         //decrease item count by num
         int count = getParamInt(Params.count);
@@ -143,13 +187,30 @@ public class Item {
         return;
     }
 
-    public void insertItem(Item sub) {
-        included.add(sub);
-        return;
+    public Item split(int count, boolean noSetNewId, User user) {                                                                           //split an item and return a new one
+        try {
+            Item splitted = (Item)this.clone();
+            splitted.setParam(Params.count, count);                                                                                         //set the count of the new item
+            if (!noSetNewId)
+                splitted.setId(user.getNewId());                                                                                            //set a new id for the new item
+            this.decrease(count);                                                                                                           //decrease count of the current item
+            return splitted;                                                                                                                //return a new item
+        } catch (CloneNotSupportedException e) {
+            logger.error("can't clone the item id %d: %s:%s", id, e.getClass(), e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    protected Object clone() throws CloneNotSupportedException {                                                                            //guess what??
+        Item cloned = (Item)super.clone();
+        cloned.included = new ItemBox();                                                                                                    //item box should be populated by cloned items recursively
+        this.included.getItems().forEach(i -> {try {cloned.included.add((Item)i.clone());} catch (CloneNotSupportedException e) {logger.error("can't clone an item: %s", e.getMessage());}});
+        return cloned;
     }
 
     public void sync() {sync(false);}
-    public void sync(boolean force) {
+    public void sync(boolean force) {                                                                                                       //force=true means sync the item anyway
         if (needSync.compareAndSet(true, false) || force) {                                                                                 //sync if needSync or force is true
             logger.info("syncing item %s", this);
             ServerMain.sync(this);
