@@ -140,10 +140,17 @@ public class CommandProcessor extends DefaultHandler {
         user.com_CHECK();
         return;
     }
+
     private void com_GAME_TAKE_ON(Attributes attrs) {                                                                                       //user takes on an item
         String id = attrs.getValue("id");
         String slot = attrs.getValue("slot");
         user.com_TAKE_ON(id, slot);
+        return;
+    }
+
+    private void com_GAME_TAKE_OFF(Attributes attrs) {                                                                                      //user takes off an item
+        String id = attrs.getValue("id");
+        user.com_TAKE_OFF(id);
         return;
     }
 

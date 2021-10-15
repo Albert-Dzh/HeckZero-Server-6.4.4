@@ -423,6 +423,44 @@ public class User {
         item.setParam(Item.Params.slot, slot);
         return;
     }
+
+    public void com_TAKE_OFF(String id) {                                                                                                   //user takes on an item on a specified slot
+        Item item = getItemBox().findItem(NumberUtils.toLong(id));
+        if (item == null) {
+            logger.error("can't find an item id %s to perform TAKE_OFF command from user %s", id, getLogin());
+            disconnect();
+            return;
+        }
+
+        String[] bonusStats = item.getParamStr(Item.Params.up).split(",");
+        upgradeUserStats(bonusStats, false);
+
+        item.setParam(Item.Params.slot, "");
+        return;
+    }
+
+    private void upgradeUserStats(String[] bonusStats, boolean isPositive) {
+        for (String bonusStat : bonusStats) {                                       // траверс по параметрам
+            Params stat = switch (bonusStat.split("=")[0]) {                // получить нужный параметр
+                case "HP"   -> Params.HP;
+                case "psy"  -> Params.psy;
+                case "str"  -> Params.str;
+                case "dex"  -> Params.dex;
+                case "int"  -> Params.intel;
+                case "pow"  -> Params.pow;
+                case "acc"  -> Params.acc;
+                case "intu" -> Params.intu;
+            };
+
+            int current = getParamInt(stat);                                        // взять текущее состояние параметра
+            int bonus   = Integer.parseInt(bonusStat.split("=")[1]);            // взять бонус шмотки
+
+            int statBonus = isPositive ? current + bonus : current - bonus;         // если надеваем, то плюс, если снимаем, то минус
+
+            setParam(stat, bonusStat);                                              // установить статы
+        }
+    }
+
     public void com_SILUET(String slt, String set) {                                                                                        //set user body type
         logger.debug("processing <SILUET/> from %s", getLogin());
         setParam(Params.siluet, set);

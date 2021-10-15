@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN" monitorInterval="30" strict="no" dest="err">
-    <Properties> 
+    <Properties>
     	<Property name="logDir">logs</Property>
    </Properties>
-  
-  <Appenders>
-    <Console name="Console" target="SYSTEM_OUT">
-    	 <PatternLayout pattern="%highlight{%d{YYYY-MM-dd HH:mm:ss.SSS} [%T] %-5level: %logger{1} - %msg %ex{short}%n}"/>
-    </Console>
-	
-	<RollingFile name="rollFile" fileName = "${logDir}/heckzero-server.log" filePattern="${logDir}/$${date:yyyy-MM}/heckzero-server-%d{yyyy-MM-dd}.log.gz" createOnDemand="false">
-    	    <PatternLayout pattern="%d{YYYY-MM-dd HH:mm:ss.SSS} [%T] %-5level %logger{1} - %msg %ex{short}%n"/>
 
-    	    <CronTriggeringPolicy schedule="0 18 3 * * ?" evaluateOnStartup="true"/>
-  	    <DefaultRolloverStrategy fileIndex="nomax" > 
-    		<Delete basePath="${logDir}" maxDepth="2" testMode="false"> 
-   	   	    <IfFileName glob="*/heckzero-*.log.gz" />
-   	   	    <IfLastModified age="60d" /> 
-   	   	</Delete> 
-   	   </DefaultRolloverStrategy> 
-  	</RollingFile>
-  </Appenders>
-    
-  <Loggers>
-    <Root level="INFO">
-  	<AppenderRef ref="Console"/>
-	<AppenderRef ref="rollFile" />
-    </Root>
-  </Loggers>
+	<Appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			 <PatternLayout pattern="%highlight{%d{YYYY-MM-dd HH:mm:ss.SSS} [%T] %-5level: %logger{1} - %msg %ex{short}%n}"/>
+		</Console>
+
+		<RollingFile name="rollFile" fileName = "${logDir}/heckzero-server.log" filePattern="${logDir}/$${date:yyyy-MM}/heckzero-server-%d{yyyy-MM-dd}.log.gz" createOnDemand="false">
+			<PatternLayout pattern="%d{YYYY-MM-dd HH:mm:ss.SSS} [%T] %-5level %logger{1} - %msg %ex{short}%n"/>
+
+			<CronTriggeringPolicy schedule="0 18 3 * * ?" evaluateOnStartup="true"/>
+			<DefaultRolloverStrategy fileIndex="nomax" >
+				<Delete basePath="${logDir}" maxDepth="2" testMode="false">
+					<IfFileName glob="*/heckzero-*.log.gz" />
+					<IfLastModified age="60d" />
+				</Delete>
+		   </DefaultRolloverStrategy>
+		</RollingFile>
+	</Appenders>
+
+	<Loggers>
+		<Root level="INFO">
+			<AppenderRef ref="Console"/>
+			<AppenderRef ref="rollFile"/>
+		</Root>
+	</Loggers>
 </Configuration>
