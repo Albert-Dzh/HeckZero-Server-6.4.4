@@ -420,6 +420,7 @@ public class User {
             disconnect();
             return;
         }
+        upgradeUserParams(item, true);
         item.setParam(Item.Params.slot, slot);
         return;
     }
@@ -432,16 +433,16 @@ public class User {
             return;
         }
 
-        String[] bonusStats = item.getParamStr(Item.Params.up).split(",");
-        upgradeUserStats(bonusStats, false);
-
+        upgradeUserParams(item, false);
         item.setParam(Item.Params.slot, "");
         return;
     }
 
-    private void upgradeUserStats(String[] bonusStats, boolean isPositive) {
-        for (String bonusStat : bonusStats) {                                       // траверс по параметрам
-            Params stat = switch (bonusStat.split("=")[0]) {                // получить нужный параметр
+    private void upgradeUserParams(Item item, boolean isEquipping) {
+        String[] bonusStats = item.getParamStr(Item.Params.up).split(",");                                                                  //all item influence (Item.Params.up)
+
+        for (String bonusStat : bonusStats) {                                                                                               //траверс по параметрам
+            Params stat = switch (bonusStat.split("=")[0]) {                                                                                //get each stat this items influence to
                 case "HP"   -> Params.HP;
                 case "psy"  -> Params.psy;
                 case "str"  -> Params.str;
@@ -452,12 +453,9 @@ public class User {
                 case "intu" -> Params.intu;
             };
 
-            int current = getParamInt(stat);                                        // взять текущее состояние параметра
-            int bonus   = Integer.parseInt(bonusStat.split("=")[1]);            // взять бонус шмотки
-
-            int statBonus = isPositive ? current + bonus : current - bonus;         // если надеваем, то плюс, если снимаем, то минус
-
-            setParam(stat, bonusStat);                                              // установить статы
+            int influence = Integer.parseInt(bonusStat.split("=")[1]);                                                                      //get the influence value
+            setParam(stat, getParamInt(stat) + (isEquipping ? influence : influence * -1));                                                 //update the corresponding user stat param
+            return;
         }
     }
 
