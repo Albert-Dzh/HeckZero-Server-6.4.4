@@ -93,7 +93,7 @@ public class ItemBox {
             del(id);                                                                                                                        //delete an item from the item box
             if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                         //set a new id fo the ammo item
                 item.setId(user.getNewId());
-            if (needSync)
+            if (needSync)                                                                                                                   //if needSync = true - delete an item from database
                 Item.delItem(id, true);
         }
         logger.debug("returning item %s", item);

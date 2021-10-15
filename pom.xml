@@ -16,7 +16,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <skipTests>true</skipTests>
         <netty-version>4.1.66.Final</netty-version>
-        <hibernate-version>5.5.7.Final</hibernate-version>
+        <hibernate-version>5.5.8.Final</hibernate-version>
     </properties>
 
     <dependencies>
@@ -153,6 +153,13 @@
                             <directory>${project.basedir}</directory>
                             <includes>
                                 <include>${finalJarName}.${project.packaging}</include>
+                            </includes>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                        <fileset>
+                            <directory>${project.basedir}/libs</directory>
+                            <includes>
+                                <include>**/*</include>
                             </includes>
                             <followSymlinks>false</followSymlinks>
                         </fileset>

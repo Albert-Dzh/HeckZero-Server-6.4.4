@@ -391,18 +391,38 @@ public class User {
                 disconnect();
                 return;
             }
-//            if (getItemBox().findItem(NumberUtils.toLong(d)) == null)
-//                Item.delItem(NumberUtils.toLong(d), true);
             itemBoxAR.add(item);
             return;
         }
 
-        itemBoxAR = ArsenalLoot.getLoot(getBuilding().getId());
+        itemBoxAR = ArsenalLoot.getLoot(getBuilding().getId());                                                                             //just get and send the entire arsenal loot
         String xml = String.format("<AR>%s</AR>", itemBoxAR.getXml());
         sendMsg(xml);
         return;
     }
 
+    public void com_TAKE_ON(String id, String slot) {                                                                                       //user takes on an item on a specified slot
+        Item item = getItemBox().findItem(NumberUtils.toLong(id));
+        if (item == null) {
+            logger.error("can't find an item id %s to perform TAKE_ON command from user %s", id, getLogin());
+            disconnect();
+            return;
+        }
+        String currentSlot = item.getParamStr(Item.Params.slot);
+        if (currentSlot.equals(slot)) {
+            logger.warn("can't take on an item %s to slot %s for user %s, item is already on this slot", id, slot, getLogin());
+            disconnect();
+            return;
+        }
+        String[] st = item.getParamStr(Item.Params.st).split(",");
+        if (!ArrayUtils.contains(st, slot)) {
+            logger.warn("can't take on an item %s to slot %s for user %s, the slot is not in an allowed list: %s", id, slot, getLogin(), st);
+            disconnect();
+            return;
+        }
+        item.setParam(Item.Params.slot, slot);
+        return;
+    }
     public void com_SILUET(String slt, String set) {                                                                                        //set user body type
         logger.debug("processing <SILUET/> from %s", getLogin());
         setParam(Params.siluet, set);

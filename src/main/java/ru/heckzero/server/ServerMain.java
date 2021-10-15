@@ -54,7 +54,6 @@ public class ServerMain {
 
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
-//    private final static File ehcacheCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "ehcache.xml");
     private final static File confFile = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + CONF_FILE);
 
     private static final String OS = System.getProperty("os.name").toLowerCase();                                                           //OS type we are running on
@@ -93,7 +92,7 @@ public class ServerMain {
                     option(ChannelOption.SO_BACKLOG, 128).childOption(ChannelOption.SO_KEEPALIVE, true).
                     childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        public void initChannel(SocketChannel ch) {                                                                         //add client channel handlers
+                        public void initChannel(SocketChannel ch) {                                                                         //add channel handlers
                             ChannelPipeline pl = ch.pipeline();                                                                             //get the channel pipeline
 
                             pl.addLast("socketIdleHandler", new ReadTimeoutHandler(hzConfiguration.getInt("ServerSetup.MaxSocketIdleTime", DEF_MAX_SOCKET_IDLE_TIME)));  //set a read timeout handler
@@ -118,7 +117,6 @@ public class ServerMain {
 
     private static void dbInit() {                                                                                                          //bootstrap the Hibernate
         StandardServiceRegistryBuilder standardServiceRegistryBuilder = new StandardServiceRegistryBuilder().configure(hbnateCfg);          //read hibernate configuration from file
-//        standardServiceRegistryBuilder.applySetting("hibernate.javax.cache.uri", ehcacheCfg.toURI().toString());                            //add ehcache config file name to hibernate settings (by setting "hibernate.javax.cache.uri" to point to ehcache config file name)
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
