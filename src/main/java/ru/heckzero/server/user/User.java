@@ -506,7 +506,6 @@ public class User {
                 isGod();                                                                                                                    // игрок админ
     }
 
-
     public void addItems(ItemBox box) {
         getItemBox().addAll(box);
         box.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));
