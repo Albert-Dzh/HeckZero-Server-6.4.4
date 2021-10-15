@@ -451,8 +451,13 @@ public class User {
                 case "pow"  -> Params.pow;
                 case "acc"  -> Params.acc;
                 case "intu" -> Params.intu;
+                default -> null;
             };
-
+            if (stat == null) {
+                logger.error("unknown param %s in item id %d item.up list", item.getParamStr(Item.Params.up), item.getId());
+                disconnect();
+                return;
+            }
             int influence = Integer.parseInt(bonusStat.split("=")[1]);                                                                      //get the influence value
             setParam(stat, getParamInt(stat) + (isEquipping ? influence : influence * -1));                                                 //update the corresponding user stat param
             return;
