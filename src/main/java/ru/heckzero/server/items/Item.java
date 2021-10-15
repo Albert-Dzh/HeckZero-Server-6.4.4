@@ -133,7 +133,7 @@ public class Item implements Cloneable {
     }
 
     public boolean isIncluded()   {return pid != -1;}                                                                                       //this item is an included one itself (it has pid = parent.id)
-    public boolean isExpired()    {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //the item is expired (has dt < now)
+    public boolean isExpired()    {return Range.between(0L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //the item is expired (has dt < now)
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1 || included.getItems().stream().mapToInt(i -> i.isNoTransfer() ? 1 : 0).anyMatch(i -> i == 1);} //check if the item or any of its included has nt set to 1
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
