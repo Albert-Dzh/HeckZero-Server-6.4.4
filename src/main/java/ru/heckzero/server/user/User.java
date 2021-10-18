@@ -493,12 +493,9 @@ public class User {
 
     public boolean isBuildMaster(Building bld) {return isBuildMaster(bld.getX(), bld.getY(), bld.getZ());}
     private boolean isBuildMaster(int x, int y, int z) {                                                                                    //check if user has a master key to the building with given coordinates
-
         String keyName = String.format("$key%d_%d_%d", x, y, z);
 
-        return getItemBox()
-                .getItems()
-                .stream()
+        return getItemBox().getItems().stream()
                 .anyMatch(item -> !item.isExpired() &&                                                                                      // не просрочена И
                         (Math.floor(item.getParamDouble(Item.Params.type)) == 782 &&                                                        // шмотка ключ И
                         (item.getParamStr(Item.Params.made).equals(keyName) ||                                                              // мастер текущего местоположения пользователя ИЛИ
