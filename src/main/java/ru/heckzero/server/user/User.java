@@ -333,7 +333,7 @@ public class User {
             return;
         }
 
-        if (comein != null) {                                                                                                               //incoming routes request
+        if (comein != null) {                                                                                                               //incoming routes list request
             StringJoiner sj = new StringJoiner("", "<PR comein=\"1\">", "</PR>");
             List<PortalRoute> comeinRoutes = PortalRoute.getComeinRoutes(portal.getId());                                                   //get incoming routes for the current portal
             comeinRoutes.forEach(r -> sj.add(r.getXmlComein()));
