@@ -88,11 +88,11 @@ public class User {
 
     private long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
     private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
-    private int getParam_level() {return UserLevel.getLevel(this);}                                                                         //compute the user level by its experience value
-    private int getParam_predlevel() {return UserLevel.getExpLastLvl(this);}                                                                //get the experience value of current level beginning
-    private int getParam_nextlevel() {return UserLevel.getExpNextLvl(this);}                                                                //get the experience value of current level end
-    private int getParam_maxHP() {return UserLevel.getMaxHP(this);}
-    private int getParam_maxPsy() {return UserLevel.getMaxPsy(this);}
+    private int getParam_level() {return UserLevelData.getLevel(this);}                                                                         //compute the user level by its experience value
+    private int getParam_predlevel() {return UserLevelData.getExpLastLvl(this);}                                                                //get the experience value of current level beginning
+    private int getParam_nextlevel() {return UserLevelData.getExpNextLvl(this);}                                                                //get the experience value of current level end
+    private int getParam_maxHP() {return UserLevelData.getMaxHP(this);}
+    private int getParam_maxPsy() {return UserLevelData.getMaxPsy(this);}
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
 
@@ -127,10 +127,9 @@ public class User {
             sendMsg(String.format("<ID2 id=\"%d\"/>", newId2));
         }else
             setParam(Params.i1, i1);
-        logger.info("computed new id: %d for user %s, (id1 = %d, id2 = %d, i1 = %d)", newId, getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
+        logger.info("computed NEW ID: %d for user %s, (id1 = %d, id2 = %d, i1 = %d)", newId, getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
         return newId;
     }
-
 
     public void setParam(Params paramName, Object paramValue) {                                                                             //set a user param
         if (ParamUtils.setParam(params, paramName.toString(), paramValue))                                                                  //delegate param setting to ParamUtils class
@@ -454,7 +453,7 @@ public class User {
                 default -> null;
             };
             if (stat == null) {
-                logger.error("unknown param %s in item id %d item.up list", item.getParamStr(Item.Params.up), item.getId());
+                logger.error("unknown param %s for item id %d in item.up field, check the database data", item.getParamStr(Item.Params.up), item.getId());
                 disconnect();
                 return;
             }

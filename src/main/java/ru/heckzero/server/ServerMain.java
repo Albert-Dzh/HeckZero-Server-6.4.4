@@ -31,7 +31,7 @@ import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.net.NetInHandlerMain;
 import ru.heckzero.server.net.NetOutHandler;
 import ru.heckzero.server.user.User;
-import ru.heckzero.server.user.UserLevel;
+import ru.heckzero.server.user.UserLevelData;
 import ru.heckzero.server.world.*;
 
 import java.io.File;
@@ -122,7 +122,7 @@ public class ServerMain {
         MetadataSources sources = new MetadataSources(serviceRegistry).
                 addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).
                 addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(ItemTemplate.class).addAnnotatedClass(ArsenalLoot.class).
-                addAnnotatedClass(UserLevel.class);
+                addAnnotatedClass(UserLevelData.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
