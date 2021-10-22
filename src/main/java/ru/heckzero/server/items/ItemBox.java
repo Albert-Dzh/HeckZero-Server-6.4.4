@@ -104,8 +104,10 @@ public class ItemBox {
             return item.split(count, noSetNewId, user);                                                                                     //and return a cloned one with a new ID and count
         }
         logger.debug("get the entire item stack");
-        del(id);                                                                                                                        //delete an item from the item box or from the parent included list
-        if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                         //set a new id fo the ammo item
+        items.remove(item);                                                                                                                 //delete an item from the item box
+        if (needSync)
+            Item.delItem(item.getId(), true);                                                                                               //delete the item from database
+        if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                             //set a new id for the ammo
             item.setId(user.getNewId());
 
         logger.debug("returning item %s", item);

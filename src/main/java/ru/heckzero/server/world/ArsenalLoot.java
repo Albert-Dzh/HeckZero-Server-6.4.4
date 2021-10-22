@@ -48,7 +48,7 @@ public class ArsenalLoot {
         ItemBox box = new ItemBox();                                                                                                        //create a new Item box for arsenal items
         List<Long> ids = Item.getNextGlobalId(result.size());                                                                               //get result.size() numbers from main_id_seq
         for (int i = 0; i < result.size(); i++) {
-            ArsenalLoot arLoot = (ArsenalLoot) result.get(i)[0];                                                                            //ArsenalLoot instance
+            ArsenalLoot arLoot = (ArsenalLoot)result.get(i)[0];                                                                             //ArsenalLoot instance
             ItemTemplate itemTemplate = (ItemTemplate) result.get(i)[1];                                                                    //ItemTemplate instance
 
             Item item = new Item(itemTemplate);                                                                                             //create an Item by an ItemTemplate instance

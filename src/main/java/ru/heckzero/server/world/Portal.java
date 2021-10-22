@@ -90,9 +90,9 @@ public class Portal extends Building {
         sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
         sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
 
-        ItemBox tmpBox = new ItemBox(getItemBox());
-        tmpBox.del(i -> i.getCount() == 1);
-        tmpBox.forEach(Item::decrement);
+        ItemBox tmpBox = new ItemBox(getItemBox());                                                                                         //we need to create a temporary itembox
+        tmpBox.del(i -> i.getCount() == 1);                                                                                                 //delete all items with count=1
+        tmpBox.forEach(Item::decrement);                                                                                                    //that is all for mimic client behaviour
         sj.add(tmpBox.getXml());                                                                                                            //add portal item list
 
         return sj.toString();
