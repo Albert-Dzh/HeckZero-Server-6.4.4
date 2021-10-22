@@ -8,6 +8,8 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemBox;
 
 import javax.persistence.*;
 import java.util.*;
@@ -32,7 +34,9 @@ public class Portal extends Building {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
-    public String getCity() {return city; }                                                                                                 //these citizens have a discount when they are flying TO this portal
+    @Transient private ItemBox itemBox = null;                                                                                              //portal Item box
+
+    public String getCity() {return city;}                                                                                                  //these citizens have a discount when they are flying TO this portal
     public int getDs()      {return ds;}                                                                                                    //discount for citizens
 
     public static List<Portal> getBigmapPortals() {                                                                                         //generate world map data - cities, portal and routes
@@ -85,6 +89,14 @@ public class Portal extends Building {
         StringJoiner sj = new StringJoiner("", "", "</PR>");
         sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
         sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
+
+        ItemBox tmpBox = new ItemBox(getItemBox());
+        tmpBox.del(i -> i.getCount() == 1);
+        tmpBox.forEach(Item::decrement);
+        sj.add(tmpBox.getXml());                                                                                                            //add portal item list
+
         return sj.toString();
     }
+
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.getItemBox(ItemBox.boxType.BUILDING, getId(), true)) : itemBox;} //get portal itembox, initialize if needed
 }

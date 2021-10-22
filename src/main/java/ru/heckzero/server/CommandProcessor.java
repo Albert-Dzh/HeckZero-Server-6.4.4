@@ -131,8 +131,12 @@ public class CommandProcessor extends DefaultHandler {
         String id = attrs.getValue("id");
         String new_cost = attrs.getValue("new_cost");
         String to = attrs.getValue("to");
+        String d = attrs.getValue("d");
+        String a = attrs.getValue("a");
+        String s = attrs.getValue("s");
+        String c = attrs.getValue("c");
 
-        user.com_PR(comein, id, new_cost, to);
+        user.com_PR(comein, id, new_cost, to, d, a, s, c);
         return;
     }
 

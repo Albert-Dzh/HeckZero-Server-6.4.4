@@ -37,8 +37,8 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, which is set on login by onlineGame() and onlineChat() methods
-    public enum Params {time, tdt, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
-    private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
+    public enum Params {time, tdt, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
+    private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
     private static final int PERIOCIC_TASKS_INTERVAL = 300;                                                                                 //some periodic tasks interval in secconds
 
     private static long getId2() {                                                                                                          //compute next ID2 value for the user
@@ -58,7 +58,7 @@ public class User {
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
     @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
-    @Transient ItemBox itemBoxAR = null;                                                                                                    //arsenal items generated for the certain arsenal and user
+    @Transient ItemBox itemBoxBld = null;                                                                                                   //current user building item box
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -88,13 +88,14 @@ public class User {
 
     private long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
     private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
-    private int getParam_level() {return UserLevelData.getLevel(this);}                                                                         //compute the user level by its experience value
-    private int getParam_predlevel() {return UserLevelData.getExpLastLvl(this);}                                                                //get the experience value of current level beginning
-    private int getParam_nextlevel() {return UserLevelData.getExpNextLvl(this);}                                                                //get the experience value of current level end
+    private int getParam_level() {return UserLevelData.getLevel(this);}                                                                     //compute the user level by its experience value
+    private int getParam_predlevel() {return UserLevelData.getExpLastLvl(this);}                                                            //get the experience value of current level beginning
+    private int getParam_nextlevel() {return UserLevelData.getExpNextLvl(this);}                                                            //get the experience value of current level end
     private int getParam_maxHP() {return UserLevelData.getMaxHP(this);}
     private int getParam_maxPsy() {return UserLevelData.getMaxPsy(this);}
     private int getParam_nochat() {return isOnlineChat() ? 0 : 1;}                                                                          //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
+    private int getParam_owner() {return getParamInt(Params.Z) == 0 ? 0 : BooleanUtils.toInteger(isBuildMaster(getBuilding()));}            //is a user under the kupol - his current location doesn't allow battling
 
     public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());}                                        //get user param value as different type
     public int getParamInt(Params param) {return ParamUtils.getParamInt(this, param.toString());}                                           //get user param value as different type
@@ -201,8 +202,8 @@ public class User {
             disconnect();
             return;
         }
-        if (item.isNoTransfer()) {                                                                                                                  //drop is forbidden, item or one of it included has nt = 1
-            logger.info("can't drop an item id %d, because it or one of its included has nt set to 1");
+        if (item.isNoTransfer()) {                                                                                                          //drop is forbidden, item or one of it included has nt = 1
+            logger.info("can't drop an item id %d, because it or one of its included has 'nt' set to 1");
             return;
         }
 
@@ -319,13 +320,13 @@ public class User {
         }
 
         int bldType = bld.getParamInt(Building.Params.name);                                                                                //building type
-        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, BooleanUtils.toInteger(isBuildMaster(bld)));
         setBuilding(n, bldType);                                                                                                            //place the user inside the building (set proper params)
+        String resultXML = String.format("<GOBLD n=\"%s\" hz=\"%d\" owner=\"%d\"/>", n, bldType, getParamInt(Params.owner));
         sendMsg(resultXML);
         return;
     }
 
-    public void com_PR(String comein, String id, String new_cost, String to) {                                                              //portal workflow
+    public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c) {                      //portal workflow
         logger.debug("processing <PR/> from %s", getLogin());
         Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is now in
         if (portal == null) {                                                                                                               //can't get the current portal, nothing to do
@@ -341,7 +342,7 @@ public class User {
             return;
         }
 
-        if (id != null && new_cost != null) {                                                                                               //change incoming route cost request
+        if (id != null && new_cost != null) {                                                                                               //changing an incoming route cost
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));                                                                //get the route to change cost for
             if (route == null)
                 return;
@@ -351,7 +352,7 @@ public class User {
             return;
         }
 
-        if (to != null) {                                                                                                                   //flight ticket request
+        if (to != null) {                                                                                                                   //flight request to = route id where user wants to fly to
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(to));
             if (route == null)                                                                                                              //can't get the route user wants flying to
                 return;
@@ -367,13 +368,75 @@ public class User {
             return;
         }
 
+        if (d != null) {                                                                                                                    //user puts resources to portal's warehouse
+            Item item = getItemBox().findItem(NumberUtils.toLong(d));                                                                       //the user items he wants to put to a warehouse
+            int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
+            if (item == null) {                                                                                                             //we couldn't find an item the user wants to put in the user Item box
+                logger.error("the item id %s is not found for user %s", d, getLogin());
+                disconnect();
+                return;
+            }
+            logger.info("try to find joinable item in portal item box");
+            Item joinable = itemBoxBld.findJoinableItem(item);                                                                              //try to find a joinable item in a warehouse
+            if (joinable != null) {                                                                                                         //we've found it
+                logger.info("joinable item found: %s", joinable);
+                joinable.increase(count);                                                                                                   //increase joinable item count by count
+                joinable.sync();                                                                                                            //update joinable before deletion invalidates our L2 cache to prevent redundant select of joinable
+                if (count > 0 && count < item.getCount())                                                                                   //check if we should decrease or delete the item from users item box
+                    item.decrease(count);
+                else
+                    getItemBox().del(NumberUtils.toLong(d));                                                                                //item will be deleted from user item box and db, which invalidates L2 cache
+                return;
+            }
+
+            logger.info("can't find an item to join our item, will split our item");
+            item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this);                                                    //get (split) an item from user itembox the user wants to put to warehouse
+            item.setParam(Item.Params.user_id, null);                                                                                       //reset user specific params before putting an item to the building item box
+            item.setParam(Item.Params.b_id, portal.getId());
+            itemBoxBld.add(item);                                                                                                           //put an item to building item box
+            itemBoxBld.sync();                                                                                                              //add the item to database
+            return;
+        }
+
+        if (a != null) {
+            int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
+            Item item = itemBoxBld.findItem(NumberUtils.toLong(a));
+            if (item == null) {
+                logger.info("can't find an item id %s in portal item box for user %s", a, getLogin());
+                sendMsg("<PR a1=\"0\" a2=\"0\"/>");
+                return;
+            }
+
+            if (!ServerMain.refresh(item)) {                                                                                                //actual item data (including count)
+                logger.info("item %d doesn't exist in database", item.getId());
+            }
+
+            logger.info("real item id %s: %s", a, item);
+
+            int itemCount = item.getCount();
+            if (itemCount < count) {
+                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), itemCount, false, this);
+                sendMsg(String.format("<PR a1=\"%d\" a2=\"0\"/>", itemCount));
+            }else {
+                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), count, false, this);
+                sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", count, itemCount - count));
+            }
+            item.setParam(Item.Params.b_id, null);
+            item.setParam(Item.Params.user_id, this.id);
+            item.setParam(Item.Params.section, s);
+            getItemBox().add(item);
+
+            return;
+        }
+
+        itemBoxBld = portal.getItemBox();                                                                                                   //portal item box will be remained unchanged until user is inside the portal
         sendMsg(portal.getXmlPR());                                                                                                         //user just entering a portal, sending info about the portal and routes
         return;
     }
 
     public void com_AR(String a, String d, String s, String count) {                                                                        //Arsenal workflow
         if (a != null) {                                                                                                                    //user takes an item from arsenal
-            Item item = itemBoxAR.getSplitItem(NumberUtils.toLong(a), NumberUtils.toInt(count), false, this);                               //find item in the arsenal item box by id
+            Item item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), NumberUtils.toInt(count), false, this);                              //find item in the arsenal item box by id
             if (item == null) {                                                                                                             //we couldn't find an item in arsenal item box
                 disconnect();
                 return;
@@ -390,12 +453,12 @@ public class User {
                 disconnect();
                 return;
             }
-            itemBoxAR.add(item);
+            itemBoxBld.add(item);
             return;
         }
 
-        itemBoxAR = ArsenalLoot.getLoot(getBuilding().getId());                                                                             //just get and send the entire arsenal loot
-        String xml = String.format("<AR>%s</AR>", itemBoxAR.getXml());
+        itemBoxBld = ArsenalLoot.getLoot(getBuilding().getId());                                                                            //get and send the entire arsenal loot
+        String xml = String.format("<AR>%s</AR>", itemBoxBld.getXml());
         sendMsg(xml);
         return;
     }
@@ -502,9 +565,9 @@ public class User {
                 isGod();                                                                                                                    // игрок админ
     }
 
-    public void addItems(ItemBox box) {
+    public void addItems(ItemBox box) {                                                                                                     //add all items from box to the user's Item Box
         getItemBox().addAll(box);
-        box.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));
+        box.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));                                           //and send <ADD_ONE> for each item to the client
         return;
     }
 
@@ -549,13 +612,13 @@ public class User {
             sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
             Item.delItem(item.getId(), false);                                                                                              //delete the expired item without its subitems from db
 
-            getItemBox().del(item.getId());
+            getItemBox().del(item.getId());                                                                                                 //delete an item from user's item box or if the item is included one, from master's included list
 
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {
                 logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.getItemsIds(), getLogin());
-                included.getItems().forEach(Item::unload);
-                addItems(included);
+                included.forEach(Item::unload);
+                addItems(included);                                                                                                         //add all included items to the user as a 1st level items
             }
         }
         return;
@@ -568,7 +631,7 @@ public class User {
             ServerMain.sync(this);
         } else
             logger.info("skipping syncing user %s cause he hasn't been changed (AFK?)", getLogin());
-        getItemBox().sync();                                                                                                                //sync user items (if needed)
+        getItemBox().sync();                                                                                                                //sync all user items
         return;
     }
 

@@ -52,8 +52,8 @@ public class Building {
     public boolean isEmpty() {return id == null;}
 
     public Integer getId() { return id; }
-    public int getX() {return location.getX(); }
-    public int getY() {return location.getY(); }
+    public int getX() {return location.getX();}
+    public int getY() {return location.getY();}
     public int getZ() {return Z; }
     public int getName() {return name;}
     public String getTxt() {return txt;}

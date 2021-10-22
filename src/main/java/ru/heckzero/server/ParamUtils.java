@@ -31,11 +31,10 @@ public class ParamUtils {
 
     public static boolean setParam(Object obj, String paramName, Object paramValue) {                                                       //set a paramName to paramValue for the obj instance
         try {
-            Field field = obj.getClass().getDeclaredField(paramName);                                                                       //find a field with a name paramName
-            field.setAccessible(true);
+            Field field = FieldUtils.getField(obj.getClass(), paramName, true);                                                             //find a field with a name paramName
             Class<?> fieldType = field.getType();                                                                                           //found field type
-            Class<?> valueType = paramValue.getClass();                                                                                     //value type
-            if (fieldType.equals(valueType)) {                                                                                              //if they are equals, just set the value
+
+            if (paramValue == null || fieldType.equals(paramValue.getClass())) {                                                            //if they are equals, just set the value
                 field.set(obj, paramValue);
                 return true;
             }
@@ -47,7 +46,7 @@ public class ParamUtils {
                 case "double", "Double" -> {field.set(obj, NumberUtils.isParsable(strValue) ? Math.round(Double.parseDouble(strValue) * 1000D) / 1000D  : 0D); yield true;}
                 default -> {logger.error("can't set param %s for object of type %s, param type '%s' is not supported", paramName, obj.getClass().getSimpleName(), fieldType.getSimpleName()); yield false;}
             };
-        } catch (NoSuchFieldException | SecurityException | IllegalAccessException e) {
+        } catch (SecurityException | IllegalAccessException e) {
             logger.warn("error setting param %s to value %s for class %s: %s:%s", paramName, paramValue, obj.getClass().getSimpleName(), e.getClass().getSimpleName(), e.getMessage());
         }
         return false;

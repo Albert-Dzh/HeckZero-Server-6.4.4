@@ -46,7 +46,7 @@ public class ServerMain {
     private static final Integer DEF_MAX_WORKER_THREADS = 8;                                                                                //MAX threads in EventExecutorGroup for the offloading EventLoop threads
     private static final String DEF_LISTEN_HOST = "0.0.0.0";                                                                                //default IP (host) to listen may be IP or FQDN
     private static final Integer DEF_LISTEN_PORT = 5190;                                                                                    //default port to listen
-    private static final Integer DEF_MAX_PACKET_SIZE = 21500;                                                                                //max packet length to parse by DelimiterBasedFrameDecoder handler
+    private static final Integer DEF_MAX_PACKET_SIZE = 26500;                                                                                //max packet length to parse by DelimiterBasedFrameDecoder handler
     private static final Integer DEF_MAX_SOCKET_IDLE_TIME = 5;                                                                              //default socket(non an authorized user) idle timeout (sec)
     public static final Integer DEF_MAX_USER_IDLE_TIME = 32;                                                                                //Max user timeout
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
@@ -144,6 +144,16 @@ public class ServerMain {
         return;
     }
 
+    public static boolean refresh(Object entity) {
+        logger.debug("refreshing an entity of type: %s, hash = %d", entity.getClass().getSimpleName(), entity.hashCode());
+        try (Session session = sessionFactory.openSession()) {
+            session.refresh(entity);
+            return true;
+        }catch (Exception e) {
+            logger.error("can't refresh entity %s: %s:%s", entity.toString(), e.getClass().getSimpleName(), e.getMessage());
+        }
+        return false;
+    }
 
     private boolean readServerConfig() {                                                                                                    //read properties from a configuration file
         logger.info("reading server settings from %s%s%s", CONF_DIR, File.separatorChar, CONF_FILE);
