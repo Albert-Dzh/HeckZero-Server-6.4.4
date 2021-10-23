@@ -26,6 +26,7 @@ import org.hibernate.boot.MetadataBuilder;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.service.ServiceRegistry;
+import ru.heckzero.server.items.ArsenalLoot;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.net.NetInHandlerMain;

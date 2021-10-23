@@ -5,13 +5,13 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
-import ru.heckzero.server.user.User;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ItemBox {
@@ -92,8 +92,7 @@ public class ItemBox {
             logger.error("can't remove an item id %d from the item box because the item is not found there");
         return;
     }
-
-    public Item getSplitItem(long id, int count, boolean noSetNewId, User user) {                                                           //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
+    public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId) {                                                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
         Item item = findItem(id);                                                                                                           //find an item by id
         if (item == null) {                                                                                                                 //we couldn't find an item by id
             logger.error("can't find item id %d in the item box", id);
@@ -101,14 +100,14 @@ public class ItemBox {
         }
         if (count > 0 && count < item.getCount()) {                                                                                         //split the item
             logger.debug("splitting the item %d by count %d", id, count);
-            return item.split(count, noSetNewId, user);                                                                                     //and return a cloned one with a new ID and count
+            return item.split(count, noSetNewId, newId);                                                                                    //and return a cloned one with a new ID and count
         }
         logger.debug("get the entire item stack");
         items.remove(item);                                                                                                                 //delete an item from the item box
         if (needSync)
             Item.delItem(item.getId(), true);                                                                                               //delete the item from database
         if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                             //set a new id for the ammo
-            item.setId(user.getNewId());
+            item.setId(newId.get());
 
         logger.debug("returning item %s", item);
         return item;

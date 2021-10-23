@@ -57,8 +57,11 @@ public class User {
     @Transient private ScheduledFuture<?> futureItemsCheck = null;                                                                          //future of item expiration checking
     @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
-    @Transient ItemBox itemBox = null;                                                                                                      //users item box will be initialized on a first access
-    @Transient ItemBox itemBoxBld = null;                                                                                                   //current user building item box
+    @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized on a first access
+    @Transient private ItemBox itemBoxBld = null;                                                                                           //current user building item box
+    @Transient private Arsenal arsenal;                                                                                                     //current user arsenal
+//    @Transient
+//    ArsenalLoot arsenalLoot = null;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -390,7 +393,7 @@ public class User {
             }
 
             logger.info("can't find an item to join our item, will split our item");
-            item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this);                                                    //get (split) an item from user itembox the user wants to put to warehouse
+            item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this::getNewId);                                         //get (split) an item from user itembox the user wants to put to warehouse
             item.setParam(Item.Params.user_id, null);                                                                                       //reset user specific params before putting an item to the building item box
             item.setParam(Item.Params.b_id, portal.getId());
             itemBoxBld.add(item);                                                                                                           //put an item to building item box
@@ -415,10 +418,10 @@ public class User {
 
             int itemCount = item.getCount();
             if (itemCount < count) {
-                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), itemCount, false, this);
+                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), itemCount, false, this::getNewId);
                 sendMsg(String.format("<PR a1=\"%d\" a2=\"0\"/>", itemCount));
             }else {
-                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), count, false, this);
+                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), count, false, this::getNewId);
                 sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", count, itemCount - count));
             }
             item.setParam(Item.Params.b_id, null);
@@ -434,9 +437,9 @@ public class User {
         return;
     }
 
-    public void com_AR(String a, String d, String s, String count) {                                                                        //Arsenal workflow
-        if (a != null) {                                                                                                                    //user takes an item from arsenal
-            Item item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), NumberUtils.toInt(count), false, this);                              //find item in the arsenal item box by id
+    public void com_AR(String a, String d, String s, String c) {                                                                            //Arsenal workflow
+        if (a != null) {
+            Item item = arsenal.takeItem(NumberUtils.toLong(a), NumberUtils.toInt(c), this::getNewId);
             if (item == null) {                                                                                                             //we couldn't find an item in arsenal item box
                 disconnect();
                 return;
@@ -447,19 +450,18 @@ public class User {
             return;                                                                                                                         //we don't have to send <ADD_ONE/> because client adds an item by itself
         }
 
-        if (d != null) {                                                                                                                    //user puts an item to arsenal from his itembox
-            Item item = getItemBox().getSplitItem(NumberUtils.toLong(d), NumberUtils.toInt(count), false, this);
+        if (d != null) {
+            Item item = getItemBox().getSplitItem(NumberUtils.toLong(d), NumberUtils.toInt(c), false, this::getNewId);
             if (item == null) {                                                                                                             //we couldn't find an item
                 disconnect();
                 return;
             }
-            itemBoxBld.add(item);
+            arsenal.putItem(item);
             return;
         }
 
-        itemBoxBld = ArsenalLoot.getLoot(getBuilding().getId());                                                                            //get and send the entire arsenal loot
-        String xml = String.format("<AR>%s</AR>", itemBoxBld.getXml());
-        sendMsg(xml);
+        arsenal = new Arsenal(getBuilding().getId());
+        sendMsg(arsenal.lootXml());
         return;
     }
 

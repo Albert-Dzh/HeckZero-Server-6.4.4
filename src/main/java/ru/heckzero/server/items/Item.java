@@ -13,7 +13,6 @@ import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
-import ru.heckzero.server.user.User;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
@@ -24,6 +23,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
@@ -35,7 +35,7 @@ import java.util.stream.LongStream;
 @Entity(name = "Item")
 @Table(name = "items_inventory")
 @Cacheable
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "item_region")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "Item_Region")
 public class Item implements Cloneable {
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -196,12 +196,12 @@ public class Item implements Cloneable {
         return;
     }
 
-    public Item split(int count, boolean noSetNewId, User user) {                                                                           //split an item and return a new one
+    public Item split(int count, boolean noSetNewId, Supplier<Long> newId) {                                                               //split an item and return a new one
         try {
             Item splitted = (Item)this.clone();
             splitted.setParam(Params.count, count);                                                                                         //set the count of the new item
             if (!noSetNewId)
-                splitted.setId(user.getNewId());                                                                                            //set a new id for the new item
+                splitted.setId(newId.get());                                                                                                //set a new id for the new item
             this.decrease(count);                                                                                                           //decrease count of the current item
             return splitted;                                                                                                                //return a new item
         } catch (CloneNotSupportedException e) {
