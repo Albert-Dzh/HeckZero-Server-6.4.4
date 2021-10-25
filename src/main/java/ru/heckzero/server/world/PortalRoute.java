@@ -9,13 +9,11 @@ import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
-import java.util.Collections;
-import java.util.List;
 
 @Entity(name = "PortalRoute")
 @Table(name = "portal_routes")
 @Cacheable
-@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "default")
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "PortalRoute_Region")
 public class PortalRoute {
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -47,34 +45,27 @@ public class PortalRoute {
             }else
                 logger.error("can't find portal route with id %d in database. Check it out!", route_id);
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load portal route with id %d from database: %s", route_id, e.getMessage());
+            logger.error("can't load portal route with id %d from database: %s:%s", route_id, e.getClass().getSimpleName(), e.getMessage());
         }
         return null;
     }
 
-    public static List<PortalRoute> getComeinRoutes(int p_dst_id) {                                                                         //get routes with the given destination portal id
-        try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.srcPortal p_src inner join fetch pr.dstPortal p_dst inner join fetch p_src.location where p_dst.id = :id", PortalRoute.class).setParameter("id", p_dst_id).setCacheable(true);
-            List<PortalRoute> comeinRoutes = query.list();
-            comeinRoutes.forEach(r -> Hibernate.initialize(r.srcPortal.getLocation()));                                                     //initialize included fields on subsequent queries from L2 cache
-            return comeinRoutes;
-        } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't get incoming routes for destination portal id %d: %s", p_dst_id, e.getMessage());
-        }
-        return Collections.emptyList();
-    }
-
-    public PortalRoute() {  }
+    protected PortalRoute() {  }
 
     public boolean isEnabled() {return enabled;}
     public boolean isBigmapEnabled() {return bigmap_enabled;}
 
     public int getROOM() {return ROOM;}
+    public Portal getSrcPortal() {return srcPortal;}
     public Portal getDstPortal() {return dstPortal;}
 
-    public void setCost(double cost) {this.cost = cost;}
+    public void setCost(double cost) {
+        logger.info("setting a new cost %.2d for the route id %d", cost, id);
+        this.cost = cost;
+        return;
+    }
 
-    public void sync() { ServerMain.sync(this); }
+    public void sync() {ServerMain.sync(this);}
 
     public String getXml() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%.1f\" ds=\"%d\" city=\"%s\"/>", id, dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
     public String getXmlComein() {return String.format("<O id=\"%d\" txt=\"%s [%d/%d]\" cost=\"%.1f\"/>", id, srcPortal.getTxt(), srcPortal.getLocation().getLocalX(), srcPortal.getLocation().getLocalY(), cost);}

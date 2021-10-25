@@ -159,6 +159,7 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private void com_GAME_NEWID(Attributes attrs) {                                                                                         //client just created a new item id
+        user.com_NEWID();                                                                                                                   //we might send a new ID2 to the client
         return;                                                                                                                             //congratulations to the client
     }
 

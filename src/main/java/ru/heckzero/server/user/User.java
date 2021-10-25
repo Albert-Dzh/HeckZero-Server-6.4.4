@@ -50,18 +50,17 @@ public class User {
         }
         return -1;
     }
-
-    @Transient private final AtomicBoolean needSync = new AtomicBoolean(false);                                                             //user need to be synced - some params have been modified
+    @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
+    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
+    @Transient private final AtomicBoolean needSync = new AtomicBoolean(false);                                                             //user need to be synced if some params have been modified
     @Transient private final Chat chat = new Chat(this);
     @Transient private ScheduledFuture<?> futureSync = null;                                                                                //future of syncing process
     @Transient private ScheduledFuture<?> futureItemsCheck = null;                                                                          //future of item expiration checking
-    @Transient volatile private Channel gameChannel = null;                                                                                 //user game channel
-    @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
-    @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized on a first access
-    @Transient private ItemBox itemBoxBld = null;                                                                                           //current user building item box
-    @Transient private Arsenal arsenal;                                                                                                     //current user arsenal
-//    @Transient
-//    ArsenalLoot arsenalLoot = null;
+    @Transient private long lastSentId2 = -1;                                                                                               //last id2 value sent to user by com_MYPARAM() or com_NEWID()
+    @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized upon a first access
+
+    @Transient private Arsenal arsenal = null;                                                                                              //current user arsenal
+    @Transient private Portal portal = null;                                                                                                //current user portal
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -113,25 +112,25 @@ public class User {
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
 
     public long getNewId() {                                                                                                                //get a new id for an item
-        long id1 = getParamLong(Params.id1);
+        long id1 = getParamLong(Params.id1);                                                                                                //get current user id1, id2, i1
         long id2 = getParamLong(Params.id2);
         long i1 = getParamLong(Params.i1);
-        long newId = id1 + i1;
 
-        if (++i1 == 100) {
-            logger.info("user %s i1 became 100, get new Id2 and set new ids", getLogin());
-            long newId2 = getId2();
+        long newId = id1 + i1;                                                                                                              //compute a new id
+
+        if (++i1 == 100) {                                                                                                                  //increment i1 and if it becomes 100, get a new id2
+            logger.info("i1 has become 100 for user %s, will set a new id2", getLogin());
+            i1 = 0;
+            long newId2 = getId2();                                                                                                         //get a new id2 from database
             if (newId2 == -1) {
                 disconnect();
                 return -1;
             }
             setParam(Params.id1, id2);
             setParam(Params.id2, newId2);
-            setParam(Params.i1, 0);
-            sendMsg(String.format("<ID2 id=\"%d\"/>", newId2));
-        }else
-            setParam(Params.i1, i1);
-        logger.info("computed NEW ID: %d for user %s, (id1 = %d, id2 = %d, i1 = %d)", newId, getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
+        }
+        setParam(Params.i1, i1);
+        logger.info("computed NEW ID: %d for user %s (id1 = %d, id2 = %d, i1 = %d)", newId, getLogin(), getParamLong(Params.id1), getParamLong(Params.id2), getParamInt(Params.i1));
         return newId;
     }
 
@@ -144,7 +143,7 @@ public class User {
     }
 
     public ItemBox getItemBox() {                                                                                                           //return user itembox or get it
-        return itemBox != null ? itemBox : (itemBox = ItemBox.getItemBox(ItemBox.boxType.USER, id, true));
+        return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.boxType.USER, id, true));
     }
 
     synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
@@ -238,6 +237,7 @@ public class User {
         StringJoiner sj = new StringJoiner("", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
         sj.add(getItemBox().getXml());
+        lastSentId2 = getParamLong(Params.id2);
         sendMsg(sj.toString());
         return;
     }
@@ -297,8 +297,8 @@ public class User {
 
     public void com_BIGMAP() {                                                                                                              //The world map - cities portals and routes
         StringJoiner sj = new StringJoiner("", "<BIGMAP>", "</BIGMAP>");
-        List <Portal> portals = Portal.getBigmapPortals();                                                                                  //get all portal with their routes and locations
-        portals.forEach(p -> sj.add(p.getXmlBigmap()));
+        List<Portal> portals = Portal.getBigmapPortals();                                                                                   //get all portal with their routes and locations
+        portals.forEach(p -> sj.add(p.bigMapXml()));
         sendMsg(sj.toString());
         return;
     }
@@ -330,35 +330,28 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c) {                      //portal workflow
-        logger.debug("processing <PR/> from %s", getLogin());
-        Portal portal = Portal.getPortal(getBuilding().getId());                                                                            //current portal the user is now in
-        if (portal == null) {                                                                                                               //can't get the current portal, nothing to do
-            disconnect();
-            return;
-        }
-
         if (comein != null) {                                                                                                               //incoming routes list request
-            StringJoiner sj = new StringJoiner("", "<PR comein=\"1\">", "</PR>");
-            List<PortalRoute> comeinRoutes = PortalRoute.getComeinRoutes(portal.getId());                                                   //get incoming routes for the current portal
-            comeinRoutes.forEach(r -> sj.add(r.getXmlComein()));
-            sendMsg(sj.toString());
+            sendMsg(portal.cominXml());                                                                                                     //get and send incoming routes for the current portal
             return;
         }
 
         if (id != null && new_cost != null) {                                                                                               //changing an incoming route cost
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));                                                                //get the route to change cost for
-            if (route == null)
+            if (route == null) {
+                disconnect();
                 return;
-            logger.info("setting a new cost for the route id %s = %s", id, new_cost);
+            }
             route.setCost(NumberUtils.toDouble(new_cost));
             route.sync();                                                                                                                   //sync the route with a database
             return;
         }
 
-        if (to != null) {                                                                                                                   //flight request to = route id where user wants to fly to
+        if (to != null) {                                                                                                                   //flight request to = routeId where user wants to fly to
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(to));
-            if (route == null)                                                                                                              //can't get the route user wants flying to
+            if (route == null) {                                                                                                            //can't get the route user wants flying to
+                disconnect();
                 return;
+            }
             Portal dstPortal = route.getDstPortal();
             int X = dstPortal.getLocation().getX();
             int Y = dstPortal.getLocation().getY();
@@ -371,75 +364,65 @@ public class User {
             return;
         }
 
-        if (d != null) {                                                                                                                    //user puts resources to portal's warehouse
-            Item item = getItemBox().findItem(NumberUtils.toLong(d));                                                                       //the user items he wants to put to a warehouse
+        if (d != null) {                                                                                                                    //user puts resource-item to portal's warehouse
+            Item item = getItemBox().findItem(NumberUtils.toLong(d));                                                                       //get the item he wants to put to a warehouse
             int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
             if (item == null) {                                                                                                             //we couldn't find an item the user wants to put in the user Item box
-                logger.error("the item id %s is not found for user %s", d, getLogin());
+                logger.error("item id %s is not found for user %s", d, getLogin());
                 disconnect();
                 return;
             }
             logger.info("try to find joinable item in portal item box");
-            Item joinable = itemBoxBld.findJoinableItem(item);                                                                              //try to find a joinable item in a warehouse
+            Item joinable = portal.getItemBox().findJoinableItem(item);                                                                     //try to find a joinable item in a portal warehouse
             if (joinable != null) {                                                                                                         //we've found it
                 logger.info("joinable item found: %s", joinable);
                 joinable.increase(count);                                                                                                   //increase joinable item count by count
                 joinable.sync();                                                                                                            //update joinable before deletion invalidates our L2 cache to prevent redundant select of joinable
                 if (count > 0 && count < item.getCount())                                                                                   //check if we should decrease or delete the item from users item box
                     item.decrease(count);
-                else
+                else {
                     getItemBox().del(NumberUtils.toLong(d));                                                                                //item will be deleted from user item box and db, which invalidates L2 cache
+                    Item.delItem(NumberUtils.toLong(d), false);
+                }
                 return;
             }
-
-            logger.info("can't find an item to join our item, will split our item");
-            item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this::getNewId);                                         //get (split) an item from user itembox the user wants to put to warehouse
+                                                                                                                                            //joinable item hasn't been found
+            logger.info("can't find an item to join our item into, will split the item");
+            item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this::getNewId);                                          //get (split) an item from user itembox the user wants to put to warehouse
             item.setParam(Item.Params.user_id, null);                                                                                       //reset user specific params before putting an item to the building item box
             item.setParam(Item.Params.b_id, portal.getId());
-            itemBoxBld.add(item);                                                                                                           //put an item to building item box
-            itemBoxBld.sync();                                                                                                              //add the item to database
+            portal.getItemBox().add(item);                                                                                                  //put an item to building item box
+            portal.getItemBox().sync();                                                                                                     //add the item to database
             return;
         }
 
-        if (a != null) {
+        if (a != null) {                                                                                                                    //user takes an item from warehouse
             int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
-            Item item = itemBoxBld.findItem(NumberUtils.toLong(a));
-            if (item == null) {
-                logger.info("can't find an item id %s in portal item box for user %s", a, getLogin());
-                sendMsg("<PR a1=\"0\" a2=\"0\"/>");
+            Item takenItem = portal.getItemBox().getClonnedItem(NumberUtils.toLong(a), count, this::getNewId);
+            if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
+                sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                         //let the client know if it failed taking an item
                 return;
             }
 
-            if (!ServerMain.refresh(item)) {                                                                                                //actual item data (including count)
-                logger.info("item %d doesn't exist in database", item.getId());
-            }
+            takenItem.resetParam(Item.Params.b_id);
+            takenItem.setParam(Item.Params.user_id, this.id);
+            takenItem.setParam(Item.Params.section, s);
+            getItemBox().add(takenItem);
 
-            logger.info("real item id %s: %s", a, item);
-
-            int itemCount = item.getCount();
-            if (itemCount < count) {
-                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), itemCount, false, this::getNewId);
-                sendMsg(String.format("<PR a1=\"%d\" a2=\"0\"/>", itemCount));
-            }else {
-                item = itemBoxBld.getSplitItem(NumberUtils.toLong(a), count, false, this::getNewId);
-                sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", count, itemCount - count));
-            }
-            item.setParam(Item.Params.b_id, null);
-            item.setParam(Item.Params.user_id, this.id);
-            item.setParam(Item.Params.section, s);
-            getItemBox().add(item);
-
+            Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));
+            int a2 = item == null ? 0 : item.getCount();
+            sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));
             return;
         }
 
-        itemBoxBld = portal.getItemBox();                                                                                                   //portal item box will be remained unchanged until user is inside the portal
-        sendMsg(portal.getXmlPR());                                                                                                         //user just entering a portal, sending info about the portal and routes
+        portal = Portal.getPortal(getBuilding().getId());                                                                                   //init the portal the user is currently in
+        sendMsg(portal.prXml());                                                                                                            //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
 
-    public void com_AR(String a, String d, String s, String c) {                                                                            //Arsenal workflow
-        if (a != null) {
-            Item item = arsenal.takeItem(NumberUtils.toLong(a), NumberUtils.toInt(c), this::getNewId);
+    public void com_AR(String a, String d, String s, String c) {                                                                            //arsenal workflow
+        if (a != null) {                                                                                                                    //get an item from arsenal
+            Item item = arsenal.getItem(NumberUtils.toLong(a), NumberUtils.toInt(c), this::getNewId);
             if (item == null) {                                                                                                             //we couldn't find an item in arsenal item box
                 disconnect();
                 return;
@@ -450,9 +433,9 @@ public class User {
             return;                                                                                                                         //we don't have to send <ADD_ONE/> because client adds an item by itself
         }
 
-        if (d != null) {
+        if (d != null) {                                                                                                                    //put an item to arsenal
             Item item = getItemBox().getSplitItem(NumberUtils.toLong(d), NumberUtils.toInt(c), false, this::getNewId);
-            if (item == null) {                                                                                                             //we couldn't find an item
+            if (item == null) {                                                                                                             //we couldn't find an item from user
                 disconnect();
                 return;
             }
@@ -460,7 +443,7 @@ public class User {
             return;
         }
 
-        arsenal = new Arsenal(getBuilding().getId());
+        arsenal = new Arsenal(getBuilding().getId());                                                                                       //get an arsenal loot XML list and send it to th user
         sendMsg(arsenal.lootXml());
         return;
     }
@@ -544,12 +527,20 @@ public class User {
         return;
     }
 
+    public void com_NEWID() {                                                                                                               //client has just created a new ID for an item
+        long userId2 = getParamLong(Params.id2);                                                                                            //last id2 value was sent to user
+        if (lastSentId2 != userId2) {                                                                                                       //id2 has been changed recently
+            sendMsg(String.format("<ID2 id=\"%d\"/>", lastSentId2 = userId2));                                                              //send a new id2 value to user
+        }
+        return;
+    }
+
     public void com_N(String id1, String id2, String i1) {                                                                                  //compare items id counters between server and a client
         String s_id1 = getParamStr(Params.id1);                                                                                             //s_ -> server values
         String s_id2 = getParamStr(Params.id2);
         String s_i1 = getParamStr(Params.i1);
         if (!(s_id1.equals(id1) && s_id2.equals(id2) && s_i1.equals(i1))) {
-            logger.error("!!!!!!!!MISTIMING!!!!!!!! user %s id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s, disconnecting user", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
+            logger.error("%s !!!!!!!!MISTIMING!!!!!!!! id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
             disconnect();
         }
         return;

@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ru.heckzero.server.ParamUtils;
+import ru.heckzero.server.items.ItemBox;
 
 import javax.persistence.*;
 import java.util.EnumSet;
@@ -24,6 +25,8 @@ public class Building {
 
     public enum Params {X, Y, Z, txt, maxHP, HP, name, upg, maxl, repair, clan,      cash, ds, city, p1, p2, clon, bigmap_city, bigmap_shown}
     private static final EnumSet<Params> bldParams = EnumSet.of(Params.X, Params.Y, Params.Z, Params.txt, Params.maxHP, Params.HP, Params.name, Params.upg, Params.maxl, Params.repair, Params.clan);
+
+    @Transient private ItemBox itemBox = null;                                                                                              //building Item box
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_b_generator_sequence")
@@ -61,6 +64,8 @@ public class Building {
     public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
     public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());};
     public int getParamInt(Params param) {return intConv.convert(Integer.class, ParamUtils.getParamInt(this, param.toString()));}
-    protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()); }                                      //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()); }                                    //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     protected String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
+
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.boxType.BUILDING, id, true)) : itemBox;}       //get the building itembox, initialize if needed
 }

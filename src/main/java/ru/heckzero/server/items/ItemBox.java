@@ -20,7 +20,7 @@ public class ItemBox {
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
     private boolean needSync = false;
 
-    public static ItemBox getItemBox(boxType boxType, int id, boolean needSync) {
+    public static ItemBox init(boxType boxType, int id, boolean needSync) {
         ItemBox itemBox = new ItemBox(needSync);                                                                                            //needSync - if a returned ItemBox has to sync its items with a db
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id).setCacheable(true);
@@ -35,10 +35,7 @@ public class ItemBox {
     public ItemBox() { }
     public ItemBox(boolean needSync) {this.needSync = needSync;}
     public ItemBox(ItemBox box) {                                                                                                           //create an ItemBox by doing deep copy of items from box
-        box.items.forEach(i -> {
-            try {
-                this.add((Item) i.clone());
-            }catch (CloneNotSupportedException e) { logger.error("can't create item box: %s", e.getMessage());}});
+        box.items.forEach(i -> this.add(i.clone()));
         return;
     }
     public ItemBox(ItemBox box, boolean needSync) {this(box); this.needSync = needSync; }
@@ -70,6 +67,7 @@ public class ItemBox {
 
     public void del(Predicate<Item> p) {
         items.stream().filter(p).forEach(i -> del(i.getId()));
+        return;
     }
 
     public void del(long id) {                                                                                                              //delete an item from the box or from the parent's included item box
@@ -102,10 +100,11 @@ public class ItemBox {
             logger.debug("splitting the item %d by count %d", id, count);
             return item.split(count, noSetNewId, newId);                                                                                    //and return a cloned one with a new ID and count
         }
-        logger.debug("get the entire item stack");
+        logger.debug("get the entire item id %d stack of count %d", item.getId(), item.getCount());
         items.remove(item);                                                                                                                 //delete an item from the item box
         if (needSync)
             Item.delItem(item.getId(), true);                                                                                               //delete the item from database
+
         if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                             //set a new id for the ammo
             item.setId(newId.get());
 
@@ -113,7 +112,31 @@ public class ItemBox {
         return item;
     }
 
-    public Item findJoinableItem(Item sample) {                                                                                             //find a joinable item in the itembox
+    public Item getClonnedItem(long id, int requestCount, Supplier<Long> newId) {
+        Item item = findItem(id);                                                                                                           //item doesn't exist on warehouse yet
+        if (item == null || !ServerMain.refresh(item)) {                                                                                    //after refreshing we know if the item exists in database and the actual item count
+            logger.info("can't find an item id %d in  item box, the item doesn't exist anymore", id);
+            return null;
+        }
+        Item clonnedItem = item.clone();
+        clonnedItem.setId(newId.get());
+
+        if (requestCount > 0 && requestCount < item.getCount()) {                                                                           //we are taking just a piece of item
+            logger.info("taking a part of item %d of count %d", item.getId(), requestCount);
+            clonnedItem.setCount(requestCount);
+            item.decrease(requestCount);
+            if (needSync)
+                item.sync();
+        }else {                                                                                                                             //we are taking the entire item
+            logger.info("will take a whole stack and delete item %d", item.getId());
+            del(id);                                                                                                                        //del the item from item box
+            if (needSync)                                                                                                                   //del the item from database
+                Item.delItem(id, true);
+        }
+       return clonnedItem;
+    }
+
+    public Item findJoinableItem(Item sample) {                                                                                             //find a joinable item in the itembox by a sample item
         Predicate<Item> isResEquals = i -> sample.isRes() && i.getParamInt(Item.Params.massa) == sample.getParamInt(Item.Params.massa);     //the sample is res and items weight is equals
         Predicate<Item> isDrugEquals = i -> sample.isDrug()&& i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);
         Predicate<Item> isSameName = i -> i.getParamStr(Item.Params.name).equals(sample.getParamStr(Item.Params.name));                     //items have the same name parameter value
@@ -126,7 +149,10 @@ public class ItemBox {
         items.forEach(action);
         return;
     }
-    public void sync() {items.forEach(Item::sync);}                                                                                         //recursively sync all items in the ItemBox
+    public void sync() {                                                                                                                    //will sync all items with db only if needSync = true
+        if (needSync)
+            items.forEach(Item::sync);
+    }                                                                                                                                       //recursively sync all items in the ItemBox
 
     @Override
     public String toString() {return "ItemBox{" + "items=" + items + '}'; }

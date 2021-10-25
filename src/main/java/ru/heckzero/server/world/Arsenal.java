@@ -20,7 +20,7 @@ public class Arsenal {
     private final int aid;
     private ItemBox itemBox;
 
-    private static ItemBox loadItemBox(int aid) {
+    private static ItemBox loadItemBox(int aid) {                                                                                           //load an arsenal item box from arsenal_loot and item_templates tables
         List<Object[]> result;
 
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -51,18 +51,18 @@ public class Arsenal {
         return;
     }
 
-    private ItemBox getItemBox() {
+    private ItemBox getItemBox() {                                                                                                          //load an ItemBox from items template
         return itemBox == null ? (itemBox = loadItemBox(aid)) : itemBox;
     }
 
-    public String lootXml() {
+    public String lootXml() {                                                                                                               //return XML formatted ItemBox
         return String.format("<AR>%s</AR>", getItemBox().getXml());
     }
-    public Item takeItem(long id, int count, Supplier<Long> newId) {
+    public Item getItem(long id, int count, Supplier<Long> newId) {                                                                         //withdraw an item from arsenal
         return itemBox.getSplitItem(id, count, false, newId);
     }
 
-    public void putItem(Item item) {
+    public void putItem(Item item) {                                                                                                        //user puts an item to arsenal
         itemBox.add(item);
     }
 }

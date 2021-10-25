@@ -8,8 +8,6 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
-import ru.heckzero.server.items.Item;
-import ru.heckzero.server.items.ItemBox;
 
 import javax.persistence.*;
 import java.util.*;
@@ -34,10 +32,21 @@ public class Portal extends Building {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
-    @Transient private ItemBox itemBox = null;                                                                                              //portal Item box
-
     public String getCity() {return city;}                                                                                                  //these citizens have a discount when they are flying TO this portal
-    public int getDs()      {return ds;}                                                                                                    //discount for citizens
+    public int getDs()      {return ds;}                                                                                                    //discount for citizens of the 'city' which are flying to that portal
+
+    public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr left join fetch pr.dstPortal p_dst left join fetch p_dst.location where p.id = :id", Portal.class).setParameter("id", id).setCacheable(true);
+            Portal portal = query.getSingleResult();
+            if (portal != null)
+                portal.ensureInitialized();
+            return portal;
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load portal with id %d from database: %s", id, e.getMessage());
+        }
+        return new Portal();                                                                                                                //in case of portal was not found or database error return a default portal instance
+    }
 
     public static List<Portal> getBigmapPortals() {                                                                                         //generate world map data - cities, portal and routes
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -52,17 +61,16 @@ public class Portal extends Building {
         return Collections.emptyList();
     }
 
-    public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
+    private static List<PortalRoute> getComeinRoutes(int p_dst_id) {                                                                         //get routes for the given destination portal id
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr left join fetch pr.dstPortal p_dst left join fetch p_dst.location where p.id = :id", Portal.class).setParameter("id", id).setCacheable(true);
-            Portal portal = query.getSingleResult();
-            if (portal != null)
-                portal.ensureInitialized();
-            return portal;
+            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.srcPortal p_src inner join fetch pr.dstPortal p_dst inner join fetch p_src.location where p_dst.id = :id", PortalRoute.class).setParameter("id", p_dst_id).setCacheable(true);
+            List<PortalRoute> comeinRoutes = query.list();
+            comeinRoutes.forEach(r -> Hibernate.initialize(r.getSrcPortal().getLocation()));                                                //initialize included fields on subsequent queries from L2 cache
+            return comeinRoutes;
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load portal with id %d from database: %s", id, e.getMessage());
+            logger.error("can't get incoming routes for destination portal id %d: %s:%s", p_dst_id, e.getClass().getSimpleName(), e.getMessage());
         }
-        return null;                                                                                                                        //in case of portal was not found or database error return a default portal instance
+        return Collections.emptyList();
     }
 
     protected Portal() { }
@@ -74,7 +82,7 @@ public class Portal extends Building {
     }
     private String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXml).collect(Collectors.joining()); }
 
-    public String getXmlBigmap() {                                                                                                          //generate an object for the bigmap (city and/or portal)
+    public String bigMapXml() {                                                                                                             //generate an object for the bigmap (city and/or portal)
         StringBuilder sb = new StringBuilder();
         if (StringUtils.isNotBlank(bigmap_city))                                                                                            //this portal "represents" a city on bigmap
             sb.append(String.format("<city name=\"%s\" xy=\"%s,%s\"/>", bigmap_city, getLocation().getLocalX(), getLocation().getLocalY()));
@@ -85,18 +93,18 @@ public class Portal extends Building {
         return sb.toString();
     }
 
-    public String getXmlPR() {
-        StringJoiner sj = new StringJoiner("", "", "</PR>");
-        sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
-        sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
-
-        ItemBox tmpBox = new ItemBox(getItemBox());                                                                                         //we need to create a temporary itembox
-        tmpBox.del(i -> i.getCount() == 1);                                                                                                 //delete all items with count=1
-        tmpBox.forEach(Item::decrement);                                                                                                    //that is all for mimic client behaviour
-        sj.add(tmpBox.getXml());                                                                                                            //add portal item list
-
+    public String cominXml() {                                                                                                              //get incoming routes as XML string
+        StringJoiner sj = new StringJoiner("", "<PR comein=\"1\">", "</PR>");
+        List<PortalRoute> comeinRoutes = getComeinRoutes(getId());                                                                          //get incoming routes for the current portal
+        comeinRoutes.forEach(r -> sj.add(r.getXmlComein()));                                                                                //add each route as XML string
         return sj.toString();
     }
 
-    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.getItemBox(ItemBox.boxType.BUILDING, getId(), true)) : itemBox;} //get portal itembox, initialize if needed
+    public String prXml() {                                                                                                                 //XML formatted portal data including routes and warehouse items
+        StringJoiner sj = new StringJoiner("", "", "</PR>");
+        sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
+        sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
+        sj.add(getItemBox().getXml());                                                                                                      //add portal warehouse item box
+        return sj.toString();
+    }
 }

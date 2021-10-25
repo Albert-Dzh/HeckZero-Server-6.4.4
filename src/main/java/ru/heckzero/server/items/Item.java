@@ -27,7 +27,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id order by i.id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i where i.b_id = :id order by i.id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
@@ -138,7 +137,6 @@ public class Item implements Cloneable {
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1 || included.getItems().stream().mapToInt(i -> i.isNoTransfer() ? 1 : 0).anyMatch(i -> i == 1);} //check if the item or any of its included has nt set to 1
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //the item is a resource
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or an inject pistol
-
     public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
 
     public Long getId()   {return id; }                                                                                                     //item id
@@ -148,13 +146,14 @@ public class Item implements Cloneable {
 
     public ItemBox getIncluded() {return included;}
 
+    public void resetParam(Params paramName) {setParam(paramName, null);}
     synchronized public void setParam(Params paramName, Object paramValue) {                                                                //set an item param to paramValue
         if (ParamUtils.setParam(this, paramName.toString(), paramValue))                                                                    //delegate param setting to ParamUtils
             needSync.compareAndSet(false, true);                                                                                            //make this item is a subject for a future syncing
         return;
     }
-
     public void setId(long id)      {this.id = id;}
+    public void setCount(int count) {setParam(Params.count, count);}
     public void setNextGlobalId()   {this.id = getNextGlobalId(); }
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
@@ -196,27 +195,27 @@ public class Item implements Cloneable {
         return;
     }
 
-    public Item split(int count, boolean noSetNewId, Supplier<Long> newId) {                                                               //split an item and return a new one
-        try {
-            Item splitted = (Item)this.clone();
-            splitted.setParam(Params.count, count);                                                                                         //set the count of the new item
-            if (!noSetNewId)
-                splitted.setId(newId.get());                                                                                                //set a new id for the new item
-            this.decrease(count);                                                                                                           //decrease count of the current item
-            return splitted;                                                                                                                //return a new item
-        } catch (CloneNotSupportedException e) {
-            logger.error("can't clone the item id %d: %s:%s", id, e.getClass(), e.getMessage());
-        }
-        return null;
+    public Item split(int count, boolean noSetNewId, Supplier<Long> newId) {                                                                //split an item and return a new one
+        Item splitted = this.clone();
+        splitted.setParam(Params.count, count);                                                                                             //set the count of the new item
+        this.decrease(count);                                                                                                               //decrease count of the current item
+        if (!noSetNewId)
+            splitted.setId(newId.get());                                                                                                    //set a new id for the new item
+        return splitted;                                                                                                                    //return a new item
     }
 
     @Override
-    protected Object clone() throws CloneNotSupportedException {                                                                            //guess what??
-        Item cloned = (Item)super.clone();                                                                                                  //clone primitive fields by super.clone()
-        cloned.needSync = new AtomicBoolean(false);                                                                                         //we don't want the new item to share needSync with the source item
-        cloned.included = new ItemBox();                                                                                                    //item box should be created and populated by cloned items recursively
-        this.included.getItems().forEach(i -> {try {cloned.included.add((Item)i.clone());} catch (CloneNotSupportedException e) {logger.error("can't clone an item: %s", e.getMessage());}});
-        return cloned;
+    public Item clone() {                                                                                                                   //guess what?
+        try {
+            Item cloned = (Item) super.clone();                                                                                             //clone primitive fields by super.clone()
+            cloned.needSync = new AtomicBoolean(false);                                                                                     //we don't want the new item to share needSync with the source item
+            cloned.included = new ItemBox();                                                                                                //item box should be created and populated by cloned items recursively
+            this.included.getItems().forEach(i -> cloned.included.add(i.clone()));
+            return cloned;
+        }catch (CloneNotSupportedException e) {
+            logger.error("can't clone item: %s", e.getMessage());
+        }
+        return null;
     }
 
     public void sync() {sync(false);}
@@ -225,7 +224,7 @@ public class Item implements Cloneable {
             logger.info("syncing item %s", this);
             ServerMain.sync(this);
         } else
-            logger.debug("skipping syncing item  %s cause it hasn't been changed", this);
+            logger.debug("skipping syncing item %s cause it hasn't been changed", this);
         included.sync();                                                                                                                    //sync included items
         return;
     }
