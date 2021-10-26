@@ -5,7 +5,6 @@ import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.util.AttributeKey;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
@@ -24,8 +23,6 @@ import ru.heckzero.server.world.*;
 import javax.persistence.*;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -39,9 +36,9 @@ public class User {
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, which is set on login by onlineGame() and onlineChat() methods
     public enum Params {time, tdt, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
     private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
-    private static final int PERIOCIC_TASKS_INTERVAL = 300;                                                                                 //some periodic tasks interval in secconds
+    private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
 
-    private static long getId2() {                                                                                                          //compute next ID2 value for the user
+    private static long getId2() {                                                                                                          //compute next id2 value for the user
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery<Long> query = session.createSQLQuery("select setval('main_id_seq', nextval('main_id_seq') + 100, false) - 100 as id2").addScalar("id2", LongType.INSTANCE);
             return query.getSingleResult();
@@ -54,8 +51,7 @@ public class User {
     @Transient volatile private Channel chatChannel = null;                                                                                 //user chat channel
     @Transient private final AtomicBoolean needSync = new AtomicBoolean(false);                                                             //user need to be synced if some params have been modified
     @Transient private final Chat chat = new Chat(this);
-    @Transient private ScheduledFuture<?> futureSync = null;                                                                                //future of syncing process
-    @Transient private ScheduledFuture<?> futureItemsCheck = null;                                                                          //future of item expiration checking
+    @Transient private long lastsynctime;
     @Transient private long lastSentId2 = -1;                                                                                               //last id2 value sent to user by com_MYPARAM() or com_NEWID()
     @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized upon a first access
 
@@ -153,10 +149,9 @@ public class User {
         this.gameChannel.attr(AttributeKey.valueOf("chStr")).set("user '" + getLogin() + "'");                                              //replace a channel representation string to 'user <login>' instead of IP:port
         this.gameChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME))); //replace read timeout handler to a new one with a longer timeout defined for authorized user
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
+        this.lastsynctime = Instant.now().getEpochSecond();                                                                                 //set last db sync time to now
         setParam(Params.loc_time, Math.min(Instant.now().getEpochSecond() + 180, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time))); //compute client loc_time - time when user is allowed to leave his current location
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
-        futureSync = ch.eventLoop().scheduleWithFixedDelay(this::sync, RandomUtils.nextInt(PERIOCIC_TASKS_INTERVAL / 2, PERIOCIC_TASKS_INTERVAL * 2), PERIOCIC_TASKS_INTERVAL, TimeUnit.SECONDS);               //start syncing the user with a database every DB_SYNC_TIME_SEC interval
-        futureItemsCheck = ch.eventLoop().scheduleWithFixedDelay(this::com_CHECK, RandomUtils.nextInt(PERIOCIC_TASKS_INTERVAL / 2, PERIOCIC_TASKS_INTERVAL * 2), PERIOCIC_TASKS_INTERVAL, TimeUnit.SECONDS);    //checking users items for the expiration
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
         chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him
         return;
@@ -166,8 +161,6 @@ public class User {
         logger.debug("setting user '%s' game channel offline", getLogin());
         setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
-        futureSync.cancel(false);                                                                                                           //cancel the user db sync task
-        futureItemsCheck.cancel(false);                                                                                                     //cancel item expiration checking task
         disconnectChat();                                                                                                                   //chat without a game channel is ridiculous, so shut the chat down
         chat.updateMyStatus();                                                                                                              //will remove user from room
         sync();                                                                                                                             //update the user in database
@@ -198,7 +191,7 @@ public class User {
         long itemId = NumberUtils.toLong(id, 0L);
         int decCount = NumberUtils.toInt(count, 0);
 
-        Item item = getItemBox().findItem(itemId);
+        Item item = getItemBox().find(itemId);
         if (item == null) {
             logger.error("can't find an item id %d from the user %s", itemId, getLogin());
             disconnect();
@@ -222,7 +215,7 @@ public class User {
         long itemId = NumberUtils.toLong(id);
         int toSection = NumberUtils.toInt(section);
 
-        Item item = getItemBox().findItem(itemId);
+        Item item = getItemBox().find(itemId);
         if (item == null || item.isIncluded()) {
             logger.error("can't find an item id %d from the user %s or the item is not a 1st level item", itemId, getLogin());
             disconnect();
@@ -365,14 +358,14 @@ public class User {
         }
 
         if (d != null) {                                                                                                                    //user puts resource-item to portal's warehouse
-            Item item = getItemBox().findItem(NumberUtils.toLong(d));                                                                       //get the item he wants to put to a warehouse
+            Item item = getItemBox().find(NumberUtils.toLong(d));                                                                       //get the item he wants to put to a warehouse
             int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
             if (item == null) {                                                                                                             //we couldn't find an item the user wants to put in the user Item box
                 logger.error("item id %s is not found for user %s", d, getLogin());
                 disconnect();
                 return;
             }
-            logger.info("try to find joinable item in portal item box");
+            logger.info("try to find joinable item inside portal item box");
             Item joinable = portal.getItemBox().findJoinableItem(item);                                                                     //try to find a joinable item in a portal warehouse
             if (joinable != null) {                                                                                                         //we've found it
                 logger.info("joinable item found: %s", joinable);
@@ -409,13 +402,13 @@ public class User {
             takenItem.setParam(Item.Params.section, s);
             getItemBox().add(takenItem);
 
-            Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));
+            Item item = portal.getItemBox().find(NumberUtils.toLong(a));
             int a2 = item == null ? 0 : item.getCount();
             sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));
             return;
         }
 
-        portal = Portal.getPortal(getBuilding().getId());                                                                                   //init the portal the user is currently in
+        portal = Portal.getPortal(getBuilding().getId());                                                                                   //init the portal the user is entering
         sendMsg(portal.prXml());                                                                                                            //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
@@ -449,7 +442,7 @@ public class User {
     }
 
     public void com_TAKE_ON(String id, String slot) {                                                                                       //user takes on an item on a specified slot
-        Item item = getItemBox().findItem(NumberUtils.toLong(id));
+        Item item = getItemBox().find(NumberUtils.toLong(id));
         if (item == null) {
             logger.error("can't find an item id %s to perform TAKE_ON command from user %s", id, getLogin());
             disconnect();
@@ -473,7 +466,7 @@ public class User {
     }
 
     public void com_TAKE_OFF(String id) {                                                                                                   //user takes on an item on a specified slot
-        Item item = getItemBox().findItem(NumberUtils.toLong(id));
+        Item item = getItemBox().find(NumberUtils.toLong(id));
         if (item == null) {
             logger.error("can't find an item id %s to perform TAKE_OFF command from user %s", id, getLogin());
             disconnect();
@@ -536,13 +529,18 @@ public class User {
     }
 
     public void com_N(String id1, String id2, String i1) {                                                                                  //compare items id counters between server and a client
-        String s_id1 = getParamStr(Params.id1);                                                                                             //s_ -> server values
+        String s_id1 = getParamStr(Params.id1);                                                                                             //s_idx -> server side values
         String s_id2 = getParamStr(Params.id2);
         String s_i1 = getParamStr(Params.i1);
-        if (!(s_id1.equals(id1) && s_id2.equals(id2) && s_i1.equals(i1))) {
+
+        if ((id1 != null && !id1.equals(s_id1)) || (id2 != null && !id2.equals(s_id2)) || (i1 != null && !i1.equals(s_i1))) {               //compare id values if they are not null
             logger.error("%s !!!!!!!!MISTIMING!!!!!!!! id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
             disconnect();
         }
+        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)
+            sync();
+        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)
+            com_CHECK();
         return;
     }
 
@@ -619,12 +617,12 @@ public class User {
 
     public void sync() {sync(false);}
     public void sync(boolean force) {                                                                                                       //update the user in database
-        if (needSync.compareAndSet(true, false) || force) {                                                                                 //sync if needSync or force is true
+        if (needSync.compareAndSet(true, false) || force) {                                                                                 //sync if one of needSync or force = true
             logger.info("syncing user %s", getLogin());
             ServerMain.sync(this);
+            lastsynctime = Instant.now().getEpochSecond();                                                                                  //reset lastsynctime(set it to now)
         } else
             logger.info("skipping syncing user %s cause he hasn't been changed (AFK?)", getLogin());
-        getItemBox().sync();                                                                                                                //sync all user items
         return;
     }
 

@@ -57,27 +57,27 @@ public class ItemBox {
     public void add(Item item)      {this.items.addIfAbsent(item);}                                                                         //add one item to this ItemBox
     public void addAll(ItemBox box) {this.items.addAllAbsent(box.items);}                                                                   //add all items(shallow copy) from box to this ItemBox
 
-    public List<Item> getItems()    {return items;}                                                                                         //get just the 1st level items
-    public List<Long> getItemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                        //get just items IDs of the 1st level items
+    public List<Item> getItems()    {return items;}                                                                                         //get the 1st level items
+    public List<Long> getItemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                        //get items IDs of the 1st level items
 
 
     public String getXml()        {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                  //get XML list of items as a list of <O/> nodes with the included items
-    public Item findItem(long id) {return items.stream().map(i -> i.findItem(id)).filter(Objects::nonNull).findFirst().orElse(null);}       //find an item recursively inside the item box
+    public Item find(long id)     {return items.stream().map(i -> i.findItem(id)).filter(Objects::nonNull).findFirst().orElse(null);}       //find an item recursively inside the item box
     public ItemBox findExpired()  {return items.stream().map(Item::findExpired).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}   //get all expired items with included ones placed in a 1st level
 
-    public void del(Predicate<Item> p) {
+    public void del(Predicate<Item> p) {                                                                                                    //delete
         items.stream().filter(p).forEach(i -> del(i.getId()));
         return;
     }
 
     public void del(long id) {                                                                                                              //delete an item from the box or from the parent's included item box
-        Item item = findItem(id);                                                                                                           //try to find an item by id
+        Item item = find(id);                                                                                                           //try to find an item by id
         if (item == null) {
             logger.error("can't delete an item: the item id %d has not been found in the itembox", id);
             return;
         }
         if (item.isIncluded()) {                                                                                                            //the item is a child item
-            Item parent = findItem(item.getPid());                                                                                          //try to find an item's master item by pid
+            Item parent = find(item.getPid());                                                                                          //try to find an item's master item by pid
             if (parent == null) {
                 logger.error("can't find a parent item id %d for item %d", item.getPid(), id);
                 return;
@@ -91,7 +91,7 @@ public class ItemBox {
         return;
     }
     public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId) {                                                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
-        Item item = findItem(id);                                                                                                           //find an item by id
+        Item item = find(id);                                                                                                           //find an item by id
         if (item == null) {                                                                                                                 //we couldn't find an item by id
             logger.error("can't find item id %d in the item box", id);
             return null;
@@ -113,7 +113,7 @@ public class ItemBox {
     }
 
     public Item getClonnedItem(long id, int requestCount, Supplier<Long> newId) {
-        Item item = findItem(id);                                                                                                           //item doesn't exist on warehouse yet
+        Item item = find(id);                                                                                                           //item doesn't exist on warehouse yet
         if (item == null || !ServerMain.refresh(item)) {                                                                                    //after refreshing we know if the item exists in database and the actual item count
             logger.info("can't find an item id %d in  item box, the item doesn't exist anymore", id);
             return null;

@@ -177,7 +177,7 @@ public class Item implements Cloneable {
         expired.addAll(included.findExpired());                                                                                             //search and add all expired items from the included box recursively
         return expired;
     }
-    public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this is the item or one of the included items, or null
+    public Item findItem(long id) {return this.id == id ? this : included.find(id);}                                                    //this is the item or one of the included items, or null
 
     public void unload() {pid = -1;}                                                                                                        //set an item as a master item
 
