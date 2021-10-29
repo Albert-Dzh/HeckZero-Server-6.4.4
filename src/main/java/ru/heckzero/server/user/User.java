@@ -24,6 +24,7 @@ import javax.persistence.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Entity(name = "User")
@@ -188,45 +189,19 @@ public class User {
     }
 
     public void com_DROP(String id, String count) {
-        long itemId = NumberUtils.toLong(id, 0L);
-        int decCount = NumberUtils.toInt(count, 0);
-
-        Item item = getItemBox().find(itemId);
-        if (item == null) {
-            logger.error("can't find an item id %d from the user %s", itemId, getLogin());
+        if (!getItemBox().delItem(NumberUtils.toLong(id), NumberUtils.toInt(count)))
             disconnect();
-            return;
-        }
-        if (item.isNoTransfer()) {                                                                                                          //drop is forbidden, item or one of it included has nt = 1
-            logger.info("can't drop an item id %d, because it or one of its included has 'nt' set to 1");
-            return;
-        }
-
-        if (decCount > 0 && decCount < item.getCount())
-            item.decrease(decCount);
-        else {
-            getItemBox().del(itemId);
-            Item.delItem(itemId, true);
-        }
         return;
     }
 
     public void com_TO_SECTION(String id, String section) {                                                                                 //change item section in user box
-        long itemId = NumberUtils.toLong(id);
-        int toSection = NumberUtils.toInt(section);
-
-        Item item = getItemBox().find(itemId);
-        if (item == null || item.isIncluded()) {
-            logger.error("can't find an item id %d from the user %s or the item is not a 1st level item", itemId, getLogin());
+        if (!getItemBox().changeOne(NumberUtils.toLong(id), Item.Params.section, section))
             disconnect();
-            return;
-        }
-        item.setParam(Item.Params.section, toSection);
         return;
     }
 
     public void com_MYPARAM() {                                                                                                             //provision the client initial params as a reply for <GETME/>
-        logger.debug("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
+        logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
         StringJoiner sj = new StringJoiner("", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
         sj.add(getItemBox().getXml());
@@ -358,7 +333,7 @@ public class User {
         }
 
         if (d != null) {                                                                                                                    //user puts resource-item to portal's warehouse
-            Item item = getItemBox().find(NumberUtils.toLong(d));                                                                       //get the item he wants to put to a warehouse
+            Item item = getItemBox().findItem(NumberUtils.toLong(d));                                                                       //get the item he wants to put to a warehouse
             int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
             if (item == null) {                                                                                                             //we couldn't find an item the user wants to put in the user Item box
                 logger.error("item id %s is not found for user %s", d, getLogin());
@@ -374,8 +349,8 @@ public class User {
                 if (count > 0 && count < item.getCount())                                                                                   //check if we should decrease or delete the item from users item box
                     item.decrease(count);
                 else {
-                    getItemBox().del(NumberUtils.toLong(d));                                                                                //item will be deleted from user item box and db, which invalidates L2 cache
-                    Item.delItem(NumberUtils.toLong(d), false);
+                    getItemBox().delItem(NumberUtils.toLong(d));                                                                                //item will be deleted from user item box and db, which invalidates L2 cache
+                    Item.delFromDB(NumberUtils.toLong(d), false);
                 }
                 return;
             }
@@ -384,7 +359,7 @@ public class User {
             item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this::getNewId);                                          //get (split) an item from user itembox the user wants to put to warehouse
             item.setParam(Item.Params.user_id, null);                                                                                       //reset user specific params before putting an item to the building item box
             item.setParam(Item.Params.b_id, portal.getId());
-            portal.getItemBox().add(item);                                                                                                  //put an item to building item box
+            portal.getItemBox().addItem(item);                                                                                             //put an item to building item box
             portal.getItemBox().sync();                                                                                                     //add the item to database
             return;
         }
@@ -400,9 +375,9 @@ public class User {
             takenItem.resetParam(Item.Params.b_id);
             takenItem.setParam(Item.Params.user_id, this.id);
             takenItem.setParam(Item.Params.section, s);
-            getItemBox().add(takenItem);
+            getItemBox().addItem(takenItem);
 
-            Item item = portal.getItemBox().find(NumberUtils.toLong(a));
+            Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));
             int a2 = item == null ? 0 : item.getCount();
             sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));
             return;
@@ -422,7 +397,8 @@ public class User {
             }
             item.setParam(Item.Params.user_id, this.id);                                                                                    //assign the item to the user by setting user-specific params
             item.setParam(Item.Params.section, s);
-            getItemBox().add(item);                                                                                                         //add the item to the user's itembox
+            Map<Item.Params, Object> userParams = Map.of(Item.Params.user_id, id, Item.Params.section, s);
+            getItemBox().addItem(item);                                                                                                     //add the item to the user's itembox
             return;                                                                                                                         //we don't have to send <ADD_ONE/> because client adds an item by itself
         }
 
@@ -442,7 +418,7 @@ public class User {
     }
 
     public void com_TAKE_ON(String id, String slot) {                                                                                       //user takes on an item on a specified slot
-        Item item = getItemBox().find(NumberUtils.toLong(id));
+        Item item = getItemBox().findItem(NumberUtils.toLong(id));
         if (item == null) {
             logger.error("can't find an item id %s to perform TAKE_ON command from user %s", id, getLogin());
             disconnect();
@@ -466,7 +442,7 @@ public class User {
     }
 
     public void com_TAKE_OFF(String id) {                                                                                                   //user takes on an item on a specified slot
-        Item item = getItemBox().find(NumberUtils.toLong(id));
+        Item item = getItemBox().findItem(NumberUtils.toLong(id));
         if (item == null) {
             logger.error("can't find an item id %s to perform TAKE_OFF command from user %s", id, getLogin());
             disconnect();
@@ -537,9 +513,9 @@ public class User {
             logger.error("%s !!!!!!!!MISTIMING!!!!!!!! id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
             disconnect();
         }
-        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)
+//        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)
             sync();
-        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)
+//        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)
             com_CHECK();
         return;
     }
@@ -547,25 +523,21 @@ public class User {
     public boolean isBuildMaster(Building bld) {return isBuildMaster(bld.getX(), bld.getY(), bld.getZ());}
     private boolean isBuildMaster(int x, int y, int z) {                                                                                    //check if user has a master key to the building with given coordinates
         String keyName = String.format("$key%d_%d_%d", x, y, z);
-
-        return getItemBox().getItems().stream()
-                .anyMatch(item -> !item.isExpired() &&                                                                                      // не просрочена И
-                        (Math.floor(item.getParamDouble(Item.Params.type)) == 782 &&                                                        // шмотка ключ И
-                        (item.getParamStr(Item.Params.made).equals(keyName) ||                                                              // мастер текущего местоположения пользователя ИЛИ
-                        item.getParamStr(Item.Params.made).equals("$key_all")))) ||                                                         // абсолютный мастер ключ ИЛИ
-                isGod();                                                                                                                    // игрок админ
+        Predicate<Item> predicate = (i -> !i.isExpired() && i.getParamDouble(Item.Params.type) == 782 && (i.getParamStr(Item.Params.made).equals(keyName) || i.getParamStr(Item.Params.made).equals("$key_all")));
+        return !getItemBox().findItems(predicate).isEmpty() || isGod();
     }
 
-    public void addItems(ItemBox box) {                                                                                                     //add all items from box to the user's Item Box
-        getItemBox().addAll(box);
-        box.getItems().forEach(i -> sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", i.getXml())));                                           //and send <ADD_ONE> for each item to the client
-        return;
-    }
-
-    public void addItem(Item item) {
-        getItemBox().add(item);
+    public void addSendItems(ItemBox box) {box.forEach(this::addSendItem);}                                                                 //add and send all items from box to the user's Item Box
+    public void addSendItem(Item item) {
+        if (!getItemBox().addItem(item))
+            logger.error("can't add item %s", item);
         sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", item.getXml()));
         return;
+    }
+    public void delSendItems(ItemBox box) {box.forEach(this::delSendItem);}
+    public void delSendItem(Item item) {
+        getItemBox().delItem(item.getId());
+        sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
     }
 
     public void setRoom() {setRoom(-1, -1, 0, 0, 0);}                                                                                       //coming out
@@ -592,26 +564,22 @@ public class User {
     }
 
     public void com_CHECK() {
-        logger.info("checking for the expired items for user %s", getLogin());
-
+        logger.debug("checking for the expired items for user %s", getLogin());
         ItemBox expired = getItemBox().findExpired();                                                                                       //all user expired items are here at a 1st level
         if (expired.size() > 0)
-            logger.info("user %s got %d expired items", getLogin(), expired.size());
+            logger.info("found %d expired items for user %s, %s", expired.size(), getLogin(), expired);
 
-        for (Item item : expired.getItems()) {                                                                                              //iterate over the expired items
-            logger.info("user's %s item %s is expired, removing it from item box and database", getLogin(), item);
-            sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
-            Item.delItem(item.getId(), false);                                                                                              //delete the expired item without its subitems from db
-
-            getItemBox().del(item.getId());                                                                                                 //delete an item from user's item box or if the item is included one, from master's included list
+        expired.forEach(item -> {
+            logger.info("deleting expired item %s for user %s", item, getLogin());
+            delSendItem(item);
 
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {
-                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.getItemsIds(), getLogin());
+                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
                 included.forEach(Item::unload);
-                addItems(included);                                                                                                         //add all included items to the user as a 1st level items
+                addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
-        }
+        });
         return;
     }
 

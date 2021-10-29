@@ -23,6 +23,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
@@ -41,6 +42,7 @@ public class Item implements Cloneable {
     public enum Params {id, pid,    user_id, section, slot,  b_id,   name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
     private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.made, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.range, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
+    @SuppressWarnings("unchecked")
     private static long getNextGlobalId() {                                                                                                 //get next main id for the item from the sequence
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery<Long> query = session.createSQLQuery("select nextval('main_id_seq') as nextval").addScalar("nextval", LongType.INSTANCE);
@@ -50,6 +52,7 @@ public class Item implements Cloneable {
         }
         return -1;
     }
+    @SuppressWarnings("unchecked")
     public static List<Long> getNextGlobalId(int num) {                                                                                     //get num next main ids from a sequence
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery<Long> query = session.createSQLQuery("select nextval('main_id_seq') from generate_series(1, :num) as nextval").setParameter("num", num).addScalar("nextval", LongType.INSTANCE);
@@ -60,18 +63,19 @@ public class Item implements Cloneable {
         return LongStream.range(0, num).map(i -> -1L).boxed().toList();                                                                     //will return a list filled by -1
     }
 
-    public static void delItem(long id, boolean withSub) {                                                                                  //delete item from database
+    public static boolean delFromDB(long id, boolean withSub) {                                                                                  //delete item from database
         Transaction tx = null;
         try (Session session = ServerMain.sessionFactory.openSession()) {
             tx = session.beginTransaction();
             session.createNamedQuery(withSub ? "Item_DeleteItemByIdWithSub" : "Item_DeleteItemByIdWithoutSub").setParameter("id", id).executeUpdate();
             tx.commit();
+            return true;
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't delete item id %d from database: %s:%s", id, e.getClass().getSimpleName(), e.getMessage());
             if (tx != null && tx.isActive())
                 tx.rollback();
         }
-        return;
+        return false;
     }
 
     @Id
@@ -132,11 +136,13 @@ public class Item implements Cloneable {
         return;
     }
 
-    public boolean isIncluded()   {return pid != -1;}                                                                                       //this item is an included one itself (it has pid = parent.id)
-    public boolean isExpired()    {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //the item is expired (has dt < now)
-    public boolean isNoTransfer() {return getParamInt(Params.nt) == 1 || included.getItems().stream().mapToInt(i -> i.isNoTransfer() ? 1 : 0).anyMatch(i -> i == 1);} //check if the item or any of its included has nt set to 1
-    public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //the item is a resource
-    public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or an inject pistol
+    public boolean isIncluded()   {return pid != -1;}                                                                                       //item is an included one itself (it has pid = parent.id)
+    public boolean isExpired()    {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //item is expired (has dt < now)
+    public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
+    public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
+    public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
+
+
     public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
 
     public Long getId()   {return id; }                                                                                                     //item id
@@ -147,13 +153,15 @@ public class Item implements Cloneable {
     public ItemBox getIncluded() {return included;}
 
     public void resetParam(Params paramName) {setParam(paramName, null);}
-    synchronized public void setParam(Params paramName, Object paramValue) {                                                                //set an item param to paramValue
-        if (ParamUtils.setParam(this, paramName.toString(), paramValue))                                                                    //delegate param setting to ParamUtils
+    synchronized public boolean setParam(Params paramName, Object paramValue) {                                                             //set an item param to paramValue
+        if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
             needSync.compareAndSet(false, true);                                                                                            //make this item is a subject for a future syncing
-        return;
+            return true;
+        }
+        return false;
     }
     public void setId(long id)      {this.id = id;}
-    public void setCount(int count) {setParam(Params.count, count);}
+    public boolean setCount(int count) {return setParam(Params.count, count);}
     public void setNextGlobalId()   {this.id = getNextGlobalId(); }
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
@@ -170,35 +178,32 @@ public class Item implements Cloneable {
         return sj.toString();
     }
 
-    public ItemBox findExpired() {                                                                                                          //collect the list of expired items, this may be the item itself or some of the included items
-        ItemBox expired = new ItemBox();
-        if (isExpired())                                                                                                                    //add this item to the expired box if it's expired
-            expired.add(this);
-        expired.addAll(included.findExpired());                                                                                             //search and add all expired items from the included box recursively
-        return expired;
-    }
-    public Item findItem(long id) {return this.id == id ? this : included.find(id);}                                                    //this is the item or one of the included items, or null
+    public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this is the item or one of the included items, or null
 
-    public void unload() {pid = -1;}                                                                                                        //set an item as a master item
-
-    public void increase(int num) {                                                                                                         //increase item count by num
-        setParam(Params.count, getCount() + num);
-        return;
+    public ItemBox findItems(Predicate<Item> predicate) {                                                                                   //find items that match predicate
+        ItemBox box = new ItemBox();
+        if (predicate.test(this))
+            box.addItem(this);
+        box.addAll(included.findItems(predicate));
+        return box;
     }
-    public void decrement() {decrease(1);}
-    public void decrease(int num) {                                                                                                         //decrease item count by num
+    public boolean unload() {return setParam(Params.pid, -1);}                                                                              //set an item as a master item
+    public boolean decrement() {return decrease(1);}
+    public boolean increase(int num) {return setParam(Params.count, getCount() + num);}                                                     //increase item count by num
+    public boolean decrease(int num) {                                                                                                      //decrease item count by num
         int count = getCount();
-        if (count > num)                                                                                                                    //check if the item count > num
-            setParam(Params.count, count - num);
+        if (num > 0 && num < count)                                                                                                         //check if the item count > num
+            return setCount(count - num);
         else
             logger.error("can't decrease item id %d by num %d, current item count %d should be greater than %d", id, num, getCount(), num);
-        return;
+        return false;
     }
 
     public Item split(int count, boolean noSetNewId, Supplier<Long> newId) {                                                                //split an item and return a new one
+        if (!this.decrease(count))                                                                                                          //decrease count of the current item
+            return null;
         Item splitted = this.clone();
-        splitted.setParam(Params.count, count);                                                                                             //set the count of the new item
-        this.decrease(count);                                                                                                               //decrease count of the current item
+        splitted.setCount(count);                                                                                                           //set the count of the new item
         if (!noSetNewId)
             splitted.setId(newId.get());                                                                                                    //set a new id for the new item
         return splitted;                                                                                                                    //return a new item
@@ -210,7 +215,7 @@ public class Item implements Cloneable {
             Item cloned = (Item) super.clone();                                                                                             //clone primitive fields by super.clone()
             cloned.needSync = new AtomicBoolean(false);                                                                                     //we don't want the new item to share needSync with the source item
             cloned.included = new ItemBox();                                                                                                //item box should be created and populated by cloned items recursively
-            this.included.getItems().forEach(i -> cloned.included.add(i.clone()));
+            this.included.forEach(i -> cloned.included.addItem(i.clone()));
             return cloned;
         }catch (CloneNotSupportedException e) {
             logger.error("can't clone item: %s", e.getMessage());
@@ -218,17 +223,19 @@ public class Item implements Cloneable {
         return null;
     }
 
-    public void sync() {sync(false);}
-    public void sync(boolean force) {                                                                                                       //force=true means sync the item anyway, whether needSync is true
+    public boolean sync() {return sync(false);}
+    public boolean sync(boolean force) {                                                                                                    //force=true means sync the item anyway, whether needSync is true
         if (needSync.compareAndSet(true, false) || force) {                                                                                 //sync if needSync or force is true
             logger.info("syncing item %s", this);
-            ServerMain.sync(this);
+            if (!ServerMain.sync(this)) {
+                logger.error("can't sync item id %d", id);
+                return false;
+            }
         } else
             logger.debug("skipping syncing item %s cause it hasn't been changed", this);
-        included.sync();                                                                                                                    //sync included items
-        return;
+        return included.sync();                                                                                                             //sync included items
     }
 
     @Override
-    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", needSync=" + needSync + ", included=" + getIncluded().getItemsIds() + "}"; }
+    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", needSync=" + needSync + ", included=" + getIncluded().itemsIds() + "}"; }
 }

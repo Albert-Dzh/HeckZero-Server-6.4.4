@@ -47,7 +47,7 @@ public class ParamUtils {
                 default -> {logger.error("can't set param %s for object of type %s, param type '%s' is not supported", paramName, obj.getClass().getSimpleName(), fieldType.getSimpleName()); yield false;}
             };
         } catch (SecurityException | IllegalAccessException e) {
-            logger.warn("error setting param %s to value %s for class %s: %s:%s", paramName, paramValue, obj.getClass().getSimpleName(), e.getClass().getSimpleName(), e.getMessage());
+            logger.error("error setting param %s to value %s for class %s: %s:%s", paramName, paramValue, obj.getClass().getSimpleName(), e.getClass().getSimpleName(), e.getMessage());
         }
         return false;
     }

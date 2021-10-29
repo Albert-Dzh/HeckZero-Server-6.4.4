@@ -130,9 +130,9 @@ public class ServerMain {
         return;
     }
 
-    public static void sync(Object entity) {
+    public static boolean sync(Object entity) {
         Transaction tx = null;
-        logger.debug("saving an entity of type: %s, hash = %d", entity.getClass().getSimpleName(), entity.hashCode());
+        logger.debug("saving an entity of type: %s", entity.getClass().getSimpleName());
         try (Session session = sessionFactory.openSession()) {
             tx  = session.beginTransaction();
             session.saveOrUpdate(entity);
@@ -141,8 +141,9 @@ public class ServerMain {
             if (tx != null && tx.isActive())
                 tx.rollback();
             logger.error("can't save entity %s: %s:%s", entity.toString(), e.getClass().getSimpleName(), e.getMessage());
+            return false;
         }
-        return;
+        return true;
     }
 
     public static boolean refresh(Object entity) {

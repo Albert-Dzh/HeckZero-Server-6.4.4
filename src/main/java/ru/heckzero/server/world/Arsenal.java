@@ -41,7 +41,7 @@ public class Arsenal {
             item.setParam(Item.Params.count, loot.getCount());                                                                              //set new item count from arsenal loot
             item.setId(ids.get(i));                                                                                                         //set a new next global id from 'ids' pool
             if (item.getId() != -1L)                                                                                                        //add the item to new item box
-                itemBox.add(item);
+                itemBox.addItem(item);
         }
         return itemBox;                                                                                                                     //return the item box with the items
     }
@@ -63,6 +63,6 @@ public class Arsenal {
     }
 
     public void putItem(Item item) {                                                                                                        //user puts an item to arsenal
-        itemBox.add(item);
+        itemBox.addItem(item);
     }
 }
