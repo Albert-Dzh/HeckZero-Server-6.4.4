@@ -12,7 +12,6 @@ import ru.heckzero.server.items.ItemTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 public class Arsenal {
     private static final Logger logger = LogManager.getFormatterLogger();
@@ -38,8 +37,8 @@ public class Arsenal {
             ItemTemplate itemTemplate = (ItemTemplate) result.get(i)[1];                                                                    //ItemTemplate instance
 
             Item item = new Item(itemTemplate);                                                                                             //create an Item by an ItemTemplate instance
-            item.setParam(Item.Params.count, loot.getCount());                                                                              //set new item count from arsenal loot
-            item.setId(ids.get(i));                                                                                                         //set a new next global id from 'ids' pool
+            item.setParam(Item.Params.count, loot.getCount(), false);                                                                       //set new item count from arsenal loot
+            item.setId(ids.get(i), false);                                                                                                  //set a new next global id from 'ids' pool
             if (item.getId() != -1L)                                                                                                        //add the item to new item box
                 itemBox.addItem(item);
         }
@@ -51,18 +50,12 @@ public class Arsenal {
         return;
     }
 
-    private ItemBox getItemBox() {                                                                                                          //load an ItemBox from items template
+    public ItemBox getItemBox() {                                                                                                           //load an ItemBox from items_template
         return itemBox == null ? (itemBox = loadItemBox(aid)) : itemBox;
     }
 
     public String lootXml() {                                                                                                               //return XML formatted ItemBox
         return String.format("<AR>%s</AR>", getItemBox().getXml());
     }
-    public Item getItem(long id, int count, Supplier<Long> newId) {                                                                         //withdraw an item from arsenal
-        return itemBox.getSplitItem(id, count, false, newId);
-    }
 
-    public void putItem(Item item) {                                                                                                        //user puts an item to arsenal
-        itemBox.addItem(item);
-    }
 }

@@ -298,7 +298,7 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c) {                      //portal workflow
-        if (comein != null) {                                                                                                               //incoming routes list request
+        if (comein != null) {                                                                                                               //incoming route list request
             sendMsg(portal.cominXml());                                                                                                     //get and send incoming routes for the current portal
             return;
         }
@@ -333,34 +333,13 @@ public class User {
         }
 
         if (d != null) {                                                                                                                    //user puts resource-item to portal's warehouse
-            Item item = getItemBox().findItem(NumberUtils.toLong(d));                                                                       //get the item he wants to put to a warehouse
-            int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
-            if (item == null) {                                                                                                             //we couldn't find an item the user wants to put in the user Item box
-                logger.error("item id %s is not found for user %s", d, getLogin());
+            int count = NumberUtils.toInt(c);
+            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, portal.getId());
+            if (!getItemBox().joinMoveItem(NumberUtils.toLong(d), count, false, this::getNewId, portal.getItemBox(), resetParams, setParams)) {
+                logger.error("can't put item id %s to portal warehouse", d);
                 disconnect();
-                return;
             }
-            logger.info("try to find joinable item inside portal item box");
-            Item joinable = portal.getItemBox().findJoinableItem(item);                                                                     //try to find a joinable item in a portal warehouse
-            if (joinable != null) {                                                                                                         //we've found it
-                logger.info("joinable item found: %s", joinable);
-                joinable.increase(count);                                                                                                   //increase joinable item count by count
-                joinable.sync();                                                                                                            //update joinable before deletion invalidates our L2 cache to prevent redundant select of joinable
-                if (count > 0 && count < item.getCount())                                                                                   //check if we should decrease or delete the item from users item box
-                    item.decrease(count);
-                else {
-                    getItemBox().delItem(NumberUtils.toLong(d));                                                                                //item will be deleted from user item box and db, which invalidates L2 cache
-                    Item.delFromDB(NumberUtils.toLong(d), false);
-                }
-                return;
-            }
-                                                                                                                                            //joinable item hasn't been found
-            logger.info("can't find an item to join our item into, will split the item");
-            item = getItemBox().getSplitItem(NumberUtils.toLong(d), count, false, this::getNewId);                                          //get (split) an item from user itembox the user wants to put to warehouse
-            item.setParam(Item.Params.user_id, null);                                                                                       //reset user specific params before putting an item to the building item box
-            item.setParam(Item.Params.b_id, portal.getId());
-            portal.getItemBox().addItem(item);                                                                                             //put an item to building item box
-            portal.getItemBox().sync();                                                                                                     //add the item to database
             return;
         }
 
@@ -368,18 +347,18 @@ public class User {
             int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
             Item takenItem = portal.getItemBox().getClonnedItem(NumberUtils.toLong(a), count, this::getNewId);
             if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
-                sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                         //let the client know if it failed taking an item
+                sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                         //let the client know if it failed to take an item
                 return;
             }
 
-            takenItem.resetParam(Item.Params.b_id);
-            takenItem.setParam(Item.Params.user_id, this.id);
-            takenItem.setParam(Item.Params.section, s);
-            getItemBox().addItem(takenItem);
+            takenItem.resetParam(Item.Params.b_id, false);                                                                                  //set new params before transfer the item to user's item box
+            takenItem.setParam(Item.Params.user_id, this.id, false);
+            takenItem.setParam(Item.Params.section, s, false);
+            getItemBox().addItem(takenItem);                                                                                                //add the item to user's item box
 
-            Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));
-            int a2 = item == null ? 0 : item.getCount();
-            sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));
+            Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));                                                                //we have to check the rest count of the source item
+            int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remainder count
+            sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                                  //a1 - how much was taken, a2 - item remainder
             return;
         }
 
@@ -389,26 +368,20 @@ public class User {
     }
 
     public void com_AR(String a, String d, String s, String c) {                                                                            //arsenal workflow
-        if (a != null) {                                                                                                                    //get an item from arsenal
-            Item item = arsenal.getItem(NumberUtils.toLong(a), NumberUtils.toInt(c), this::getNewId);
-            if (item == null) {                                                                                                             //we couldn't find an item in arsenal item box
+        if (a != null) {                                                                                                                    //user gets an item from arsenal
+            Map<Item.Params, Object> params = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                      //params that need to be set to an item before moving to user
+            if (!arsenal.getItemBox().moveItem(NumberUtils.toLong(a), NumberUtils.toInt(c), false, this::getNewId, getItemBox(), null, params)) {
+                logger.error("can't move an item id %d from arsenal to user %s", NumberUtils.toLong(a), getLogin());
                 disconnect();
-                return;
             }
-            item.setParam(Item.Params.user_id, this.id);                                                                                    //assign the item to the user by setting user-specific params
-            item.setParam(Item.Params.section, s);
-            Map<Item.Params, Object> userParams = Map.of(Item.Params.user_id, id, Item.Params.section, s);
-            getItemBox().addItem(item);                                                                                                     //add the item to the user's itembox
-            return;                                                                                                                         //we don't have to send <ADD_ONE/> because client adds an item by itself
+            return;
         }
 
         if (d != null) {                                                                                                                    //put an item to arsenal
-            Item item = getItemBox().getSplitItem(NumberUtils.toLong(d), NumberUtils.toInt(c), false, this::getNewId);
-            if (item == null) {                                                                                                             //we couldn't find an item from user
+            if (!getItemBox().moveItem(NumberUtils.toLong(d), NumberUtils.toInt(c), false, this::getNewId, arsenal.getItemBox())) {
+                logger.error("can't move an item id %d from user %s to arsenal", NumberUtils.toLong(d), getLogin());
                 disconnect();
-                return;
             }
-            arsenal.putItem(item);
             return;
         }
 
@@ -436,8 +409,8 @@ public class User {
             disconnect();
             return;
         }
-        upgradeUserParams(item, true);
-        item.setParam(Item.Params.slot, slot);
+        upgradeUserParams(item, true);                                                                                                      //user takes on the item, upgrade his params
+        getItemBox().changeOne(item.getId(), Item.Params.slot, slot);
         return;
     }
 
@@ -450,11 +423,11 @@ public class User {
         }
 
         upgradeUserParams(item, false);
-        item.setParam(Item.Params.slot, "");
+        getItemBox().changeOne(item.getId(), Item.Params.slot, "");
         return;
     }
 
-    private void upgradeUserParams(Item item, boolean isEquipping) {
+    private void upgradeUserParams(Item item, boolean isEquipping) {                                                                        //isEquipping - take on or take off the item
         String[] bonusStats = item.getParamStr(Item.Params.up).split(",");                                                                  //all item influence (Item.Params.up)
 
         for (String bonusStat : bonusStats) {                                                                                               //траверс по параметрам
@@ -505,7 +478,7 @@ public class User {
     }
 
     public void com_N(String id1, String id2, String i1) {                                                                                  //compare items id counters between server and a client
-        String s_id1 = getParamStr(Params.id1);                                                                                             //s_idx -> server side values
+        String s_id1 = getParamStr(Params.id1);                                                                                             //s_idx -> server side id values
         String s_id2 = getParamStr(Params.id2);
         String s_i1 = getParamStr(Params.i1);
 
@@ -513,10 +486,10 @@ public class User {
             logger.error("%s !!!!!!!!MISTIMING!!!!!!!! id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
             disconnect();
         }
-//        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)
-            sync();
-//        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)
-            com_CHECK();
+        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)
+            sync();                                                                                                                         //sync user with db
+        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)
+            com_CHECK();                                                                                                                    //check and delete expired items
         return;
     }
 
@@ -571,12 +544,12 @@ public class User {
 
         expired.forEach(item -> {
             logger.info("deleting expired item %s for user %s", item, getLogin());
-            delSendItem(item);
+            delSendItem(item);                                                                                                              //delete an item from users item box and db and send <DEL_ONE> to the client
 
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {
                 logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
-                included.forEach(Item::unload);
+                included.forEach(i -> i.unload(false));
                 addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
         });

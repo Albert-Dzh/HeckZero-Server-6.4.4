@@ -6,10 +6,7 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -55,25 +52,57 @@ public class ItemBox {
         this.items.addAll(items);
         return;
     }
-    public int size() {return items.size();}
+    public int size() {return items.size();}                                                                                                //number of 1-st level items in the box
 
-
-    public boolean addItem(Item item)  { return this.items.addIfAbsent(item) && (!needSync || item.sync());}                                //add one item to this ItemBox
+    public boolean addItem(Item item)  {return this.items.addIfAbsent(item) && (!needSync || item.sync());}                                 //add one item to this ItemBox
     public boolean addAll(ItemBox box) {return box.items.stream().map(this::addItem).allMatch(Predicate.isEqual(true));}                    //add all items(shallow copy) from box to this ItemBox
 
-//    public List<Item> getItems()    {return items;}                                                                                         //get the 1st level items
     public List<Long> itemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                           //get items IDs of the 1st level items
 
-
     public String getXml()        {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                  //get XML list of items as a list of <O/> nodes with the included items
-    public Item findFist() {return items.stream().findFirst().orElse(null);}
     public Item findItem(long id) {return items.stream().map(i -> i.findItem(id)).filter(Objects::nonNull).findFirst().orElse(null);}       //find an item recursively inside the item box
     public ItemBox findItems(Predicate<Item> predicate) {return items.stream().map(i -> i.findItems(predicate)).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}
     public ItemBox findExpired()  {return findItems(Item::isExpired);}                                                                      //get all expired items with included ones placed in a 1st level
 
 
-    public void move(long id, ItemBox dstBox, EnumSet<Item.Params> rstParams, Map<Item.Params, Object> setParams) {
-//        Item item getSplitItem(id, )
+    public boolean joinMoveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox) {return joinMoveItem(id, count, noSetNewId,newId, dstBox, null, null);}
+    public boolean joinMoveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox, Set<Item.Params> resetParams, Map<Item.Params, Object> setParams) {
+        Item item = findItem(id);                                                                                                           //get an item by id
+        if (item == null) {
+            logger.error("item id %s is not found in the item box");
+            return false;
+        }
+        logger.info("try to find joinable item inside the item box");
+        Item joinable = dstBox.findJoinableItem(item);                                                                                      //try to find a joinable item in the item box
+        if (joinable != null) {                                                                                                             //we've found it
+            logger.info("joinable item found: %s", joinable);
+            dstBox.changeOne(joinable.getId(), Item.Params.count, joinable.getCount() + (count > 0 ? count : item.getCount()));             //increase joinable item by count before deletion invalidates our L2 cache to prevent redundant select of joinable
+            if (count > 0 && count < item.getCount())                                                                                       //check if we should decrease or delete the source item from user's item box
+                return item.decrease(count, needSync);
+            return delItem(id);                                                                                                             //item will be deleted from user item box and db, which invalidates L2 cache
+        }
+
+        logger.info("can't find an item to join our item into, will split the item");
+        item = getSplitItem(id, count, false, newId);
+        if (item == null)
+            return false;
+        if (resetParams != null)
+            item.resetParams(resetParams, false);
+        if (setParams != null)
+            item.setParams(setParams, false);
+        return dstBox.addItem(item);
+    }
+
+    public boolean moveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox) {return moveItem(id, count, noSetNewId, newId, dstBox, null, null); }
+    public boolean moveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox, Set<Item.Params> resetParams, Map<Item.Params, Object> setParams) { //move an item from this ItemBox to dstBox
+        Item item = getSplitItem(id, count, noSetNewId, newId);
+        if (item == null)
+            return false;
+        if (resetParams != null)
+            item.resetParams(resetParams, false);
+        if (setParams != null)
+            item.setParams(setParams, false);
+        return dstBox.addItem(item);
     }
 
     public boolean delItem(long id, int count) {
@@ -83,7 +112,7 @@ public class ItemBox {
             return false;
         }
         if (count > 0 && count < item.getCount()) {                                                                                         //we should decrease an Item by count
-            if (item.decrease(count))
+            if (item.decrease(count, true))
                 return !needSync || item.sync();
             else
                 return false;
@@ -119,61 +148,45 @@ public class ItemBox {
         return !needSync || Item.delFromDB(id, true);                                                                                       //delete the item from database with it's included
     }
 
-    public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, EnumSet<Item.Params> rstParams) {                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
-        Item item = getSplitItem(id, count, noSetNewId, newId);
-        if (item == null)
-            return null;
-        rstParams.forEach(item::resetParam);
-        return item;
-    }
-
     public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId) {                                                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
-        Item item = findItem(id);                                                                                                               //find an item by id
+        Item item = findItem(id);                                                                                                           //find an item by id
         if (item == null) {                                                                                                                 //we couldn't find an item by id
             logger.error("can't find item id %d in the item box", id);
             return null;
         }
         if (count > 0 && count < item.getCount()) {                                                                                         //split the item
             logger.debug("splitting the item %d by cloning and decreasing by count %d", id, count);
-            Item splitted = item.split(count, noSetNewId, newId);                                                                           //get a cloned item with a new ID and requested count
-            return needSync ? (item.sync() ? splitted : null) : splitted;
+            return item.split(count, noSetNewId, newId, needSync);                                                                          //get a cloned item with a new ID and requested count
         }
         logger.debug("get the entire item id %d stack of count %d", id, item.getCount());
         if (!delItem(id))
             return null;
 
         if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                             //set a new id for the ammo
-            item.setId(newId.get());
+            item.setId(newId.get(), false);
 
         logger.debug("returning item %s", item);
         return item;
     }
 
-    public Item getClonnedItem(long id, int requestCount, Supplier<Long> newId) {
-        Item item = findItem(id);                                                                                                               //item doesn't exist on warehouse yet
+    public Item getClonnedItem(long id, int count, Supplier<Long> newId) {
+        Item item = findItem(id);
         if (item == null || !ServerMain.refresh(item)) {                                                                                    //after refreshing we know if the item exists in database and the actual item count
-            logger.info("can't find an item id %d in  item box, the item doesn't exist anymore", id);
+            logger.info("can't find an item id %d in the item box, the item doesn't exist anymore", id);
             return null;
         }
-        Item clonnedItem = item.clone();
-        clonnedItem.setId(newId.get());
-
-        if (requestCount > 0 && requestCount < item.getCount()) {                                                                           //we are taking just a piece of item
-            logger.info("taking a part of item %d of count %d", item.getId(), requestCount);
-            clonnedItem.setCount(requestCount);
-            item.decrease(requestCount);
-            if (needSync)
-                item.sync();
-        }else {                                                                                                                             //we are taking the entire item
-            logger.info("will take a whole stack and delete item %d", item.getId());
-            delItem(id);                                                                                                                    //del the item from item box
-            if (needSync)                                                                                                                   //del the item from database
-                Item.delFromDB(id, true);
+        if (count > 0 && count < item.getCount()) {                                                                                         //split the item
+            logger.debug("splitting the item %d by cloning and decreasing by count %d", id, count);
+            return item.split(count, false, newId, needSync);                                                                               //get a cloned item with a new ID and requested count
         }
-       return clonnedItem;
+                                                                                                                                            //we are taking the entire item
+        logger.info("will take a whole stack and delete item %d", item.getId());
+        if (!delItem(id) || !item.setId(newId.get(), false))                                                                                                                   //del the source item from item box
+            return null;
+       return item;
     }
 
-    public Item findJoinableItem(Item sample) {                                                                                             //find a joinable item in the itembox by a sample item
+    public Item findJoinableItem(Item sample) {                                                                                             //find a joinable item in the item box by a sample item
         Predicate<Item> isResEquals = i -> sample.isRes() && i.getParamInt(Item.Params.massa) == sample.getParamInt(Item.Params.massa);     //the sample is res and items weight is equals
         Predicate<Item> isDrugEquals = i -> sample.isDrug()&& i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);
         Predicate<Item> isSameName = i -> i.getParamStr(Item.Params.name).equals(sample.getParamStr(Item.Params.name));                     //items have the same name parameter value
@@ -182,22 +195,19 @@ public class ItemBox {
         return items.stream().filter(isJoinable).findFirst().orElse(null);                                                                  //iterate over the 1st level items
     }
 
-    public boolean changeOne(long id, Item.Params paramName, Object paramValue) {
+    public boolean changeOne(long id, Item.Params paramName, Object paramValue) {                                                           //used in User.TO_SECTION()
         Item item = findItem(id);
         if (item == null) {                                                                                                                 //we couldn't find an item by id
             logger.error("can't find item id %d in the item box", id);
             return false;
         }
-        if (!item.setParam(paramName, paramValue))
-            return false;
-        return !needSync || item.sync();
+        return item.setParam(paramName, paramValue, needSync);
     }
 
-    public void forEach(Consumer<Item> action) {items.forEach(action); }
+    public void forEach(Consumer<Item> action) {items.forEach(action);}
 
-
-    public boolean sync() {                                                                                                                    //will sync all items with db only if needSync = true
-        return !needSync || items.stream().map(Item::sync).allMatch(Predicate.isEqual(true));
+    public boolean sync() {                                                                                                                 //will sync all items with db only if needSync = true
+        return !needSync || items.stream().map(Item::sync).allMatch(Predicate.isEqual(true));                                               //will return true if the stream is empty
     }                                                                                                                                       //recursively sync all items in the ItemBox
 
     @Override

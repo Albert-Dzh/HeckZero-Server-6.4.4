@@ -18,10 +18,7 @@ import javax.persistence.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -131,7 +128,7 @@ public class Item implements Cloneable {
         Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
             try {
                 FieldUtils.getField(Item.class, f.getName(), true).set(this, FieldUtils.readField(f, itmpl, true));
-            } catch (IllegalAccessException e) {logger.info("can't create Item from ItemTemplate: %s", e.getMessage()); }
+            } catch (IllegalAccessException e) {logger.error("can't create an Item from the template item: %s", e.getMessage()); }
         });
         return;
     }
@@ -152,17 +149,20 @@ public class Item implements Cloneable {
 
     public ItemBox getIncluded() {return included;}
 
-    public void resetParam(Params paramName) {setParam(paramName, null);}
-    synchronized public boolean setParam(Params paramName, Object paramValue) {                                                             //set an item param to paramValue
+
+    synchronized public boolean setParam(Params paramName, Object paramValue, boolean sync) {                                               //set an item param to paramValue
         if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
-            needSync.compareAndSet(false, true);                                                                                            //make this item is a subject for a future syncing
-            return true;
+            this.needSync.compareAndSet(false, true);                                                                                       //make this item is a subject for a future syncing
+            return !sync || sync();
         }
         return false;
     }
-    public void setId(long id)      {this.id = id;}
-    public boolean setCount(int count) {return setParam(Params.count, count);}
-    public void setNextGlobalId()   {this.id = getNextGlobalId(); }
+    public void setParams(Map<Params, Object> params, boolean sync) {params.forEach((p, v) -> setParam(p, v, sync));}
+    public void resetParam(Params paramName, boolean sync) {setParam(paramName, null, sync);}
+    public void resetParams(Set<Item.Params> resetParams, boolean sync) {resetParams.forEach(p -> resetParam(p, sync));}
+
+    public boolean setId(long id, boolean sync)      {return setParam(Params.id, id, sync);}
+    public boolean setCount(int count, boolean sync) {return setParam(Params.count, count, sync);}
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
     public int getParamInt(Params param)       {return ParamUtils.getParamInt(this, param.toString());}
@@ -187,25 +187,25 @@ public class Item implements Cloneable {
         box.addAll(included.findItems(predicate));
         return box;
     }
-    public boolean unload() {return setParam(Params.pid, -1);}                                                                              //set an item as a master item
-    public boolean decrement() {return decrease(1);}
-    public boolean increase(int num) {return setParam(Params.count, getCount() + num);}                                                     //increase item count by num
-    public boolean decrease(int num) {                                                                                                      //decrease item count by num
+    public boolean unload(boolean sync) {return setParam(Params.pid, -1, sync);}                                                            //set an item as a master item
+    public boolean decrement(boolean sync) {return decrease(1, sync);}
+    public boolean increase(int num, boolean sync) {return setParam(Params.count, getCount() + num, sync);}                                 //increase item count by num
+    public boolean decrease(int num, boolean sync) {                                                                                        //decrease item count by num
         int count = getCount();
         if (num > 0 && num < count)                                                                                                         //check if the item count > num
-            return setCount(count - num);
+            return setCount(count - num, sync);
         else
             logger.error("can't decrease item id %d by num %d, current item count %d should be greater than %d", id, num, getCount(), num);
         return false;
     }
 
-    public Item split(int count, boolean noSetNewId, Supplier<Long> newId) {                                                                //split an item and return a new one
-        if (!this.decrease(count))                                                                                                          //decrease count of the current item
+    public Item split(int count, boolean noSetNewId, Supplier<Long> newId, boolean sync) {                                                  //split an item and return a new one
+        if (!this.decrease(count, sync))                                                                                                    //decrease count of the current item
             return null;
         Item splitted = this.clone();
-        splitted.setCount(count);                                                                                                           //set the count of the new item
+        splitted.setCount(count, false);                                                                                                    //set the count of the new item
         if (!noSetNewId)
-            splitted.setId(newId.get());                                                                                                    //set a new id for the new item
+            splitted.setId(newId.get(), false);                                                                                             //set a new id for the new item
         return splitted;                                                                                                                    //return a new item
     }
 
@@ -232,7 +232,7 @@ public class Item implements Cloneable {
                 return false;
             }
         } else
-            logger.debug("skipping syncing item %s cause it hasn't been changed", this);
+            logger.error("skipping syncing item %s cause it hasn't been changed", this);
         return included.sync();                                                                                                             //sync included items
     }
 
