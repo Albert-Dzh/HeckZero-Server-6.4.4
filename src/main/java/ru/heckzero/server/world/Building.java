@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import ru.heckzero.server.ParamUtils;
+import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.ItemBox;
 
 import javax.persistence.*;
@@ -45,6 +46,7 @@ public class Building {
     private String maxl;
     private String repair;
     private String clan;                                                                                                                    //clan which owns the building
+    private int cash;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "l_id")
@@ -67,5 +69,22 @@ public class Building {
     protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()); }                                    //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     protected String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
-    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.boxType.BUILDING, id, true)) : itemBox;}       //get the building itembox, initialize if needed
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.boxType.BUILDING, id, true)) : itemBox;}          //get the building itembox, initialize if needed
+
+    public int getCash(int amount) {
+        logger.info("building cash amount = %d", cash);
+        amount = Math.min(cash, amount);
+        cash -= amount;
+        sync();
+        return amount;
+    }
+
+    public boolean sync() {                                                                                                                 //force=true means sync the item anyway, whether needSync is true
+        logger.info("syncing building id %d", this.id);
+        if (!ServerMain.sync(this)) {
+            logger.error("can't sync building id %d", this.id);
+            return false;
+        }
+        return true;
+    }
 }

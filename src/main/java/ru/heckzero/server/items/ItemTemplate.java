@@ -18,7 +18,6 @@ public class ItemTemplate {
     @Id
     private long id;
 
-//    private long pid = -1;                                                                                                                  //parent item id (-1 means no parent, a master item)
     private String name = "foobar";                                                                                                         //item name in a client (.swf and sprite)
     private String txt = "Unknown";                                                                                                         //item text representation for a human
     private int massa;                                                                                                                      //item weight
@@ -29,7 +28,7 @@ public class ItemTemplate {
     private String quality, maxquality;                                                                                                     //current item quality
     @Column(name = "\"OD\"") private String OD;                                                                                             //OD needed to use an item
     @Column(name = "\"rOD\"") private String rOD;                                                                                           //OD needed for reload
-    private String type;
+    private double type;                                                                                                                    //item's type
     private String damage;
     private String calibre;
     private String shot;

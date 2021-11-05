@@ -111,12 +111,8 @@ public class ItemBox {
             logger.error("can't delete item id %d because it was not found in itembox", id);
             return false;
         }
-        if (count > 0 && count < item.getCount()) {                                                                                         //we should decrease an Item by count
-            if (item.decrease(count, true))
-                return !needSync || item.sync();
-            else
-                return false;
-        }
+        if (count > 0 && count < item.getCount())
+            return item.decrease(count, needSync);                                                                                          //we should decrease an Item by count
         return delItem(id);                                                                                                                 //delete the entire item
     }
 

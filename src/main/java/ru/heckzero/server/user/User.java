@@ -18,6 +18,7 @@ import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
+import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.world.*;
 
 import javax.persistence.*;
@@ -188,14 +189,14 @@ public class User {
         return;
     }
 
-    public void com_DROP(String id, String count) {
-        if (!getItemBox().delItem(NumberUtils.toLong(id), NumberUtils.toInt(count)))
+    public void com_DROP(long id, int count) {                                                                                              //user drops an item from its box
+        if (!getItemBox().delItem(id, count))
             disconnect();
         return;
     }
 
-    public void com_TO_SECTION(String id, String section) {                                                                                 //change item section in user box
-        if (!getItemBox().changeOne(NumberUtils.toLong(id), Item.Params.section, section))
+    public void com_TO_SECTION(long id, String section) {                                                                                   //change item section in user box
+        if (!getItemBox().changeOne(id, Item.Params.section, section))
             disconnect();
         return;
     }
@@ -297,7 +298,7 @@ public class User {
         return;
     }
 
-    public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c) {                      //portal workflow
+    public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get) {          //portal workflow
         if (comein != null) {                                                                                                               //incoming route list request
             sendMsg(portal.cominXml());                                                                                                     //get and send incoming routes for the current portal
             return;
@@ -359,6 +360,13 @@ public class User {
             Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));                                                                //we have to check the rest count of the source item
             int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remainder count
             sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                                  //a1 - how much was taken, a2 - item remainder
+            return;
+        }
+
+        if (get != null) {                                                                                                                  //cash withdrawn
+            int cashTaken = portal.getCash(NumberUtils.toInt(get));
+            logger.info("taken cash = %d", cashTaken);
+            addMoney(ItemsDct.MONEY_COPP, cashTaken);
             return;
         }
 
@@ -553,6 +561,20 @@ public class User {
                 addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
         });
+        return;
+    }
+
+    synchronized public void addMoney(int type, double amount) {
+        Params moneyParam = switch (type) {
+            default -> Params.cup_0;
+            case ItemsDct.MONEY_SILV -> Params.silv;
+            case ItemsDct.MONEY_GOLD -> Params.gold;
+        };
+        double money = getParamDouble(moneyParam);
+        money += amount;
+        setParam(moneyParam, money);
+
+        sendMsg(String.format("<MYPARAM %s=\"%.2f\"/>", moneyParam.name(), money));
         return;
     }
 

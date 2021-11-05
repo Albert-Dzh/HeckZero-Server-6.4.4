@@ -122,7 +122,7 @@ public class CommandProcessor extends DefaultHandler {
     private void com_GAME_DROP(Attributes attrs) {                                                                                          //drop an Item from user Box
         String id = attrs.getValue("id");
         String count = attrs.getValue("count");
-        user.com_DROP(id, count);
+        user.com_DROP(NumberUtils.toLong(id), NumberUtils.toInt(count, -1));
         return;
     }
 
@@ -135,8 +135,9 @@ public class CommandProcessor extends DefaultHandler {
         String a = attrs.getValue("a");
         String s = attrs.getValue("s");
         String c = attrs.getValue("c");
+        String get = attrs.getValue("get");                                                                                                 //takes money from cache
 
-        user.com_PR(comein, id, new_cost, to, d, a, s, c);
+        user.com_PR(comein, id, new_cost, to, d, a, s, c, get);
         return;
     }
 
@@ -198,7 +199,7 @@ public class CommandProcessor extends DefaultHandler {
     public void com_GAME_TO_SECTION(Attributes attrs) {
         String id = attrs.getValue("id");
         String section = attrs.getValue("section");
-        user.com_TO_SECTION(id, section);
+        user.com_TO_SECTION(NumberUtils.toLong(id), section);
         return;
     }
 
