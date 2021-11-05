@@ -564,16 +564,15 @@ public class User {
         return;
     }
 
-    synchronized public void addMoney(int type, double amount) {
-        Params moneyParam = switch (type) {
+    synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
+        Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
             default -> Params.cup_0;
             case ItemsDct.MONEY_SILV -> Params.silv;
             case ItemsDct.MONEY_GOLD -> Params.gold;
         };
-        double money = getParamDouble(moneyParam);
+        double money = getParamDouble(moneyParam);                                                                                          //current user money
         money += amount;
         setParam(moneyParam, money);
-
         sendMsg(String.format("<MYPARAM %s=\"%.2f\"/>", moneyParam.name(), money));
         return;
     }
