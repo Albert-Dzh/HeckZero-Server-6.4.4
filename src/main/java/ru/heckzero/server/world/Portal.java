@@ -37,7 +37,7 @@ public class Portal extends Building {
 
     public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr left join fetch pr.dstPortal p_dst left join fetch p_dst.location where p.id = :id", Portal.class).setParameter("id", id).setCacheable(true);
+            Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr left join fetch pr.dstPortal p_dst left join fetch p_dst.location where p.id = :id order by p_dst.txt", Portal.class).setParameter("id", id).setCacheable(true);
             Portal portal = query.getSingleResult();
             if (portal != null)
                 portal.ensureInitialized();
@@ -63,7 +63,7 @@ public class Portal extends Building {
 
     private static List<PortalRoute> getComeinRoutes(int p_dst_id) {                                                                         //get routes for the given destination portal id
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.srcPortal p_src inner join fetch pr.dstPortal p_dst inner join fetch p_src.location where p_dst.id = :id", PortalRoute.class).setParameter("id", p_dst_id).setCacheable(true);
+            Query<PortalRoute> query = session.createQuery("select pr from PortalRoute pr inner join fetch pr.srcPortal p_src inner join fetch pr.dstPortal p_dst inner join fetch p_src.location where p_dst.id = :id order by p_src.txt", PortalRoute.class).setParameter("id", p_dst_id).setCacheable(true);
             List<PortalRoute> comeinRoutes = query.list();
             comeinRoutes.forEach(r -> Hibernate.initialize(r.getSrcPortal().getLocation()));                                                //initialize included fields on subsequent queries from L2 cache
             return comeinRoutes;
@@ -80,7 +80,7 @@ public class Portal extends Building {
         routes.forEach(r -> Hibernate.initialize(r.getDstPortal().getLocation()));
         return;
     }
-    private String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXml).collect(Collectors.joining()); }
+    private String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXml).collect(Collectors.joining());} //portal routes XML formatted in <O />
 
     public String bigMapXml() {                                                                                                             //generate an object for the bigmap (city and/or portal)
         StringBuilder sb = new StringBuilder();
@@ -104,7 +104,7 @@ public class Portal extends Building {
         StringJoiner sj = new StringJoiner("", "", "</PR>");
         sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
         sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
-        sj.add(getItemBox().getXml());                                                                                                      //add portal warehouse item box
+        sj.add(getItemBox().getXml());                                                                                                      //add portal warehouse items (resources)
         return sj.toString();
     }
 }

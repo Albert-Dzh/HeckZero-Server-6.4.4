@@ -177,7 +177,7 @@ public class ItemBox {
         }
                                                                                                                                             //we are taking the entire item
         logger.info("will take a whole stack and delete item %d", item.getId());
-        if (!delItem(id) || !item.setId(newId.get(), false))                                                                                                                   //del the source item from item box
+        if (!delItem(id) || !item.setId(newId.get(), false))                                                                                //del the source item from item box
             return null;
        return item;
     }
@@ -201,6 +201,8 @@ public class ItemBox {
     }
 
     public void forEach(Consumer<Item> action) {items.forEach(action);}
+
+    public int getMass() {return items.stream().mapToInt(Item::getMass).sum();}                                                             //get total weight of the all items in the ItemBox
 
     public boolean sync() {                                                                                                                 //will sync all items with db only if needSync = true
         return !needSync || items.stream().map(Item::sync).allMatch(Predicate.isEqual(true));                                               //will return true if the stream is empty

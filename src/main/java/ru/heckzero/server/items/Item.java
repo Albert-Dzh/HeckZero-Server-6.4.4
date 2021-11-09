@@ -140,17 +140,16 @@ public class Item implements Cloneable {
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
-
+    public boolean isBldKey()     {return getBaseType() == ItemsDct.TYPE_BLD_KEY;}                                                          //item is a building owner key
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
 
     public Long getId()   {return id; }                                                                                                     //item id
     public long getPid()  {return pid;}                                                                                                     //item master's id
-    public int getCount() {return NumberUtils.toInt(count);}                                                                                //item count - 0 if item is not stackable
+    public int getCount() {return getParamInt(Params.count);}                                                                               //item count - 0 if item is not stackable
     public int getBaseType() {return (int)Math.floor(getParamDouble(Params.type));}                                                         //get the base type of the item
 
     public ItemBox getIncluded() {return included;}
-
 
     synchronized public boolean setParam(Params paramName, Object paramValue, boolean sync) {                                               //set an item param to paramValue
         if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
@@ -164,14 +163,16 @@ public class Item implements Cloneable {
     public void resetParams(Set<Item.Params> resetParams, boolean sync) {resetParams.forEach(p -> resetParam(p, sync));}
 
     public boolean setId(long id, boolean sync)      {return setParam(Params.id, id, sync);}
-    public boolean setCount(int count, boolean sync) {return setParam(Params.count, count, sync);}
+    synchronized public boolean setCount(int count, boolean sync) {return setParam(Params.count, count, sync);}                             //set item count
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
     public int getParamInt(Params param)       {return ParamUtils.getParamInt(this, param.toString());}
     public long getParamLong(Params param)     {return ParamUtils.getParamLong(this, param.toString());}
     public double getParamDouble(Params param) {return ParamUtils.getParamDouble(this, param.toString());}
-    private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                       //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                     //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
+
+    public int getMass() {return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + included.getMass();}                             //return item weight with all included itmes
     public String getXml() {return getXml(true);}
     public String getXml(boolean withIncluded) {
         StringJoiner sj = new StringJoiner("", "", "</O>");

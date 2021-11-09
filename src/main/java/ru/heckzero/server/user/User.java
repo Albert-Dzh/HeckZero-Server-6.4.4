@@ -140,9 +140,9 @@ public class User {
         return;
     }
 
-    public ItemBox getItemBox() {                                                                                                           //return user itembox or get it
-        return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.boxType.USER, id, true));
-    }
+    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.boxType.USER, id, true));}              //return user itembox,init it if necessary
+    public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", 1000000);}                                    //get user weight tk - current, max - maximum, considering the prof influence
+    public Item getPassport() {return null;}
 
     synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
         logger.debug("setting user '%s' game channel online", getLogin());
@@ -299,19 +299,15 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get) {          //portal workflow
-        if (comein != null) {                                                                                                               //incoming route list request
+        if (comein != null) {                                                                                                               //incoming routes request
             sendMsg(portal.cominXml());                                                                                                     //get and send incoming routes for the current portal
             return;
         }
 
         if (id != null && new_cost != null) {                                                                                               //changing an incoming route cost
             PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));                                                                //get the route to change cost for
-            if (route == null) {
+            if (route == null || !route.setCost(NumberUtils.toDouble(new_cost)))
                 disconnect();
-                return;
-            }
-            route.setCost(NumberUtils.toDouble(new_cost));
-            route.sync();                                                                                                                   //sync the route with a database
             return;
         }
 
@@ -321,6 +317,10 @@ public class User {
                 disconnect();
                 return;
             }
+
+            int mass = getMass().get("tk");
+            int cost = route.getFlightCost(mass, getPassport());
+
             Portal dstPortal = route.getDstPortal();
             int X = dstPortal.getLocation().getX();
             int Y = dstPortal.getLocation().getY();
@@ -363,9 +363,8 @@ public class User {
             return;
         }
 
-        if (get != null) {                                                                                                                  //cash withdrawn
+        if (get != null) {                                                                                                                  //portal cash withdrawn
             int cashTaken = portal.getCash(NumberUtils.toInt(get));
-            logger.info("taken cash = %d", cashTaken);
             addMoney(ItemsDct.MONEY_COPP, cashTaken);
             return;
         }
@@ -494,17 +493,17 @@ public class User {
             logger.error("%s !!!!!!!!MISTIMING!!!!!!!! id1 = %s s_id1 = %s, id2 = %s s_id2 = %s, i1 = %s s_i1 = %s", getLogin(), id1, s_id1, id2, s_id2, i1, s_i1);
             disconnect();
         }
-        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)
-            sync();                                                                                                                         //sync user with db
-        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)
-            com_CHECK();                                                                                                                    //check and delete expired items
+        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL)                                                               //user db sync check interval
+            sync();                                                                                                                         //sync the user with db
+        if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)                                                           //user items expiration check interval
+            com_CHECK();                                                                                                                    //check and delete user's expired items
         return;
     }
 
     public boolean isBuildMaster(Building bld) {return isBuildMaster(bld.getX(), bld.getY(), bld.getZ());}
     private boolean isBuildMaster(int x, int y, int z) {                                                                                    //check if user has a master key to the building with given coordinates
-        String keyName = String.format("$key%d_%d_%d", x, y, z);
-        Predicate<Item> predicate = (i -> !i.isExpired() && i.getParamDouble(Item.Params.type) == 782 && (i.getParamStr(Item.Params.made).equals(keyName) || i.getParamStr(Item.Params.made).equals("$key_all")));
+        String keyName = String.format("$key%d_%d_%d", x, y, z);                                                                            //key name is composed of building coordinates
+        Predicate<Item> predicate = (i -> !i.isExpired() && i.isBldKey() && (i.getParamStr(Item.Params.made).equals(keyName) || i.getParamStr(Item.Params.made).equals("$key_all")));
         return !getItemBox().findItems(predicate).isEmpty() || isGod();
     }
 
@@ -573,7 +572,7 @@ public class User {
         double money = getParamDouble(moneyParam);                                                                                          //current user money
         money += amount;
         setParam(moneyParam, money);
-        sendMsg(String.format("<MYPARAM %s=\"%.2f\"/>", moneyParam.name(), money));
+        sendMsg(String.format("<MYPARAM %s=\"%s\"/>", moneyParam.name(), getParamStr(moneyParam)));
         return;
     }
 

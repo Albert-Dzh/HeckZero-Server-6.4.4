@@ -7,6 +7,7 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.items.Item;
 
 import javax.persistence.*;
 
@@ -14,6 +15,7 @@ import javax.persistence.*;
 @Table(name = "portal_routes")
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "PortalRoute_Region")
+
 public class PortalRoute {
     private static final Logger logger = LogManager.getFormatterLogger();
 
@@ -59,13 +61,18 @@ public class PortalRoute {
     public Portal getSrcPortal() {return srcPortal;}
     public Portal getDstPortal() {return dstPortal;}
 
-    public void setCost(double cost) {
-        logger.info("setting a new cost %.2d for the route id %d", cost, id);
-        this.cost = cost;
-        return;
+    public int getFlightCost(int weight, Item passport) {
+
+        return 0;
     }
 
-    public void sync() {ServerMain.sync(this);}
+    public boolean setCost(double cost) {
+        logger.info("setting a new cost %.2f for the route id %d", cost, id);
+        this.cost = cost;
+        return sync();
+    }
+
+    public boolean sync() {return ServerMain.sync(this);}
 
     public String getXml() {return String.format("<O id=\"%d\" txt=\"%s\" X=\"%d\" Y=\"%d\" cost=\"%.1f\" ds=\"%d\" city=\"%s\"/>", id, dstPortal.getTxt(), dstPortal.getLocation().getLocalX(), dstPortal.getLocation().getLocalY(), cost, dstPortal.getDs(), dstPortal.getCity());}
     public String getXmlComein() {return String.format("<O id=\"%d\" txt=\"%s [%d/%d]\" cost=\"%.1f\"/>", id, srcPortal.getTxt(), srcPortal.getLocation().getLocalX(), srcPortal.getLocation().getLocalY(), cost);}
