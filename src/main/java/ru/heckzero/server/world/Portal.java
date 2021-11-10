@@ -1,6 +1,7 @@
 package ru.heckzero.server.world;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
@@ -8,6 +9,7 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.items.Item;
 
 import javax.persistence.*;
 import java.util.*;
@@ -107,4 +109,25 @@ public class Portal extends Building {
         sj.add(getItemBox().getXml());                                                                                                      //add portal warehouse items (resources)
         return sj.toString();
     }
+
+    public boolean consumeRes(int userWeight) {                                                                                             //consume portal resources for the teleportation
+        String [] res = p1.split(",");                                                                                                      //p1 - resources needed to teleport 1000 weight units
+        Map<Item, Integer> itemsToConsume = new HashMap<>();                                                                                //found items to consume with consume count
+
+        for (int i = 0; i < res.length; i++) {
+            if (res[i].isEmpty())                                                                                                           //res doesn't contain resource of number i
+                continue;
+            Item item = getItemBox().findItemByType(Double.parseDouble(String.format("0.19%d", i + 1)));                                    //find needed resource on portal warehouse
+            int requiredRes = NumberUtils.toInt(res[i]) * userWeight / 1000;
+            if (item == null || item.getCount() < requiredRes) {
+                logger.warn("portal id %d %s has got not enough resources of type %d, (needed %d, has got %d)", getId(), getTxt(), i + 1, requiredRes, item == null ? 0 : item.getCount());
+                return false;
+            }
+            itemsToConsume.put(item, requiredRes);
+        }
+        logger.info("will consume portal resources %s", itemsToConsume);
+        itemsToConsume.forEach((k, v) -> getItemBox().delItem(k.getId(), v));
+        return true;
+    }
+
 }

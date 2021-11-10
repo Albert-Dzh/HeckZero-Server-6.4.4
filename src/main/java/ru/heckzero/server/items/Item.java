@@ -130,7 +130,7 @@ public class Item implements Cloneable {
         Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
             try {
                 FieldUtils.getField(Item.class, f.getName(), true).set(this, FieldUtils.readField(f, itmpl, true));
-            } catch (IllegalAccessException e) {logger.error("can't create an Item from the template item: %s", e.getMessage()); }
+            } catch (IllegalAccessException e) {logger.error("can't create an Item from the template: %s", e.getMessage()); }
         });
         return;
     }
@@ -140,7 +140,7 @@ public class Item implements Cloneable {
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
-    public boolean isBldKey()     {return getBaseType() == ItemsDct.TYPE_BLD_KEY;}                                                          //item is a building owner key
+    public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                          //item is a building owner key
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
 
@@ -172,7 +172,7 @@ public class Item implements Cloneable {
     private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                     //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
 
-    public int getMass() {return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + included.getMass();}                             //return item weight with all included itmes
+    public int getTotalMass() {return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + included.getMass();}                        //return item weight with all included items
     public String getXml() {return getXml(true);}
     public String getXml(boolean withIncluded) {
         StringJoiner sj = new StringJoiner("", "", "</O>");

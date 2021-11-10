@@ -62,8 +62,8 @@ public class PortalRoute {
     public Portal getDstPortal() {return dstPortal;}
 
     public int getFlightCost(int weight, Item passport) {
-
-        return 0;
+        int regularCost  = (int)Math.ceil(cost * weight / 1000);
+        return regularCost;
     }
 
     public boolean setCost(double cost) {

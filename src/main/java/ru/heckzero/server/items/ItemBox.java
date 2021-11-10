@@ -16,10 +16,6 @@ import java.util.stream.Collectors;
 public class ItemBox {
     private static final Logger logger = LogManager.getFormatterLogger();
     public enum boxType {USER, BUILDING}
-
-    public static final EnumSet<Item.Params> userParams = EnumSet.of(Item.Params.user_id, Item.Params.section, Item.Params.slot);
-    public static final EnumSet<Item.Params> bldParams = EnumSet.of(Item.Params.b_id);
-
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
     private boolean needSync = false;
 
@@ -73,7 +69,7 @@ public class ItemBox {
             return false;
         }
         logger.info("try to find joinable item inside the item box");
-        Item joinable = dstBox.findJoinableItem(item);                                                                                      //try to find a joinable item in the item box
+        Item joinable = dstBox.findSameItem(item);                                                                                          //try to find a joinable item in the item box
         if (joinable != null) {                                                                                                             //we've found it
             logger.info("joinable item found: %s", joinable);
             dstBox.changeOne(joinable.getId(), Item.Params.count, joinable.getCount() + (count > 0 ? count : item.getCount()));             //increase joinable item by count before deletion invalidates our L2 cache to prevent redundant select of joinable
@@ -182,7 +178,12 @@ public class ItemBox {
        return item;
     }
 
-    public Item findJoinableItem(Item sample) {                                                                                             //find a joinable item in the item box by a sample item
+    public Item findItemByType(double type) {                                                                                               //find an Item by type
+        Predicate<Item> isTypeEquals = i -> i.getParamDouble(Item.Params.type) == type;
+        return items.stream().filter(isTypeEquals).findFirst().orElse(null);
+    }
+
+    public Item findSameItem(Item sample) {                                                                                                 //find a joinable item in the item box by a sample item
         Predicate<Item> isResEquals = i -> sample.isRes() && i.getParamInt(Item.Params.massa) == sample.getParamInt(Item.Params.massa);     //the sample is res and items weight is equals
         Predicate<Item> isDrugEquals = i -> sample.isDrug()&& i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);
         Predicate<Item> isSameName = i -> i.getParamStr(Item.Params.name).equals(sample.getParamStr(Item.Params.name));                     //items have the same name parameter value
@@ -202,7 +203,7 @@ public class ItemBox {
 
     public void forEach(Consumer<Item> action) {items.forEach(action);}
 
-    public int getMass() {return items.stream().mapToInt(Item::getMass).sum();}                                                             //get total weight of the all items in the ItemBox
+    public int getMass() {return items.stream().mapToInt(Item::getTotalMass).sum();}                                                        //get total weight of the all items in the ItemBox
 
     public boolean sync() {                                                                                                                 //will sync all items with db only if needSync = true
         return !needSync || items.stream().map(Item::sync).allMatch(Predicate.isEqual(true));                                               //will return true if the stream is empty

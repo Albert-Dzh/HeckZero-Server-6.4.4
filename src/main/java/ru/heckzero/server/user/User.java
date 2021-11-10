@@ -40,6 +40,21 @@ public class User {
     private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
 
+    public class UserMoney {
+        private final int copper;
+        private final double silver;
+        private final double gold;
+
+        public UserMoney() {
+           this.copper = getParamInt(Params.cup_0);
+           this.silver = getParamDouble(Params.silv);
+           this.gold = getParamDouble(Params.gold);
+        }
+        public int getCopper()    {return copper;}
+        public double getSilver() {return silver;}
+        public double getGold()   {return gold;}
+    }
+
     private static long getId2() {                                                                                                          //compute next id2 value for the user
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery<Long> query = session.createSQLQuery("select setval('main_id_seq', nextval('main_id_seq') + 100, false) - 100 as id2").addScalar("id2", LongType.INSTANCE);
@@ -108,6 +123,7 @@ public class User {
     public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
+    public UserMoney getMoney() {return new UserMoney();}
 
     public long getNewId() {                                                                                                                //get a new id for an item
         long id1 = getParamLong(Params.id1);                                                                                                //get current user id1, id2, i1
@@ -318,8 +334,17 @@ public class User {
                 return;
             }
 
-            int mass = getMass().get("tk");
-            int cost = route.getFlightCost(mass, getPassport());
+            int mass = getMass().get("tk");                                                                                                 //current user mass
+            int cost = route.getFlightCost(mass, getPassport());                                                                            //get the flight cost
+            if (!isGod() && cost > getMoney().copper) {                                                                                     //check if user has enough money for teleportation
+                sendMsg("<PR err=\"1\"/>");
+                return;
+            }
+
+            if (!portal.consumeRes(mass)) {
+                sendMsg("<PR err=\"3\"/>");
+                return;
+            }
 
             Portal dstPortal = route.getDstPortal();
             int X = dstPortal.getLocation().getX();
@@ -562,6 +587,8 @@ public class User {
         });
         return;
     }
+
+
 
     synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
