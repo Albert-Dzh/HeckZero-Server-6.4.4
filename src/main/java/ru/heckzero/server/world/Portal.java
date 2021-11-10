@@ -123,7 +123,7 @@ public class Portal extends Building {
                 logger.warn("portal id %d %s has got not enough resources of type %d, (needed %d, has got %d)", getId(), getTxt(), i + 1, requiredRes, item == null ? 0 : item.getCount());
                 return false;
             }
-            itemsToConsume.put(item, requiredRes);
+            itemsToConsume.put(item, requiredRes);                                                                                          //item to consume and a count to decrease
         }
         itemsToConsume.forEach((k, v) -> logger.info("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
         itemsToConsume.forEach((k, v) -> getItemBox().delItem(k.getId(), v));

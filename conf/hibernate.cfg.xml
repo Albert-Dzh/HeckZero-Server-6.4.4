@@ -11,7 +11,6 @@
 
         <!--        <property name="hibernate.generate_statistics">true</property>-->
         <property name="dialect">org.hibernate.dialect.PostgreSQL10Dialect</property>
-        <property name="hibernate.default_entity_mode">dynamic-map</property>
 
         <!--  Database connection settings  -->
         <property name="hibernate.hikari.dataSourceClassName">org.postgresql.ds.PGSimpleDataSource</property>

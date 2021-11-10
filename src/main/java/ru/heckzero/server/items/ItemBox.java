@@ -8,12 +8,11 @@ import ru.heckzero.server.ServerMain;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class ItemBox {
+public class ItemBox implements Iterable<Item> {
     private static final Logger logger = LogManager.getFormatterLogger();
     public enum boxType {USER, BUILDING}
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
@@ -201,13 +200,14 @@ public class ItemBox {
         return item.setParam(paramName, paramValue, needSync);
     }
 
-    public void forEach(Consumer<Item> action) {items.forEach(action);}
-
     public int getMass() {return items.stream().mapToInt(Item::getTotalMass).sum();}                                                        //get total weight of the all items in the ItemBox
 
     public boolean sync() {                                                                                                                 //will sync all items with db only if needSync = true
         return !needSync || items.stream().map(Item::sync).allMatch(Predicate.isEqual(true));                                               //will return true if the stream is empty
     }                                                                                                                                       //recursively sync all items in the ItemBox
+
+    @Override
+    public Iterator<Item> iterator() {return items.iterator();}
 
     @Override
     public String toString() {return "ItemBox{" + "items=" + items + '}'; }
