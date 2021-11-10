@@ -336,13 +336,13 @@ public class User {
 
             int mass = getMass().get("tk");                                                                                                 //current user mass
             int cost = route.getFlightCost(mass, getPassport());                                                                            //get the flight cost
-            if (!isGod() && cost > getMoney().copper) {                                                                                     //check if user has enough money for teleportation
+            if (!isGod() && cost > getMoney().copper) {                                                                                     //user is out of money
                 sendMsg("<PR err=\"1\"/>");
                 return;
             }
 
-            if (!portal.consumeRes(mass)) {
-                sendMsg("<PR err=\"3\"/>");
+            if (!portal.consumeRes(mass)) {                                                                                                 //portal is running out of resources
+                sendMsg("<PR err=\"5\"/>");
                 return;
             }
 
@@ -353,6 +353,7 @@ public class User {
             int hz = dstPortal.getName();
             int ROOM = route.getROOM();
 
+            decMoney(ItemsDct.MONEY_COPP, cost);
             setRoom(X, Y, Z, hz, ROOM);
             sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
             return;
@@ -588,8 +589,7 @@ public class User {
         return;
     }
 
-
-
+    synchronized public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                               //decrease user money
     synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
             default -> Params.cup_0;
@@ -597,9 +597,16 @@ public class User {
             case ItemsDct.MONEY_GOLD -> Params.gold;
         };
         double money = getParamDouble(moneyParam);                                                                                          //current user money
-        money += amount;
-        setParam(moneyParam, money);
-        sendMsg(String.format("<MYPARAM %s=\"%s\"/>", moneyParam.name(), getParamStr(moneyParam)));
+        money += amount;                                                                                                                    //new money value
+        if (money < 0) {
+            logger.warn("can't adjust user %s money by %f, because it become negative", getLogin(), amount);
+            return;
+        }
+        setParam(moneyParam, money);                                                                                                        //set new money value
+        if (amount < 0)
+            sendMsg(String.format("<DM c=\"%f\" m=\"%d\" />", amount * -1, type));
+        else
+            sendMsg(String.format("<MYPARAM %s=\"%s\"/>", moneyParam.name(), getParamStr(moneyParam)));
         return;
     }
 

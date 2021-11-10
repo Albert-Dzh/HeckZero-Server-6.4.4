@@ -112,20 +112,20 @@ public class Portal extends Building {
 
     public boolean consumeRes(int userWeight) {                                                                                             //consume portal resources for the teleportation
         String [] res = p1.split(",");                                                                                                      //p1 - resources needed to teleport 1000 weight units
-        Map<Item, Integer> itemsToConsume = new HashMap<>();                                                                                //found items to consume with consume count
+        Map<Item, Integer> itemsToConsume = new HashMap<>();                                                                                //found items to consume with consume
 
         for (int i = 0; i < res.length; i++) {
             if (res[i].isEmpty())                                                                                                           //res doesn't contain resource of number i
                 continue;
             Item item = getItemBox().findItemByType(Double.parseDouble(String.format("0.19%d", i + 1)));                                    //find needed resource on portal warehouse
-            int requiredRes = NumberUtils.toInt(res[i]) * userWeight / 1000;
+            int requiredRes = NumberUtils.toInt(res[i]) * userWeight / 1000;                                                                //needed resource count to teleportation
             if (item == null || item.getCount() < requiredRes) {
                 logger.warn("portal id %d %s has got not enough resources of type %d, (needed %d, has got %d)", getId(), getTxt(), i + 1, requiredRes, item == null ? 0 : item.getCount());
                 return false;
             }
             itemsToConsume.put(item, requiredRes);
         }
-        logger.info("will consume portal resources %s", itemsToConsume);
+        itemsToConsume.forEach((k, v) -> logger.info("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
         itemsToConsume.forEach((k, v) -> getItemBox().delItem(k.getId(), v));
         return true;
     }
