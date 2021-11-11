@@ -22,7 +22,6 @@ public class Portal extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
     private static final EnumSet<Params> portalParams = EnumSet.of(Params.cash, Params.ds, Params.city, Params.p1, Params.p2);
 
-//    private int cash;                                                                                                                     //portal cash
     private int ds;                                                                                                                         //discount (%) for citizens arriving to this portal
     private String city;                                                                                                                    //of that city
     private String p1;                                                                                                                      //resources needed to teleport 1000 weight units ?

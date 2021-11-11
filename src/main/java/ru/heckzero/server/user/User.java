@@ -347,7 +347,6 @@ public class User {
                 sendMsg("<PR err=\"1\"/>");
                 return;
             }
-
             if (!portal.consumeRes(mass)) {                                                                                                 //portal is running out of resources
                 sendMsg("<PR err=\"5\"/>");
                 return;
@@ -360,7 +359,12 @@ public class User {
             int hz = dstPortal.getName();
             int ROOM = route.getROOM();
 
-            decMoney(ItemsDct.MONEY_COPP, cost);
+            decMoney(ItemsDct.MONEY_COPP, cost);                                                                                            //decrease money from user
+            if (!portal.addMoney(cost)) {                                                                                                   //add money to portal's cash
+                disconnect(UserManager.ErrCodes.SRV_FAIL);
+                return;
+            }
+
             setRoom(X, Y, Z, hz, ROOM);
             sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
             return;
@@ -396,8 +400,8 @@ public class User {
             return;
         }
 
-        if (get != null) {                                                                                                                  //portal cash withdrawn
-            int cashTaken = portal.getCash(NumberUtils.toInt(get));
+        if (get != null) {                                                                                                                  //withdraw portal cash
+            int cashTaken = portal.decMoney(NumberUtils.toInt(get));
             addMoney(ItemsDct.MONEY_COPP, cashTaken);
             return;
         }
@@ -639,6 +643,7 @@ public class User {
 
     public void disconnect() {disconnect(gameChannel);}                                                                                     //disconnect (close) the game channel
     public void disconnect(String msg) {sendMsg(msg); disconnect();}                                                                        //send message and disconnect the channel
+    public void disconnect(UserManager.ErrCodes errCode) {disconnect(String.format("<ERROR code=\"%d\"/>", errCode.ordinal()));}            //send the error code and disconnect the user
     public void disconnectChat() {disconnect(chatChannel);}                                                                                 //disconnects user's chat channel
     public void disconnectChat(String msg) {sendMsgChat(msg); disconnectChat();}
     private void disconnect(Channel ch) {

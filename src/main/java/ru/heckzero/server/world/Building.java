@@ -71,18 +71,23 @@ public class Building {
 
     public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.boxType.BUILDING, id, true)) : itemBox;}          //get the building itembox, initialize if needed
 
-    public int getCash(int amount) {
-        logger.info("building cash amount = %d", cash);
-        amount = Math.min(cash, amount);
+    synchronized public int decMoney(int amount) {
+        amount = Math.min(amount, cash);
+        logger.info("decreasing building id %d '%s' cash by %d", getId(), getTxt(), amount);
         cash -= amount;
         sync();
         return amount;
     }
+    synchronized public boolean addMoney(int amount) {
+        logger.info("increasing building id %d '%s' cash by %d", getId(), getTxt(), amount);
+        cash += amount;
+        return sync();
+    }
 
     public boolean sync() {                                                                                                                 //force=true means sync the item anyway, whether needSync is true
-        logger.info("syncing building id %d", this.id);
+        logger.info("syncing building id %d '%s'", getId(), getTxt());
         if (!ServerMain.sync(this)) {
-            logger.error("can't sync building id %d", this.id);
+            logger.error("can't sync building id %d", getId());
             return false;
         }
         return true;
