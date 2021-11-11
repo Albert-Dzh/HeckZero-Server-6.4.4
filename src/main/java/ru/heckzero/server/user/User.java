@@ -158,7 +158,7 @@ public class User {
 
     public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.boxType.USER, id, true));}              //return user itembox,init it if necessary
     public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", 1000000);}                                    //get user weight tk - current, max - maximum, considering the prof influence
-    public Item getPassport() {return null;}
+    public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
 
     synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
         logger.debug("setting user '%s' game channel online", getLogin());
@@ -314,7 +314,13 @@ public class User {
         return;
     }
 
-    public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get) {          //portal workflow
+    public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
+        if (ds != null) {                                                                                                                   //set a portal discount
+            portal.setDs(NumberUtils.toInt(ds));                                                                                            //set a new discount
+            sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));
+            return;
+        }
+
         if (comein != null) {                                                                                                               //incoming routes request
             sendMsg(portal.cominXml());                                                                                                     //get and send incoming routes for the current portal
             return;
@@ -335,7 +341,8 @@ public class User {
             }
 
             int mass = getMass().get("tk");                                                                                                 //current user mass
-            int cost = route.getFlightCost(mass, getPassport());                                                                            //get the flight cost
+            Item passport = getPassport();
+            int cost = route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));                                                                            //get the flight cost
             if (!isGod() && cost > getMoney().copper) {                                                                                     //user is out of money
                 sendMsg("<PR err=\"1\"/>");
                 return;
@@ -604,7 +611,7 @@ public class User {
         }
         setParam(moneyParam, money);                                                                                                        //set new money value
         if (amount < 0)
-            sendMsg(String.format("<DM c=\"%f\" m=\"%d\" />", amount * -1, type));
+            sendMsg(String.format("<DM c=\"%.2f\" m=\"%d\" />", amount * -1, type));
         else
             sendMsg(String.format("<MYPARAM %s=\"%s\"/>", moneyParam.name(), getParamStr(moneyParam)));
         return;

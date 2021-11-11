@@ -7,7 +7,6 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
-import ru.heckzero.server.items.Item;
 
 import javax.persistence.*;
 
@@ -61,8 +60,12 @@ public class PortalRoute {
     public Portal getSrcPortal() {return srcPortal;}
     public Portal getDstPortal() {return dstPortal;}
 
-    public int getFlightCost(int weight, Item passport) {
+    public int getFlightCost(int weight, String citizenship) {                                                                              //compute flight cost for the given weight and citizenship
         int regularCost  = (int)Math.ceil(cost * weight / 1000);
+        if (citizenship.equals(dstPortal.getCity())) {                                                                                      //get destination portal discount (if any)
+            logger.info("applying discount of %d%% for %s citizen which is flying to portal %d %s", dstPortal.getDs(), citizenship, dstPortal.getId(), dstPortal.getTxt());
+            regularCost -= regularCost * dstPortal.getDs() / 100;
+        }
         return regularCost;
     }
 

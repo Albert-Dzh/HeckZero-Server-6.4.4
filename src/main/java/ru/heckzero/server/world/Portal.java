@@ -34,9 +34,6 @@ public class Portal extends Building {
     @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private final List<PortalRoute> routes = new ArrayList<>();
 
-    public String getCity() {return city;}                                                                                                  //these citizens have a discount when they are flying TO this portal
-    public int getDs()      {return ds;}                                                                                                    //discount for citizens of the 'city' which are flying to that portal
-
     public static Portal getPortal(int id) {                                                                                                //try to get Portal by building id from a database
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Portal> query = session.createQuery("select p from Portal p left join fetch p.routes pr left join fetch pr.dstPortal p_dst left join fetch p_dst.location where p.id = :id order by p_dst.txt", Portal.class).setParameter("id", id).setCacheable(true);
@@ -82,6 +79,12 @@ public class Portal extends Building {
         routes.forEach(r -> Hibernate.initialize(r.getDstPortal().getLocation()));
         return;
     }
+    public String getCity() {return city;}                                                                                                  //these citizens have a discount when they are flying TO this portal
+    public int getDs()      {return ds;}                                                                                                    //discount for citizens of the 'city' which are flying to that portal
+    public String getP2()   {return p2;}
+
+    public void setDs(int ds) {this.ds = ds; sync();}
+
     private String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXml).collect(Collectors.joining());} //portal routes XML formatted in <O />
 
     public String bigMapXml() {                                                                                                             //generate an object for the bigmap (city and/or portal)
@@ -125,7 +128,7 @@ public class Portal extends Building {
             }
             itemsToConsume.put(item, requiredRes);                                                                                          //item to consume and a count to decrease
         }
-        itemsToConsume.forEach((k, v) -> logger.info("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
+        itemsToConsume.forEach((k, v) -> logger.debug("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
         itemsToConsume.forEach((k, v) -> getItemBox().delItem(k.getId(), v));
         return true;
     }

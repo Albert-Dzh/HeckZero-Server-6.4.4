@@ -6,6 +6,7 @@ public class ItemsDct {
     public static final int MONEY_GOLD = 3;                                                                                                 //money gold
 
     public static final int BASE_TYPE_BLD_KEY = 782;                                                                                        //building key-card base type
+    public static final int BASE_TYPE_PASS = 778;                                                                                           //passport
     public static final int BASE_TYPE_BLD_RES = 0;                                                                                          //resources base type
 
     public static final int SUB_TYPE_RES_METALS = 191;
