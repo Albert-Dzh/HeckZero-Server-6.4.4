@@ -5,7 +5,7 @@ cd ${0%${0##*/}}.
 
 JAVA="${JAVA_HOME}/bin/java";
 APP_HOME=".";
-JAR_FILE="$APP_HOME/HeckZero-6.4-2.4.jar";
+JAR_FILE="$APP_HOME/HeckZero-6.4.4.jar";
 LOG_PARAMS="-Dlog4j.configurationFile=conf/log4j2.xml";
 NAME="heckzero";
 LOCALE_PARAMS="-Duser.language=en -Duser.region=US";
