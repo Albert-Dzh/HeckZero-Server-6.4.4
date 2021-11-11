@@ -315,7 +315,7 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
-        if (ds != null) {                                                                                                                   //set a portal discount
+        if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
             portal.setDs(NumberUtils.toInt(ds));                                                                                            //set a new discount
             sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));
             return;
@@ -400,7 +400,7 @@ public class User {
             return;
         }
 
-        if (get != null) {                                                                                                                  //withdraw portal cash
+        if (get != null) {                                                                                                                  //withdraw money from portal cash
             int cashTaken = portal.decMoney(NumberUtils.toInt(get));
             addMoney(ItemsDct.MONEY_COPP, cashTaken);
             return;
@@ -433,6 +433,12 @@ public class User {
         sendMsg(arsenal.lootXml());
         return;
     }
+
+    public void com_BK() {
+
+        return;
+    }
+
 
     public void com_TAKE_ON(String id, String slot) {                                                                                       //user takes on an item on a specified slot
         Item item = getItemBox().findItem(NumberUtils.toLong(id));

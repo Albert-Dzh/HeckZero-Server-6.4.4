@@ -136,9 +136,14 @@ public class CommandProcessor extends DefaultHandler {
         String s = attrs.getValue("s");
         String c = attrs.getValue("c");
         String get = attrs.getValue("get");                                                                                                 //takes money from cache
-        String ds = attrs.getValue("ds");                                                                                                 //takes money from cache
+        String ds = attrs.getValue("ds");                                                                                                   //set portal discount
 
         user.com_PR(comein, id, new_cost, to, d, a, s, c, get, ds);
+        return;
+    }
+
+    private void com_GAME_BK(Attributes attrs) {                                                                                            //bank workflow
+        user.com_BK();
         return;
     }
 
