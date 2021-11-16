@@ -121,7 +121,7 @@ public class ServerMain {
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
-                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).
+                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(Bank.class).
                 addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(ItemTemplate.class).addAnnotatedClass(ArsenalLoot.class).
                 addAnnotatedClass(UserLevelData.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();

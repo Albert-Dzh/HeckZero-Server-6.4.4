@@ -73,7 +73,8 @@ public class User {
     @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized upon a first access
 
     @Transient private Arsenal arsenal = null;                                                                                              //current user arsenal
-    @Transient private Portal portal = null;                                                                                                //current user portal
+//    @Transient private Portal portal = null;                                                                                                //current user portal
+    @Transient private Building currBld = null;                                                                                                //current user portal
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -315,6 +316,8 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
+        Portal portal = (Portal) currBld;
+
         if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
             portal.setDs(NumberUtils.toInt(ds));                                                                                            //set a new discount
             sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));
@@ -406,8 +409,9 @@ public class User {
             return;
         }
 
-        portal = Portal.getPortal(getBuilding().getId());                                                                                   //init the portal the user is entering
-        sendMsg(portal.prXml());                                                                                                            //user entered a portal, sending info about that portal, its routes and warehouse items
+//        portal = Portal.getPortal(getBuilding().getId());                                                                                   //init the portal the user is entering
+        currBld = Portal.getPortal(getBuilding().getId());                                                                                  //init the portal the user is entering
+        sendMsg(((Portal)currBld).prXml());                                                                                                 //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
 
@@ -436,6 +440,8 @@ public class User {
 
     public void com_BK() {
 
+        currBld = Bank.getBank(getBuilding().getId());
+        sendMsg(((Bank)currBld).bkXml());
         return;
     }
 

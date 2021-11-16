@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class Bank extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.cost3, Params.free);
+    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.free, Params.tkey);
 
     public static Bank getBank(int id) {                                                                                                    //try to get a Bank instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -33,6 +33,13 @@ public class Bank extends Building {
         }
         return new Bank();
     }
+
+    private int tkey;
+    private int cost;
+    private int cost2;
+//    private int cost3;
+    private int free;                                                                                                                       //number of available cells in bank
+
 
     protected Bank() { }
 

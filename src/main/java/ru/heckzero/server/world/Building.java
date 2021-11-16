@@ -24,7 +24,7 @@ public class Building {
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum Params {X, Y, Z, cash, txt, maxHP, HP, name, upg, maxl, repair, clan,      ds, city, p1, p2, clon, bigmap_city, bigmap_shown,   cost, cost2, cost3, free}
+    public enum Params {X, Y, Z, cash, txt, maxHP, HP, name, upg, maxl, repair, clan,      ds, city, p1, p2, clon, bigmap_city, bigmap_shown,   cost, cost2, cost3, free, tkey}
     private static final EnumSet<Params> bldParams = EnumSet.of(Params.X, Params.Y, Params.Z, Params.txt, Params.maxHP, Params.HP, Params.name, Params.upg, Params.maxl, Params.repair, Params.clan);
 
     @Transient private ItemBox itemBox = null;                                                                                              //building Item box
