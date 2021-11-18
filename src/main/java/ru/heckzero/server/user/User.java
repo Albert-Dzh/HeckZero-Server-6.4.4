@@ -18,6 +18,7 @@ import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
+import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.world.*;
 
@@ -319,7 +320,10 @@ public class User {
         Portal portal = (Portal) currBld;
 
         if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
-            portal.setDs(NumberUtils.toInt(ds));                                                                                            //set a new discount
+            if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                      //set a new discount
+                disconnect();
+                return;
+            }
             sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));
             return;
         }
@@ -362,8 +366,8 @@ public class User {
             int hz = dstPortal.getName();
             int ROOM = route.getROOM();
 
-            decMoney(ItemsDct.MONEY_COPP, cost);                                                                                            //decrease money from user
-            if (!portal.addMoney(cost)) {                                                                                                   //add money to portal's cash
+            decMoney(cost);                                                                                                                 //decrease money from user
+            if (!currBld.addMoney(cost)) {                                                                                                  //add money to portal's cash
                 disconnect(UserManager.ErrCodes.SRV_FAIL);
                 return;
             }
@@ -409,7 +413,6 @@ public class User {
             return;
         }
 
-//        portal = Portal.getPortal(getBuilding().getId());                                                                                   //init the portal the user is entering
         currBld = Portal.getPortal(getBuilding().getId());                                                                                  //init the portal the user is entering
         sendMsg(((Portal)currBld).prXml());                                                                                                 //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
@@ -438,7 +441,36 @@ public class User {
         return;
     }
 
-    public void com_BK() {
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p) {
+        Bank bank = (Bank)currBld;
+
+        if (get > 0) {                                                                                                                      //take money from bank's cash
+            int cashTaken = currBld.decMoney(get);                                                                                          //take money from building
+            addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                       //add money to user
+            sendMsg("<BK code=\"0\"/>");
+            return;
+        }
+
+        if (put > 0) {                                                                                                                      //put money to bank's cash
+            decMoney(put);                                                                                                                  //get money from user
+            if (!currBld.addMoney(put))                                                                                                     //add money to building
+                disconnect();
+            sendMsg("<BK code=\"0\"/>");
+            return;
+        }
+
+        if (cost >= 0 && cost2 >= 0) {                                                                                                      //save bank cost settings
+            if (!bank.setCost(cost, cost2))
+                disconnect();
+            return;
+        }
+
+        if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user byes a new cell
+            Item bankKey = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);
+            logger.info(bankKey);
+            return;
+        }
+
 
         currBld = Bank.getBank(getBuilding().getId());
         sendMsg(((Bank)currBld).bkXml());
@@ -612,7 +644,9 @@ public class User {
         return;
     }
 
-    synchronized public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                               //decrease user money
+    public void decMoney(double amount) { decMoney(ItemsDct.MONEY_COPP, amount);}
+    public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                                            //decrease user money
+    public void addMoney(double amount) { addMoney(ItemsDct.MONEY_COPP, amount);}
     synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
             default -> Params.cup_0;

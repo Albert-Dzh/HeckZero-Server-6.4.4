@@ -36,7 +36,7 @@ public class UserLevelData {
 
     public UserLevelData() { }
 
-    private static void ensureInitialized() {                                                                                               //make sure list of UserLevel objects initialized
+    private static void ensureInitialized() {                                                                                               //make sure that the list of UserLevel objects is initialized
         if (initialized.compareAndSet(false, true)) {
             try (Session ses = ServerMain.sessionFactory.openSession()) {
                 List<UserLevelData> levels = ses.createQuery("select u from UserLevel u", UserLevelData.class).list();

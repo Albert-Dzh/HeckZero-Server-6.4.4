@@ -82,7 +82,7 @@ public class Portal extends Building {
     public int getDs()      {return ds;}                                                                                                    //discount for citizens of the 'city' which are flying to that portal
     public String getP2()   {return p2;}
 
-    public void setDs(int ds) {this.ds = ds; sync();}
+    public boolean setDs(int ds) {this.ds = ds; return sync();}
 
     private String getXmlRoutes() {return routes.stream().filter(PortalRoute::isEnabled).map(PortalRoute::getXml).collect(Collectors.joining());} //portal routes XML formatted in <O />
 

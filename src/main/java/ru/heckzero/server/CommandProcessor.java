@@ -143,7 +143,13 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private void com_GAME_BK(Attributes attrs) {                                                                                            //bank workflow
-        user.com_BK();
+        int put = NumberUtils.toInt(attrs.getValue("put"));
+        int get = NumberUtils.toInt(attrs.getValue("get"));
+        int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);
+        int cost2 = NumberUtils.toInt(attrs.getValue("cost2"), -1);
+        int buy = NumberUtils.toInt(attrs.getValue("buy"));
+        String p = attrs.getValue("p");
+        user.com_BK(put, get, cost, cost2, buy, p);
         return;
     }
 

@@ -12,8 +12,4 @@ public class ItemsDct {
     public static final int SUB_TYPE_RES_METALS = 191;
     public static final int SUB_TYPE_RES_PREC_METALS = 192;
     public static final int SUB_TYPE_RES_POLI_METALS = 193;
-
-    public static Item getSampleRes(int res){
-        return null;
-    }
 }

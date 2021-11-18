@@ -40,7 +40,7 @@ public class Item implements Cloneable {
     private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.made, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.range, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
     @SuppressWarnings("unchecked")
-    public static long getNextGlobalId() {                                                                                                 //get next main id for the item from the sequence
+    public static long getNextGlobalId() {                                                                                                  //get next main id for the item from the sequence
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery<Long> query = session.createSQLQuery("select nextval('main_id_seq') as nextval").addScalar("nextval", LongType.INSTANCE);
             return query.getSingleResult();
@@ -81,7 +81,7 @@ public class Item implements Cloneable {
     private long pid = -1;                                                                                                                  //parent item id (-1 means no parent, a master item)
     private String name = "foobar";                                                                                                         //item name in a client (.swf and sprite)
     private String txt = "Unknown";                                                                                                         //item text representation for human
-    private int massa;                                                                                                                      //item weight
+    private String massa;                                                                                                                   //item weight
     private String st;                                                                                                                      //slots- appropriate slots this item can be wear on
     private String made;                                                                                                                    //made by
     private String min;                                                                                                                     //minimal requirements
@@ -123,9 +123,8 @@ public class Item implements Cloneable {
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
 
     protected Item() { }
-    public Item(long id, double type) {this.id = id; this.type = type;}
 
-    public Item(ItemTemplate itmpl) {                                                                                                       //create an Item from ItemTemplate
+    public Item(ItemTemplate itmpl) {                                                                                                       //create (clone) an Item from ItemTemplate
         Field[ ] tmplFields = ItemTemplate.class.getDeclaredFields();
         Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
             try {
@@ -163,6 +162,7 @@ public class Item implements Cloneable {
     public void resetParams(Set<Item.Params> resetParams, boolean sync) {resetParams.forEach(p -> resetParam(p, sync));}
 
     public boolean setId(long id, boolean sync)      {return setParam(Params.id, id, sync);}
+    public boolean setGlobalId(boolean sync) {return setId(getNextGlobalId(), sync);}
     synchronized public boolean setCount(int count, boolean sync) {return setParam(Params.count, count, sync);}                             //set item count
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
