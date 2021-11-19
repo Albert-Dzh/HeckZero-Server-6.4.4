@@ -464,15 +464,10 @@ public class User {
         }
 
         if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user byes a new cell
-            BankCell bankCell = new BankCell(getBuilding().getId(), id, p);
-            if (!bankCell.sync()) {
+            Item key = BankCell.createCell(bank, id, p);                                                                                    //create a cell and a new key item for that cell
+            if (key == null)
                 disconnect();
-                return;
-            }
-            logger.info("cell id %d synced", bankCell.getId());
-
-//            Item bankKey = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);
-//            logger.info(bankKey);
+            addSendItem(key);                                                                                                               //add the cell key to the user item box and send the key-item description to him
             return;
         }
 

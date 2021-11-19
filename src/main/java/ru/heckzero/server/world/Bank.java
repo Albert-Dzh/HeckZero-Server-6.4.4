@@ -3,6 +3,7 @@ package ru.heckzero.server.world;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ParamUtils;
@@ -25,7 +26,9 @@ public class Bank extends Building {
     public static Bank getBank(int id) {                                                                                                    //try to get a Bank instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Bank> query = session.createQuery("select b from Bank b where b.id = :id", Bank.class).setParameter("id", id).setCacheable(true);
-            return query.getSingleResult();
+            Bank bank = query.getSingleResult();
+            Hibernate.initialize(bank.getLocation());                                                                                       //need by bank cells to get bank coordinates
+            return bank;
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load bank with id %d from database: %s", id, e.getMessage());
         }

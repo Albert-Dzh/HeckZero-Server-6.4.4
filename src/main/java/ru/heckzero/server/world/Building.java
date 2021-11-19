@@ -41,12 +41,12 @@ public class Building {
     private String txt = "!!!STUB!!!";                                                                                                      //the building visible name
     @Column(name = "\"maxHP\"") private String maxHP;
     @Column(name = "\"HP\"") private String HP;
-    private int name = 188;                                                                                                                 //building type - ruins by default
+    private int name = 188;                                                                                                                 //building type - "ruins" by default
     private String upg;
     private String maxl;
     private String repair;
     private String clan;                                                                                                                    //clan which owns the building
-    private int cash;
+    private int cash;                                                                                                                       //amount of money stored in building cash
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "l_id")
@@ -57,10 +57,10 @@ public class Building {
     public boolean isEmpty() {return id == null;}
 
     public Integer getId() { return id; }
-    public int getX() {return location.getX();}
-    public int getY() {return location.getY();}
-    public int getZ() {return Z; }
-    public int getName() {return name;}
+    public int getX()      {return location.getX();}
+    public int getY()      {return location.getY();}
+    public int getZ()      {return Z; }
+    public int getName()   {return name;}
     public String getTxt() {return txt;}
 
     public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to

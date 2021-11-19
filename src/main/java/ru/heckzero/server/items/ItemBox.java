@@ -74,10 +74,11 @@ public class ItemBox implements Iterable<Item> {
             dstBox.changeOne(joinable.getId(), Item.Params.count, joinable.getCount() + (count > 0 ? count : item.getCount()));             //increase joinable item by count before deletion invalidates our L2 cache to prevent redundant select of joinable
             if (count > 0 && count < item.getCount())                                                                                       //check if we should decrease or delete the source item from user's item box
                 return item.decrease(count, needSync);
-            return delItem(id);                                                                                                             //item will be deleted from user item box and db, which invalidates L2 cache
+            else
+                return delItem(id);                                                                                                         //item will be deleted from user item box and db, which invalidates L2 cache
         }
 
-        logger.info("can't find an item to join our item into, will split the item");
+        logger.info("can't find an item to join our item with, will split the item");
         item = getSplitItem(id, count, false, newId);
         if (item == null)
             return false;

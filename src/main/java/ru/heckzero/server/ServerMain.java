@@ -47,11 +47,12 @@ public class ServerMain {
     private static final Integer DEF_MAX_WORKER_THREADS = 8;                                                                                //MAX threads in EventExecutorGroup for the offloading EventLoop threads
     private static final String DEF_LISTEN_HOST = "0.0.0.0";                                                                                //default IP (host) to listen may be IP or FQDN
     private static final Integer DEF_LISTEN_PORT = 5190;                                                                                    //default port to listen
-    private static final Integer DEF_MAX_PACKET_SIZE = 26500;                                                                                //max packet length to parse by DelimiterBasedFrameDecoder handler
+    private static final Integer DEF_MAX_PACKET_SIZE = 26500;                                                                               //max packet length to parse by DelimiterBasedFrameDecoder handler
     private static final Integer DEF_MAX_SOCKET_IDLE_TIME = 5;                                                                              //default socket(non an authorized user) idle timeout (sec)
     public static final Integer DEF_MAX_USER_IDLE_TIME = 32;                                                                                //Max user timeout
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
     public static final Integer DEF_USER_CACHE_TIMEOUT = 600;                                                                               //users cache timout after which it will be purged
+    public static final int ONE_MES = 2678400;                                                                                              //seconds in 1 month (by timezero)
 
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "hibernate.cfg.xml");
