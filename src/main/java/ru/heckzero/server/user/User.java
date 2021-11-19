@@ -18,7 +18,6 @@ import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
-import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.world.*;
 
@@ -74,8 +73,7 @@ public class User {
     @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized upon a first access
 
     @Transient private Arsenal arsenal = null;                                                                                              //current user arsenal
-//    @Transient private Portal portal = null;                                                                                                //current user portal
-    @Transient private Building currBld = null;                                                                                                //current user portal
+    @Transient private Building currBld = null;                                                                                             //current user building
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_generator_sequence")
@@ -466,8 +464,15 @@ public class User {
         }
 
         if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user byes a new cell
-            Item bankKey = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);
-            logger.info(bankKey);
+            BankCell bankCell = new BankCell(getBuilding().getId(), id, p);
+            if (!bankCell.sync()) {
+                disconnect();
+                return;
+            }
+            logger.info("cell id %d synced", bankCell.getId());
+
+//            Item bankKey = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);
+//            logger.info(bankKey);
             return;
         }
 

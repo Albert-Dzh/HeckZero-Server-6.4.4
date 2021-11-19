@@ -121,7 +121,7 @@ public class ServerMain {
         ServiceRegistry serviceRegistry = standardServiceRegistryBuilder.build();                                                           //continue hibernate bootstrapping
 
         MetadataSources sources = new MetadataSources(serviceRegistry).
-                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(Bank.class).
+                addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(Bank.class).addAnnotatedClass(BankCell.class).
                 addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(ItemTemplate.class).addAnnotatedClass(ArsenalLoot.class).
                 addAnnotatedClass(UserLevelData.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
@@ -132,15 +132,18 @@ public class ServerMain {
 
     public static boolean sync(Object entity) {
         Transaction tx = null;
-        logger.debug("saving an entity of type: %s", entity.getClass().getSimpleName());
+        logger.debug("persisting an entity of type: %s", entity.getClass().getSimpleName());
         try (Session session = sessionFactory.openSession()) {
             tx  = session.beginTransaction();
             session.saveOrUpdate(entity);
             tx.commit();
         }catch (Exception e) {
-            if (tx != null && tx.isActive())
-                tx.rollback();
-            logger.error("can't save entity %s: %s:%s", entity.toString(), e.getClass().getSimpleName(), e.getMessage());
+            logger.error("can't persist an entity %s: %s:%s", entity.toString(), e.getClass().getSimpleName(), e.getMessage());
+            if (tx != null && tx.isActive()) {
+                try {
+                    tx.rollback();
+                }catch (Exception ex) {logger.error("can't rollback transaction: %s:%s", ex.getClass().getSimpleName(), ex.getMessage());}
+            }
             return false;
         }
         return true;
