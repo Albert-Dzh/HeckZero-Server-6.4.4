@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 public class ItemBox implements Iterable<Item> {
     private static final Logger logger = LogManager.getFormatterLogger();
-    public enum boxType {USER, BUILDING}
+    public enum boxType {USER, BUILDING, BANK_CELL}
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
     private boolean needSync = false;
 

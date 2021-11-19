@@ -27,6 +27,7 @@ import java.util.stream.LongStream;
 
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id order by i.id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i where i.b_id = :id order by i.id", cacheable = false)
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i where i.cell_id = :id order by i.cell_id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
 @Entity(name = "Item")
@@ -118,6 +119,8 @@ public class Item implements Cloneable {
     private String slot = StringUtils.EMPTY;                                                                                                //user's slot this item is on
 
     private Integer b_id;                                                                                                                   //building id this item belongs to
+    private Integer cell_id;                                                                                                                //bank cell id
+
 
     @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //does the item need to be synced with db
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
@@ -139,7 +142,7 @@ public class Item implements Cloneable {
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
-    public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                          //item is a building owner key
+    public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                     //item is a building owner key
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
 

@@ -439,7 +439,7 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p) {
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell) {
         Bank bank = (Bank)currBld;
 
         if (get > 0) {                                                                                                                      //take money from bank's cash
@@ -471,8 +471,24 @@ public class User {
             return;
         }
 
+        if (go == 1 && sell >=0  && StringUtils.isNotBlank(p)) {                                                                            //opening a cell id 'sell'
+            BankCell cell = BankCell.getBankCell(sell);                                                                                     //get cell data by id from database
+            if (cell == null) {
+                disconnect();
+                return;
+            }
+            String cryptedCellPass = (UserManager.encrypt((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get(), cell.getPassword()));
+            if (!p.equals(cryptedCellPass)) {                                                                                               //cell password doesn't match
+                sendMsg("<BK code=\"1\"/>");
+                return;
+            }
+            sendMsg(cell.cellXml());
+//            sendMsg("<BK sell=\"1\"/>");
+            return;
+        }
 
         currBld = Bank.getBank(getBuilding().getId());
+        ((Bank)currBld).setKey((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get());
         sendMsg(((Bank)currBld).bkXml());
         return;
     }

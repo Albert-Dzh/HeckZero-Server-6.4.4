@@ -148,8 +148,11 @@ public class CommandProcessor extends DefaultHandler {
         int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);
         int cost2 = NumberUtils.toInt(attrs.getValue("cost2"), -1);
         int buy = NumberUtils.toInt(attrs.getValue("buy"));
+        int go = NumberUtils.toInt(attrs.getValue("go"));
+        int sell = NumberUtils.toInt(attrs.getValue("sell"), -1);
         String p = attrs.getValue("p");
-        user.com_BK(put, get, cost, cost2, buy, p);
+
+        user.com_BK(put, get, cost, cost2, buy, p, go, sell);
         return;
     }
 

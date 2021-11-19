@@ -3,13 +3,17 @@ package ru.heckzero.server.world;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemTemplate;
 
 import javax.persistence.*;
 import java.time.Instant;
+import java.util.StringJoiner;
 
 @Entity(name = "BankCell")
 @Table(name = "bank_cells")
@@ -34,6 +38,18 @@ public class BankCell {
         key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
         return key;
     }
+
+    public static BankCell getBankCell(int id) {                                                                                            //try to get a Bank cell instance by building id
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<BankCell> query = session.createQuery("select c from BankCell c where c.id = :id", BankCell.class).setParameter("id", id).setCacheable(true);
+            return query.getSingleResult();
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't load bank cell with id %d from database: %s", id, e.getMessage());
+        }
+        return null;
+    }
+
+    @Transient ItemBox itemBox = null;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "bank_cell_generator_sequence")
@@ -61,6 +77,9 @@ public class BankCell {
     public boolean isBlocked() {return block == 1;}                                                                                         //is the cell blocked
     public int getId()  {return id;}
     public long getDt() {return dt;}
+    public String getPassword() {return password;}
+
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.boxType.BANK_CELL, id, true)) : itemBox;}          //get the building itembox, initialize if needed
 
     public boolean block() {this.block = 1; return sync();}                                                                                 //block the cell
     public boolean unblock() {this.block = 0; return sync();}                                                                               //unblock the cell
@@ -72,6 +91,12 @@ public class BankCell {
         }
         logger.info("synced bank cell %s", this);
         return true;
+    }
+
+    public String cellXml() {                                                                                                                 //XML formatted bank data
+        StringJoiner sj = new StringJoiner("", "<BK sell=\"1\">", "</BK>");
+        sj.add(getItemBox().getXml());
+        return sj.toString();
     }
 
     @Override

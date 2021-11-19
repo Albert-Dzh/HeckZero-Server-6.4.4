@@ -12,6 +12,7 @@ import ru.heckzero.server.ServerMain;
 import javax.persistence.Entity;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import java.util.EnumSet;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class Bank extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.free, Params.tkey);
+    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.free, Params.tkey, Params.key);
 
     public static Bank getBank(int id) {                                                                                                    //try to get a Bank instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -35,6 +36,7 @@ public class Bank extends Building {
         return new Bank();
     }
 
+    @Transient private String key;
     private int tkey;                                                                                                                       //does bank offer cells for free
     private int cost;                                                                                                                       //new cell cost
     private int cost2;                                                                                                                      //monthly cell rent
@@ -45,6 +47,7 @@ public class Bank extends Building {
 
     public boolean setCost(int cost, int cost2) {this.cost = cost; this.cost2 = cost2; return sync();}                                      //set cost settings
     public boolean setFree(int free) {this.free = free; return sync();}
+    public void setKey(String key) {this.key = key; }
 
     @Override
     protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()).transform(s -> s.startsWith("cash") ? s.replace("cash", "cash1") : s);}

@@ -270,14 +270,14 @@ public class UserManager {                                                      
         return true;
     }
 
-    private static String encrypt(String key, String msg) {
+    public static String encrypt(String key, String msg) {
         int [] shuffle_indexes = {35, 6, 4, 25, 7, 8, 36, 16, 20, 37, 12, 31, 39, 38, 21, 5, 33, 15, 9, 13, 29, 23, 32, 22, 2, 27, 1, 10, 30, 24, 0, 19, 26, 14, 18, 34, 17, 28, 11, 3};
         try {
             MessageDigest sha1 = MessageDigest.getInstance("SHA-1");                                                                        //get a SHA-1 encryptor
             String passKey = msg.charAt(0) + key.substring(0, 10) + msg.substring(1) + key.substring(10);                                   //compose the string to be hashed
             String passKey_SHA1 = ByteBufUtil.hexDump(sha1.digest(passKey.getBytes(StandardCharsets.UTF_8))).toUpperCase();                 //cipher the string with SHA-1
             return IntStream.range(0, 40).mapToObj(i -> passKey_SHA1.charAt(ArrayUtils.indexOf(shuffle_indexes, i))).map(String::valueOf).collect(Collectors.joining());
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException | IndexOutOfBoundsException e) {
             logger.error("encrypt: %s", e.getMessage());
         }
         return null;
