@@ -79,7 +79,7 @@ public class BankCell {
     public long getDt() {return dt;}
     public String getPassword() {return password;}
 
-    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.boxType.BANK_CELL, id, true)) : itemBox;}          //get the building itembox, initialize if needed
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id, true)) : itemBox;}          //get the building itembox, initialize if needed
 
     public boolean block() {this.block = 1; return sync();}                                                                                 //block the cell
     public boolean unblock() {this.block = 0; return sync();}                                                                               //unblock the cell

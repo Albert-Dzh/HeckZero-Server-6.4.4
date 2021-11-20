@@ -156,7 +156,7 @@ public class User {
         return;
     }
 
-    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.boxType.USER, id, true));}              //return user itembox,init it if necessary
+    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id, true));}              //return user itembox,init it if necessary
     public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", 1000000);}                                    //get user weight tk - current, max - maximum, considering the prof influence
     public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
 

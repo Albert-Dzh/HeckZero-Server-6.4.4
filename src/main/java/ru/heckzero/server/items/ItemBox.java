@@ -14,18 +14,18 @@ import java.util.stream.Collectors;
 
 public class ItemBox implements Iterable<Item> {
     private static final Logger logger = LogManager.getFormatterLogger();
-    public enum boxType {USER, BUILDING, BANK_CELL}
+    public enum BoxType {USER, BUILDING, BANK_CELL}
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
     private boolean needSync = false;
 
-    public static ItemBox init(boxType boxType, int id, boolean needSync) {
+    public static ItemBox init(BoxType boxType, int id, boolean needSync) {
         ItemBox itemBox = new ItemBox(needSync);                                                                                            //needSync - if a returned ItemBox has to sync its items with a db
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id).setCacheable(true);
             List<Item> items = query.list();
             itemBox.load(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load ItemBox type %s by id %d from database: %s:%s, an empty ItemBox will be returned", boxType, id, e.getClass().getSimpleName(), e.getMessage());
+            logger.error("can't load ItemBox type %s by id %d from database: %s:%s, an empty ItemBox will be returned", boxType.toString(), id, e.getClass().getSimpleName(), e.getMessage());
         }
         return itemBox;
     }
@@ -38,7 +38,7 @@ public class ItemBox implements Iterable<Item> {
     public boolean isEmpty() {return items.isEmpty();}
 
     public void load(List<Item> items) {
-        List <Item> included = items.stream().filter(Item::isIncluded).toList();                                                            //get all child items in the list
+        List<Item> included = items.stream().filter(Item::isIncluded).toList();                                                             //get all child items in the list
         for (Item child : included) {
             Item parent = items.stream().filter(i -> i.getId() == child.getPid()).findFirst().orElseGet(Item::new);                         //find parent item for each child item
             parent.getIncluded().addItem(child);                                                                                            //add child into parent included
@@ -137,7 +137,7 @@ public class ItemBox implements Iterable<Item> {
             logger.error("can't remove item id %d from the item box because the item was not found in 1st level item list");
             return false;
         }
-        return !needSync || Item.delFromDB(id, true);                                                                                       //delete the item from database with it's included
+        return !needSync || Item.delFromDB(id, true);                                                                                       //delete the item from database with its included
     }
 
     public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId) {                                                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type

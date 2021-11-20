@@ -121,6 +121,9 @@ public class Item implements Cloneable {
     private Integer b_id;                                                                                                                   //building id this item belongs to
     private Integer cell_id;                                                                                                                //bank cell id
 
+    @OneToMany(fetch = FetchType.LAZY)                                                                                                      //built-in items, having their item.pid = item.id
+    @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
+    private List<Item> embedded = new ArrayList<>();
 
     @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //does the item need to be synced with db
     @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
