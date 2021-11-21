@@ -47,7 +47,7 @@ public class ServerMain {
     private static final Integer DEF_MAX_WORKER_THREADS = 8;                                                                                //MAX threads in EventExecutorGroup for the offloading EventLoop threads
     private static final String DEF_LISTEN_HOST = "0.0.0.0";                                                                                //default IP (host) to listen may be IP or FQDN
     private static final Integer DEF_LISTEN_PORT = 5190;                                                                                    //default port to listen
-    private static final Integer DEF_MAX_PACKET_SIZE = 26500;                                                                               //max packet length to parse by DelimiterBasedFrameDecoder handler
+    private static final Integer DEF_MAX_PACKET_SIZE = 28500;                                                                               //max packet length to parse by DelimiterBasedFrameDecoder handler
     private static final Integer DEF_MAX_SOCKET_IDLE_TIME = 5;                                                                              //default socket(non an authorized user) idle timeout (sec)
     public static final Integer DEF_MAX_USER_IDLE_TIME = 32;                                                                                //Max user timeout
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length

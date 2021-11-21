@@ -156,7 +156,7 @@ public class User {
         return;
     }
 
-    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id, true));}              //return user itembox,init it if necessary
+    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id, true));}              //return user itembox, init it if necessary
     public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", 1000000);}                                    //get user weight tk - current, max - maximum, considering the prof influence
     public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
 
@@ -412,7 +412,7 @@ public class User {
         }
 
         currBld = Portal.getPortal(getBuilding().getId());                                                                                  //init the portal the user is entering
-        sendMsg(((Portal)currBld).prXml());                                                                                                 //user entered a portal, sending info about that portal, its routes and warehouse items
+        sendMsg(((Portal)currBld).prXml(isBuildMaster(currBld)));                                                                           //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
 
@@ -483,7 +483,6 @@ public class User {
                 return;
             }
             sendMsg(cell.cellXml());
-//            sendMsg("<BK sell=\"1\"/>");
             return;
         }
 

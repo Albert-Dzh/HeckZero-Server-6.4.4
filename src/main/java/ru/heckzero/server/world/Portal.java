@@ -104,11 +104,12 @@ public class Portal extends Building {
         return sj.toString();
     }
 
-    public String prXml() {                                                                                                                 //XML formatted portal data including routes and warehouse items
+    public String prXml(boolean withWh) {                                                                                                   //XML formatted portal data including routes and warehouse items
         StringJoiner sj = new StringJoiner("", "", "</PR>");
         sj.add(portalParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<PR ", ">"))); //add XML portal params
         sj.add(getXmlRoutes());                                                                                                             //add XML portal routes
-        sj.add(getItemBox().getXml());                                                                                                      //add portal warehouse items (resources)
+        if (withWh)                                                                                                                         //if we should add warehouse content
+            sj.add(getItemBox().getXml());                                                                                                  //add portal warehouse items (resources)
         return sj.toString();
     }
 

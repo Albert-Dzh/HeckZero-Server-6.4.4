@@ -6,6 +6,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
@@ -25,7 +26,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select i from Item i where i.user_id = :id order by i.id", cacheable = false)
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.embedded where i.user_id = :id order by i.id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i where i.b_id = :id order by i.id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i where i.cell_id = :id order by i.cell_id", cacheable = false)
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
@@ -79,7 +80,7 @@ public class Item implements Cloneable {
     @Id
     private long id;
 
-    private long pid = -1;                                                                                                                  //parent item id (-1 means no parent, a master item)
+    private Long pid;                                                                                                                       //parent item id (-1 means no parent, a master item)
     private String name = "foobar";                                                                                                         //item name in a client (.swf and sprite)
     private String txt = "Unknown";                                                                                                         //item text representation for human
     private String massa;                                                                                                                   //item weight
@@ -121,12 +122,12 @@ public class Item implements Cloneable {
     private Integer b_id;                                                                                                                   //building id this item belongs to
     private Integer cell_id;                                                                                                                //bank cell id
 
-    @OneToMany(fetch = FetchType.LAZY)                                                                                                      //built-in items, having their item.pid = item.id
+    @OneToMany(fetch = FetchType.LAZY)                                                                                                      //built-in items having item.pid = item.id
     @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
-    private List<Item> embedded = new ArrayList<>();
+    private final List<Item> embedded = new ArrayList<>();
 
     @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //does the item need to be synced with db
-    @Transient private ItemBox included = new ItemBox();                                                                                    //included items have pid = this.id
+    @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid = this.id
 
     protected Item() { }
 
@@ -183,7 +184,9 @@ public class Item implements Cloneable {
     public String getXml(boolean withIncluded) {
         StringJoiner sj = new StringJoiner("", "", "</O>");
         sj.add(itemParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<O ", ">")));
-        sj.add(withIncluded ? included.getXml() : StringUtils.EMPTY);
+//        sj.add(withIncluded ? included.getXml() : StringUtils.EMPTY);
+        if (withIncluded)
+            sj.add(embedded.stream().map(i -> i.getXml(false)).collect(Collectors.joining()));
         return sj.toString();
     }
 
@@ -246,5 +249,5 @@ public class Item implements Cloneable {
     }
 
     @Override
-    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", needSync=" + needSync + ", included=" + getIncluded().itemsIds() + "}"; }
+    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", needSync=" + needSync + ", included=" + (Hibernate.isInitialized(embedded) ? embedded : "") + "}"; }
 }

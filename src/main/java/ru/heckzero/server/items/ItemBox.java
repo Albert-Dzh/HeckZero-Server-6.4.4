@@ -3,6 +3,7 @@ package ru.heckzero.server.items;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
+import org.hibernate.jpa.QueryHints;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
@@ -21,9 +22,9 @@ public class ItemBox implements Iterable<Item> {
     public static ItemBox init(BoxType boxType, int id, boolean needSync) {
         ItemBox itemBox = new ItemBox(needSync);                                                                                            //needSync - if a returned ItemBox has to sync its items with a db
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id).setCacheable(true);
+            Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id).setCacheable(true).setHint(QueryHints.HINT_PASS_DISTINCT_THROUGH, false);
             List<Item> items = query.list();
-            itemBox.load(items);
+            itemBox.items.addAll(items);
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load ItemBox type %s by id %d from database: %s:%s, an empty ItemBox will be returned", boxType.toString(), id, e.getClass().getSimpleName(), e.getMessage());
         }
@@ -37,16 +38,6 @@ public class ItemBox implements Iterable<Item> {
 
     public boolean isEmpty() {return items.isEmpty();}
 
-    public void load(List<Item> items) {
-        List<Item> included = items.stream().filter(Item::isIncluded).toList();                                                             //get all child items in the list
-        for (Item child : included) {
-            Item parent = items.stream().filter(i -> i.getId() == child.getPid()).findFirst().orElseGet(Item::new);                         //find parent item for each child item
-            parent.getIncluded().addItem(child);                                                                                            //add child into parent included
-        }
-        items.removeAll(included);                                                                                                          //remove all child items from the list course they all are included in their parents
-        this.items.addAll(items);
-        return;
-    }
     public int size() {return items.size();}                                                                                                //number of 1-st level items in the box
 
     public boolean addItem(Item item)  {return this.items.addIfAbsent(item) && (!needSync || item.sync());}                                 //add one item to this ItemBox
