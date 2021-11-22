@@ -26,9 +26,9 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.embedded where i.user_id = :id order by i.id", cacheable = false)
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i where i.b_id = :id order by i.id", cacheable = false)
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i where i.cell_id = :id order by i.cell_id", cacheable = false)
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.embedded where i.user_id = :id order by i.id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i left join fetch i.embedded where i.b_id = :id order by i.id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i left join fetch i.embedded where i.cell_id = :id order by i.cell_id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
 @Entity(name = "Item")
@@ -127,7 +127,7 @@ public class Item implements Cloneable {
     private final List<Item> embedded = new ArrayList<>();
 
     @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //does the item need to be synced with db
-    @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid = this.id
+//    @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid = this.id
 
     protected Item() { }
 
@@ -141,7 +141,7 @@ public class Item implements Cloneable {
         return;
     }
 
-    public boolean isIncluded()   {return pid != -1;}                                                                                       //item is an included one itself (it has pid = parent.id)
+    public boolean isIncluded()   {return pid != null && pid != -1;}                                                                        //item is an included one itself (it has pid = parent.id)
     public boolean isExpired()    {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //item is expired (has dt < now)
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
@@ -155,7 +155,7 @@ public class Item implements Cloneable {
     public int getCount() {return getParamInt(Params.count);}                                                                               //item count - 0 if item is not stackable
     public int getBaseType() {return (int)Math.floor(getParamDouble(Params.type));}                                                         //get the base type of the item
 
-    public ItemBox getIncluded() {return included;}
+//    public ItemBox getIncluded() {return included;}
 
     synchronized public boolean setParam(Params paramName, Object paramValue, boolean sync) {                                               //set an item param to paramValue
         if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
@@ -179,7 +179,12 @@ public class Item implements Cloneable {
     private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                     //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
 
-    public int getTotalMass() {return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + included.getMass();}                        //return item weight with all included items
+//    public int getTotalMass() {return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + included.getMass();}                        //return item weight with all included items
+    public int getTotalMass() {
+//        return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + (Hibernate.isInitialized(embedded) ? embedded.stream().mapToInt(Item::getTotalMass).sum() : 0);
+        return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + embedded.stream().mapToInt(i -> i.getParamInt(Params.massa) * NumberUtils.toInt(i.count, 1)).sum();
+    }
+
     public String getXml() {return getXml(true);}
     public String getXml(boolean withIncluded) {
         StringJoiner sj = new StringJoiner("", "", "</O>");
@@ -190,15 +195,18 @@ public class Item implements Cloneable {
         return sj.toString();
     }
 
-    public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this is the item or one of the included items, or null
+//    public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this is the item or one of the included items, or null
+    public Item findItem(long id) {return this.id == id ? this : embedded.stream().filter(i -> i.getId() == id).findFirst().orElse(null);}
 
     public ItemBox findItems(Predicate<Item> predicate) {                                                                                   //find items that match predicate
         ItemBox box = new ItemBox();
-        if (predicate.test(this))
+        if (predicate.test(this))                                                                                                           //check if this (parent) item conforms the predicate
             box.addItem(this);
-        box.addAll(included.findItems(predicate));
+        box.addAll(embedded.stream().filter(predicate).toList());                                                                           //check if included items conform the predicate and add to the resulting box
         return box;
     }
+    public boolean removeSub(long id) {return embedded.removeIf(i -> i.getId() == id);}
+
     public boolean unload(boolean sync) {return setParam(Params.pid, -1, sync);}                                                            //set an item as a master item
     public boolean decrement(boolean sync) {return decrease(1, sync);}
     public boolean increase(int num, boolean sync) {return setParam(Params.count, getCount() + num, sync);}                                 //increase item count by num
@@ -224,10 +232,9 @@ public class Item implements Cloneable {
     @Override
     public Item clone() {                                                                                                                   //guess what?
         try {
-            Item cloned = (Item) super.clone();                                                                                             //clone primitive fields by super.clone()
+            Item cloned = (Item)super.clone();                                                                                              //clone primitive fields by super.clone()
             cloned.needSync = new AtomicBoolean(false);                                                                                     //we don't want the new item to share needSync with the source item
-            cloned.included = new ItemBox();                                                                                                //item box should be created and populated by cloned items recursively
-            this.included.forEach(i -> cloned.included.addItem(i.clone()));
+            cloned.embedded.clear();
             return cloned;
         }catch (CloneNotSupportedException e) {
             logger.error("can't clone item: %s", e.getMessage());
@@ -245,7 +252,8 @@ public class Item implements Cloneable {
             }
         } else
             logger.error("skipping syncing item %s cause it hasn't been changed", this);
-        return included.sync();                                                                                                             //sync included items
+
+        return embedded.stream().filter(i -> i.needSync.compareAndSet(true, false) || force).map(ServerMain::sync).allMatch(Predicate.isEqual(true));
     }
 
     @Override

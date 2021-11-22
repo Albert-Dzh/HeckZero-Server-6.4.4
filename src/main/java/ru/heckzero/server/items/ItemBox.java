@@ -40,8 +40,9 @@ public class ItemBox implements Iterable<Item> {
 
     public int size() {return items.size();}                                                                                                //number of 1-st level items in the box
 
-    public boolean addItem(Item item)  {return this.items.addIfAbsent(item) && (!needSync || item.sync());}                                 //add one item to this ItemBox
-    public boolean addAll(ItemBox box) {return box.items.stream().map(this::addItem).allMatch(Predicate.isEqual(true));}                    //add all items(shallow copy) from box to this ItemBox
+    public boolean addItem(Item item)    {this.items.add(item); return (!needSync || item.sync());}                                         //add one item to this ItemBox
+    public boolean addAll(ItemBox box)      {this.items.addAll(box.items); return (!needSync || sync());}                                   //add all items(shallow copy) from box to this ItemBox
+    public boolean addAll(List<Item> items) {this.items.addAllAbsent(items); return (!needSync || sync());}
 
     public List<Long> itemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                           //get items IDs of the 1st level items
 
@@ -106,10 +107,10 @@ public class ItemBox implements Iterable<Item> {
     public boolean delItem(long id) {                                                                                                       //delete an item from the box or from the parent's included item box
         Item item = findItem(id);                                                                                                           //try to find an item by id
         if (item == null) {
-            logger.error("can't delete item id %d because it was not found in itembox", id);
+            logger.error("can't delete item id %d because it was not found in the itembox", id);
             return false;
         }
-        if (!item.findItems(Item::isNoTransfer).isEmpty()) {                                                                                //deleting is forbidden, item or one of its included has nt = 1
+        if (!item.findItems(Item::isNoTransfer).isEmpty()) {                                                                                //deleting item is forbidden, item or one of its included has nt set to 1
             logger.info("can't delete item id %d, because it or one of its included has no transfer flag set");
             return false;
         }
@@ -120,7 +121,7 @@ public class ItemBox implements Iterable<Item> {
                 logger.error("can't delete item id %d because it's included and item's parent item id %d was not found", item.getPid(), id);
                 return false;
             }
-            if (!parent.getIncluded().items.remove(item)) {                                                                                 //remove the item from the parent's included item box
+            if (!parent.removeSub(item.getId())) {                                                                                         //remove the item from the parent's included item box
                 logger.error("can't delete item id %d from parent item id %d, the parent included items do not contain the item", id, parent.getId());
                 return false;
             }

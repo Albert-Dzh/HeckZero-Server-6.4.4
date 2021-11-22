@@ -121,7 +121,7 @@ public class Portal extends Building {
             if (res[i].isEmpty())                                                                                                           //res doesn't contain resource of number i
                 continue;
             Item item = getItemBox().findItemByType(Double.parseDouble(String.format("0.19%d", i + 1)));                                    //find needed resource on portal warehouse
-            int requiredRes = NumberUtils.toInt(res[i]) * userWeight / 1000;                                                                //needed resource count to teleportation
+            int requiredRes = NumberUtils.toInt(res[i]) * userWeight / 1000;                                                                //compute resource amount required for teleportation
             if (item == null || item.getCount() < requiredRes) {
                 logger.warn("portal id %d %s has got not enough resources of type %d, (needed %d, has got %d)", getId(), getTxt(), i + 1, requiredRes, item == null ? 0 : item.getCount());
                 return false;
