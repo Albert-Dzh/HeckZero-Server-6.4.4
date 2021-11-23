@@ -2,7 +2,6 @@ package ru.heckzero.server.items;
 
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,15 +19,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.embedded where i.user_id = :id order by i.id")
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i left join fetch i.embedded where i.b_id = :id order by i.id")
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i left join fetch i.embedded where i.cell_id = :id order by i.cell_id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.included where i.user_id = :id order by i.id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i left join fetch i.included where i.b_id = :id order by i.id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i left join fetch i.included where i.cell_id = :id order by i.cell_id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
 @Entity(name = "Item")
@@ -124,10 +121,7 @@ public class Item implements Cloneable {
 
     @OneToMany(fetch = FetchType.LAZY)                                                                                                      //built-in items having item.pid = item.id
     @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
-    private final List<Item> embedded = new ArrayList<>();
-
-    @Transient private AtomicBoolean needSync = new AtomicBoolean(false);                                                                   //does the item need to be synced with db
-//    @Transient private ItemBox included = new ItemBox();                                                                                    //included items which have pid = this.id
+    private List<Item> included = new ArrayList<>();
 
     protected Item() { }
 
@@ -155,17 +149,21 @@ public class Item implements Cloneable {
     public int getCount() {return getParamInt(Params.count);}                                                                               //item count - 0 if item is not stackable
     public int getBaseType() {return (int)Math.floor(getParamDouble(Params.type));}                                                         //get the base type of the item
 
-//    public ItemBox getIncluded() {return included;}
+    public ItemBox getIncluded() {return Hibernate.isInitialized(included) ? new ItemBox(included) : new ItemBox();}                        //return included items as item box
+    public ItemBox getAllItems() {
+        ItemBox box = Hibernate.isInitialized(included) ? new ItemBox(included) : new ItemBox();
+        box.addItem(this);
+        return box;
+    }
 
     synchronized public boolean setParam(Params paramName, Object paramValue, boolean sync) {                                               //set an item param to paramValue
         if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
-            this.needSync.compareAndSet(false, true);                                                                                       //make this item is a subject for a future syncing
             return !sync || sync();
         }
         return false;
     }
     public void setParams(Map<Params, Object> params, boolean sync) {params.forEach((p, v) -> setParam(p, v, sync));}
-    public void resetParam(Params paramName, boolean sync) {setParam(paramName, null, sync);}
+    public boolean resetParam(Params paramName, boolean sync) {return setParam(paramName, null, sync);}
     public void resetParams(Set<Item.Params> resetParams, boolean sync) {resetParams.forEach(p -> resetParam(p, sync));}
 
     public boolean setId(long id, boolean sync)      {return setParam(Params.id, id, sync);}
@@ -178,36 +176,16 @@ public class Item implements Cloneable {
     public double getParamDouble(Params param) {return ParamUtils.getParamDouble(this, param.toString());}
     private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                     //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
-
-//    public int getTotalMass() {return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + included.getMass();}                        //return item weight with all included items
-    public int getTotalMass() {
-//        return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + (Hibernate.isInitialized(embedded) ? embedded.stream().mapToInt(Item::getTotalMass).sum() : 0);
-        return getParamInt(Params.massa) * NumberUtils.toInt(count, 1) + embedded.stream().mapToInt(i -> i.getParamInt(Params.massa) * NumberUtils.toInt(i.count, 1)).sum();
-    }
-
     public String getXml() {return getXml(true);}
     public String getXml(boolean withIncluded) {
         StringJoiner sj = new StringJoiner("", "", "</O>");
-        sj.add(itemParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<O ", ">")));
-//        sj.add(withIncluded ? included.getXml() : StringUtils.EMPTY);
-        if (withIncluded)
-            sj.add(embedded.stream().map(i -> i.getXml(false)).collect(Collectors.joining()));
+        sj.add(itemParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<O ", ">")));    //parent item
+        sj.add(withIncluded && Hibernate.isInitialized(included) ? included.stream().map(i -> itemParams.stream().map(i::getParamXml).filter(StringUtils::isNoneBlank).collect(Collectors.joining(" ", "<O ", "/>"))).collect(Collectors.joining()) : StringUtils.EMPTY);
         return sj.toString();
     }
 
-//    public Item findItem(long id) {return this.id == id ? this : included.findItem(id);}                                                    //this is the item or one of the included items, or null
-    public Item findItem(long id) {return this.id == id ? this : embedded.stream().filter(i -> i.getId() == id).findFirst().orElse(null);}
+    public boolean removeSub(long id) {return included.removeIf(i -> i.getId() == id);}                                                     //remove and item from included
 
-    public ItemBox findItems(Predicate<Item> predicate) {                                                                                   //find items that match predicate
-        ItemBox box = new ItemBox();
-        if (predicate.test(this))                                                                                                           //check if this (parent) item conforms the predicate
-            box.addItem(this);
-        box.addAll(embedded.stream().filter(predicate).toList());                                                                           //check if included items conform the predicate and add to the resulting box
-        return box;
-    }
-    public boolean removeSub(long id) {return embedded.removeIf(i -> i.getId() == id);}
-
-    public boolean unload(boolean sync) {return setParam(Params.pid, -1, sync);}                                                            //set an item as a master item
     public boolean decrement(boolean sync) {return decrease(1, sync);}
     public boolean increase(int num, boolean sync) {return setParam(Params.count, getCount() + num, sync);}                                 //increase item count by num
     public boolean decrease(int num, boolean sync) {                                                                                        //decrease item count by num
@@ -233,8 +211,7 @@ public class Item implements Cloneable {
     public Item clone() {                                                                                                                   //guess what?
         try {
             Item cloned = (Item)super.clone();                                                                                              //clone primitive fields by super.clone()
-            cloned.needSync = new AtomicBoolean(false);                                                                                     //we don't want the new item to share needSync with the source item
-            cloned.embedded.clear();
+            cloned.included = new ArrayList<>();
             return cloned;
         }catch (CloneNotSupportedException e) {
             logger.error("can't clone item: %s", e.getMessage());
@@ -242,20 +219,15 @@ public class Item implements Cloneable {
         return null;
     }
 
-    public boolean sync() {return sync(false);}
-    public boolean sync(boolean force) {                                                                                                    //force=true means sync the item anyway, whether needSync is true
-        if (needSync.compareAndSet(true, false) || force) {                                                                                 //sync if needSync or force is true
-            logger.info("syncing item %s", this);
-            if (!ServerMain.sync(this)) {
-                logger.error("can't sync item id %d", id);
-                return false;
-            }
-        } else
-            logger.error("skipping syncing item %s cause it hasn't been changed", this);
-
-        return embedded.stream().filter(i -> i.needSync.compareAndSet(true, false) || force).map(ServerMain::sync).allMatch(Predicate.isEqual(true));
+    public boolean sync() {                                                                                                                 //force=true means sync the item anyway, whether needSync is true
+        logger.info("syncing item %s", this);
+        if (!ServerMain.sync(this)) {
+            logger.error("can't sync item id %d", id);
+            return false;
+        }
+        return true;
     }
 
     @Override
-    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", needSync=" + needSync + ", included=" + (Hibernate.isInitialized(embedded) ? embedded : "") + "}"; }
+    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + ", pid=" + pid + ", included=" + (Hibernate.isInitialized(included) ? included : "") + "}"; }
 }

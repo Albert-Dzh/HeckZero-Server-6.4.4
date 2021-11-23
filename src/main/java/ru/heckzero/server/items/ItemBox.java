@@ -1,5 +1,4 @@
 package ru.heckzero.server.items;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
@@ -7,7 +6,10 @@ import org.hibernate.jpa.QueryHints;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -33,24 +35,20 @@ public class ItemBox implements Iterable<Item> {
 
     public ItemBox() { }
     public ItemBox(boolean needSync) {this.needSync = needSync;}
-    public ItemBox(ItemBox box) {box.items.forEach(i -> this.addItem(i.clone()));}                                                          //create an ItemBox by doing deep copy of items from box
-    public ItemBox(ItemBox box, boolean needSync) {this(box); this.needSync = needSync;}
+    public ItemBox(List<Item> items) {this.items.addAll(items);}
+
+    private ItemBox getAllItems() {return items.stream().map(Item::getAllItems).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}
 
     public boolean isEmpty() {return items.isEmpty();}
-
     public int size() {return items.size();}                                                                                                //number of 1-st level items in the box
-
-    public boolean addItem(Item item)    {this.items.add(item); return (!needSync || item.sync());}                                         //add one item to this ItemBox
-    public boolean addAll(ItemBox box)      {this.items.addAll(box.items); return (!needSync || sync());}                                   //add all items(shallow copy) from box to this ItemBox
-    public boolean addAll(List<Item> items) {this.items.addAllAbsent(items); return (!needSync || sync());}
+    public boolean addItem(Item item)       {this.items.add(item); return (!needSync || item.sync());}                                      //add one item to this ItemBox
+    public boolean addAll(ItemBox box)      {return this.items.addAll(box.items);}                                                          //add all items(shallow copy) from box to this ItemBox
 
     public List<Long> itemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                           //get items IDs of the 1st level items
 
     public String getXml()        {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                  //get XML list of items as a list of <O/> nodes with the included items
-    public Item findItem(long id) {return items.stream().map(i -> i.findItem(id)).filter(Objects::nonNull).findFirst().orElse(null);}       //find an item recursively inside the item box
-    public ItemBox findItems(Predicate<Item> predicate) {return items.stream().map(i -> i.findItems(predicate)).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}
-    public ItemBox findExpired()  {return findItems(Item::isExpired);}                                                                      //get all expired items with included ones placed in a 1st level
-
+    public Item findItem(long id) {return getAllItems().items.stream().filter(i -> i.getId() == id).findFirst().orElse(null);}              //find an item recursively inside the item box
+    public ItemBox findItems(Predicate<Item> predicate) {return getAllItems().items.stream().filter(predicate).collect(ItemBox::new, ItemBox::addItem, ItemBox::addAll);}
 
     public boolean joinMoveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox) {return joinMoveItem(id, count, noSetNewId,newId, dstBox, null, null);}
     public boolean joinMoveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox, Set<Item.Params> resetParams, Map<Item.Params, Object> setParams) {
@@ -110,7 +108,7 @@ public class ItemBox implements Iterable<Item> {
             logger.error("can't delete item id %d because it was not found in the itembox", id);
             return false;
         }
-        if (!item.findItems(Item::isNoTransfer).isEmpty()) {                                                                                //deleting item is forbidden, item or one of its included has nt set to 1
+        if (!item.getAllItems().findItems(Item::isNoTransfer).isEmpty()) {                                                                  //deleting item is forbidden, item or one of its included has nt set to 1
             logger.info("can't delete item id %d, because it or one of its included has no transfer flag set");
             return false;
         }
@@ -121,15 +119,15 @@ public class ItemBox implements Iterable<Item> {
                 logger.error("can't delete item id %d because it's included and item's parent item id %d was not found", item.getPid(), id);
                 return false;
             }
-            if (!parent.removeSub(item.getId())) {                                                                                         //remove the item from the parent's included item box
+            if (!parent.removeSub(item.getId())) {                                                                                          //remove the item from the parent's included item box
                 logger.error("can't delete item id %d from parent item id %d, the parent included items do not contain the item", id, parent.getId());
                 return false;
             }
-        }else if (!items.remove(item)) {                                                                                                    //it's a 1st level item, remove it from this item box
-            logger.error("can't remove item id %d from the item box because the item was not found in 1st level item list");
+        }else if (!items.removeIf(i ->  i.getId().equals(item.getId()))) {                                                                  //it's a 1st level item, remove it from this item box
+            logger.error("can't remove %s from the item box because it was not found in 1st level item list", item);
             return false;
         }
-        return !needSync || Item.delFromDB(id, true);                                                                                       //delete the item from database with its included
+        return !needSync || Item.delFromDB(id, true);                                                                                     //delete the item from database with its included
     }
 
     public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId) {                                                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
@@ -193,11 +191,7 @@ public class ItemBox implements Iterable<Item> {
         return item.setParam(paramName, paramValue, needSync);
     }
 
-    public int getMass() {return items.stream().mapToInt(Item::getTotalMass).sum();}                                                        //get total weight of the all items in the ItemBox
-
-    public boolean sync() {                                                                                                                 //will sync all items with db only if needSync = true
-        return !needSync || items.stream().map(Item::sync).allMatch(Predicate.isEqual(true));                                               //will return true if the stream is empty
-    }                                                                                                                                       //recursively sync all items in the ItemBox
+    public int getMass() {return getAllItems().items.stream().mapToInt(i -> i.getParamInt(Item.Params.massa) * Math.max(i.getCount(), 1)).sum();}  //get total weight of the all items in the ItemBox
 
     @Override
     public Iterator<Item> iterator() {return items.iterator();}

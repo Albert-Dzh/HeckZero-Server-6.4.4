@@ -168,7 +168,7 @@ public class User {
         this.gameChannel.pipeline().replace("socketIdleHandler", "userIdleHandler", new ReadTimeoutHandler(ServerMain.hzConfiguration.getInt("ServerSetup.MaxUserIdleTime", ServerMain.DEF_MAX_USER_IDLE_TIME))); //replace read timeout handler to a new one with a longer timeout defined for authorized user
         setParam(Params.lastlogin, Instant.now().getEpochSecond());                                                                         //set user last login time, needed to compute loc_time
         this.lastsynctime = Instant.now().getEpochSecond();                                                                                 //set last db sync time to now
-        setParam(Params.loc_time, Math.min(Instant.now().getEpochSecond() + 180, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time))); //compute client loc_time - time when user is allowed to leave his current location
+        setParam(Params.loc_time, Math.min(Instant.now().getEpochSecond() + 12, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time))); //compute client loc_time - time when user is allowed to leave his current location
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
         chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him
@@ -315,7 +315,7 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
-        Portal portal = (Portal) currBld;
+        Portal portal = (currBld instanceof Portal) ? (Portal) currBld : null;
 
         if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
             if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                      //set a new discount
@@ -612,7 +612,10 @@ public class User {
     }
     public void delSendItems(ItemBox box) {box.forEach(this::delSendItem);}
     public void delSendItem(Item item) {
-        getItemBox().delItem(item.getId());
+        if (!getItemBox().delItem(item.getId())) {
+            disconnect();
+            return;
+        }
         sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
     }
 
@@ -641,7 +644,7 @@ public class User {
 
     public void com_CHECK() {
         logger.debug("checking for the expired items for user %s", getLogin());
-        ItemBox expired = getItemBox().findExpired();                                                                                       //all user expired items are here at a 1st level
+        ItemBox expired = getItemBox().findItems(Item::isExpired);                                                                          //all user expired items are here at a 1st level
         if (expired.size() > 0)
             logger.info("found %d expired items for user %s, %s", expired.size(), getLogin(), expired);
 
@@ -652,7 +655,9 @@ public class User {
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {
                 logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
-                included.forEach(i -> i.unload(false));
+                included.forEach(i -> i.resetParam(Item.Params.pid, false));
+                included.forEach(i -> i.setParam(Item.Params.user_id, id, false));
+                included.forEach(i -> i.setParam(Item.Params.section, 0, false));
                 addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
         });
