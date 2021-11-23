@@ -49,7 +49,7 @@ public class Item implements Cloneable {
         return -1;
     }
     @SuppressWarnings("unchecked")
-    public static List<Long> getNextGlobalId(int num) {                                                                                     //get num next main ids from a sequence
+    public static List<Long> getNextGlobalId(int num) {                                                                                     //get some amount main ids from a sequence
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery<Long> query = session.createSQLQuery("select nextval('main_id_seq') from generate_series(1, :num) as nextval").setParameter("num", num).addScalar("nextval", LongType.INSTANCE);
             return query.list();

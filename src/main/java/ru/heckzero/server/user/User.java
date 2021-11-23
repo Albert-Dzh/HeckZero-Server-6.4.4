@@ -440,7 +440,7 @@ public class User {
     }
 
     public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell) {
-        Bank bank = (Bank)currBld;
+        Bank bank = currBld instanceof Bank ? (Bank)currBld : null;
 
         if (get > 0) {                                                                                                                      //take money from bank's cash
             int cashTaken = currBld.decMoney(get);                                                                                          //take money from building

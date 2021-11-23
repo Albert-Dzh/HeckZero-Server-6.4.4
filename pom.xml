@@ -16,7 +16,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <skipTests>true</skipTests>
-        <netty-version>4.1.69.Final</netty-version>
+        <netty-version>4.1.70.Final</netty-version>
         <hibernate-version>5.6.1.Final</hibernate-version>
     </properties>
 

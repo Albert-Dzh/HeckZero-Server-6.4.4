@@ -127,7 +127,7 @@ public class ItemBox implements Iterable<Item> {
             logger.error("can't remove %s from the item box because it was not found in 1st level item list", item);
             return false;
         }
-        return !needSync || Item.delFromDB(id, true);                                                                                     //delete the item from database with its included
+        return !needSync || Item.delFromDB(id, true);                                                                                       //delete the item from database with its included
     }
 
     public Item getSplitItem(long id, int count, boolean noSetNewId, Supplier<Long> newId) {                                                //find an Item and split it by count or just return it back, may be with a new id, which depends on noSetNewId argument and the item type
