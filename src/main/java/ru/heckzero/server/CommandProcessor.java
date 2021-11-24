@@ -143,16 +143,19 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private void com_GAME_BK(Attributes attrs) {                                                                                            //bank workflow
-        int put = NumberUtils.toInt(attrs.getValue("put"));
-        int get = NumberUtils.toInt(attrs.getValue("get"));
-        int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);
-        int cost2 = NumberUtils.toInt(attrs.getValue("cost2"), -1);
-        int buy = NumberUtils.toInt(attrs.getValue("buy"));
-        int go = NumberUtils.toInt(attrs.getValue("go"));
-        int sell = NumberUtils.toInt(attrs.getValue("sell"), -1);
+        int put = NumberUtils.toInt(attrs.getValue("put"));                                                                                 //put money to bank cash
+        int get = NumberUtils.toInt(attrs.getValue("get"));                                                                                 //get money from bank cash
+        int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);                                                                           //new cell cost
+        int cost2 = NumberUtils.toInt(attrs.getValue("cost2"), -1);                                                                         //cell monthly rent cost
+        int buy = NumberUtils.toInt(attrs.getValue("buy"));                                                                                 //buy a new cell
+        int go = NumberUtils.toInt(attrs.getValue("go"));                                                                                   //open a cell
+        int sell = NumberUtils.toInt(attrs.getValue("sell"), -1);                                                                           //cell id
+        int d = NumberUtils.toInt(attrs.getValue("d"), -1);                                                                                 //item id to put to a cell
+        int s = NumberUtils.toInt(attrs.getValue("s"), -1);                                                                                 //section
+        int c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                 //count
         String p = attrs.getValue("p");
 
-        user.com_BK(put, get, cost, cost2, buy, p, go, sell);
+        user.com_BK(put, get, cost, cost2, buy, p, go, sell, d, s, c);
         return;
     }
 

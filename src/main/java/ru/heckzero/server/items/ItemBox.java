@@ -54,7 +54,7 @@ public class ItemBox implements Iterable<Item> {
     public boolean joinMoveItem(long id, int count, boolean noSetNewId, Supplier<Long> newId, ItemBox dstBox, Set<Item.Params> resetParams, Map<Item.Params, Object> setParams) {
         Item item = findItem(id);                                                                                                           //get an item by id
         if (item == null) {
-            logger.error("item id %s is not found in the item box");
+            logger.error("item id %d was not found in the item box", id);
             return false;
         }
         logger.info("try to find joinable item inside the item box");
@@ -68,7 +68,7 @@ public class ItemBox implements Iterable<Item> {
                 return delItem(id);                                                                                                         //item will be deleted from user item box and db, which invalidates L2 cache
         }
 
-        logger.info("can't find an item to join our item with, will split the item");
+        logger.info("can't find an item to join our item with, will split the item id %d by count %d", id, count);
         item = getSplitItem(id, count, false, newId);
         if (item == null)
             return false;
@@ -116,7 +116,7 @@ public class ItemBox implements Iterable<Item> {
         if (item.isIncluded()) {                                                                                                            //the item is a child item
             Item parent = findItem(item.getPid());                                                                                          //try to find an item's master item by pid
             if (parent == null) {
-                logger.error("can't delete item id %d because it's included and item's parent item id %d was not found", item.getPid(), id);
+                logger.error("can't delete item id %d because it's included and item's parent id %d was not found", item.getId(), item.getPid());
                 return false;
             }
             if (!parent.removeSub(item.getId())) {                                                                                          //remove the item from the parent's included item box
@@ -137,13 +137,12 @@ public class ItemBox implements Iterable<Item> {
             return null;
         }
         if (count > 0 && count < item.getCount()) {                                                                                         //split the item
-            logger.debug("splitting the item %d by cloning and decreasing by count %d", id, count);
+            logger.warn("splitting the item %d by cloning and decreasing by count %d", id, count);
             return item.split(count, noSetNewId, newId, needSync);                                                                          //get a cloned item with a new ID and requested count
         }
         logger.debug("get the entire item id %d stack of count %d", id, item.getCount());
         if (!delItem(id))
             return null;
-
         if (item.getCount() > 0 && !noSetNewId && item.getParamDouble(Item.Params.calibre) > 0)                                             //set a new id for the ammo
             item.setId(newId.get(), false);
 
@@ -175,7 +174,7 @@ public class ItemBox implements Iterable<Item> {
 
     public Item findSameItem(Item sample) {                                                                                                 //find a joinable item in the item box by a sample item
         Predicate<Item> isResEquals = i -> sample.isRes() && i.getParamInt(Item.Params.massa) == sample.getParamInt(Item.Params.massa);     //the sample is res and items weight is equals
-        Predicate<Item> isDrugEquals = i -> sample.isDrug()&& i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);
+        Predicate<Item> isDrugEquals = i -> sample.isDrug() && i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);
         Predicate<Item> isSameName = i -> i.getParamStr(Item.Params.name).equals(sample.getParamStr(Item.Params.name));                     //items have the same name parameter value
         Predicate<Item> isJoinable = isSameName.and(isResEquals.or(isDrugEquals));                                                          //can items be joined
 

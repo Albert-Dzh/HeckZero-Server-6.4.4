@@ -293,6 +293,7 @@ public class User {
         if (n == 0) {                                                                                                                       //user comes out of building
             setRoom();                                                                                                                      //set Z, hz and ROOM params to 0
             sendMsg("<OKGO/>");                                                                                                             //allow the user to go out
+            currBld = null;
             return;
         }
         Building bld = getLocation().getBuilding(n);                                                                                        //get the building info
@@ -315,7 +316,8 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
-        Portal portal = (currBld instanceof Portal) ? (Portal) currBld : null;
+//        Portal portal = (currBld instanceof Portal) ? (Portal) currBld : null;
+        Portal portal = currBld instanceof Portal ? (Portal) currBld : (Portal) (currBld = Portal.getPortal(getBuilding().getId()));
 
         if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
             if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                      //set a new discount
@@ -411,7 +413,7 @@ public class User {
             return;
         }
 
-        currBld = Portal.getPortal(getBuilding().getId());                                                                                  //init the portal the user is entering
+//        currBld = Portal.getPortal(getBuilding().getId());                                                                                  //init the portal the user is entering
         sendMsg(((Portal)currBld).prXml(isBuildMaster(currBld)));                                                                           //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
@@ -439,8 +441,8 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell) {
-        Bank bank = currBld instanceof Bank ? (Bank)currBld : null;
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell, int d, int s, int c) {                                        //bank workflow
+        Bank bank = currBld instanceof Bank ? (Bank)currBld : (Bank) (currBld = Bank.getBank(getBuilding().getId()));
 
         if (get > 0) {                                                                                                                      //take money from bank's cash
             int cashTaken = currBld.decMoney(get);                                                                                          //take money from building
@@ -485,9 +487,17 @@ public class User {
             sendMsg(cell.cellXml());
             return;
         }
+        if (sell >= 0 && d >= 0 && s >=0 && StringUtils.isNotBlank(p)) {                                                                    //move an item from user to cell
+            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);                                                                     //reset param list
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, bank.getId(), Item.Params.cell_id, sell, Item.Params.section, s); //set param - values list
+            if (!getItemBox().joinMoveItem(d, c, false, this::getNewId, bank.getItemBox(), resetParams, setParams)) {
+                logger.error("can't put item id %d to bank cell %d", d, sell);
+                disconnect();
+            }
+            return;
+        }
 
-        currBld = Bank.getBank(getBuilding().getId());
-        ((Bank)currBld).setKey((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get());
+        bank.setKey((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get());
         sendMsg(((Bank)currBld).bkXml());
         return;
     }
