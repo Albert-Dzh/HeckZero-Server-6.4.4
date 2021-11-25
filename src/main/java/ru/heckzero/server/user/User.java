@@ -441,8 +441,20 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell, int d, int s, int c) {                                        //bank workflow
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell, int d, int s, int c, int f, int a) {     //bank workflow
         Bank bank = currBld instanceof Bank ? (Bank)currBld : (Bank) (currBld = Bank.getBank(getBuilding().getId()));
+        BankCell cell = null;
+        if (sell >= 0 && StringUtils.isNotBlank(p)) {
+            cell = BankCell.getBankCell(sell);                                                                                              //get cell data by id from database
+            if (cell == null) {
+                disconnect();
+                return;
+            }
+            if (!cell.checkPass((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get(), p)) {
+                sendMsg("<BK code=\"1\"/>");
+                return;
+            }
+        }
 
         if (get > 0) {                                                                                                                      //take money from bank's cash
             int cashTaken = currBld.decMoney(get);                                                                                          //take money from building
@@ -473,27 +485,33 @@ public class User {
             return;
         }
 
-        if (go == 1 && sell >=0  && StringUtils.isNotBlank(p)) {                                                                            //opening a cell id 'sell'
-            BankCell cell = BankCell.getBankCell(sell);                                                                                     //get cell data by id from database
-            if (cell == null) {
-                disconnect();
-                return;
-            }
-            String cryptedCellPass = (UserManager.encrypt((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get(), cell.getPassword()));
-            if (!p.equals(cryptedCellPass)) {                                                                                               //cell password doesn't match
-                sendMsg("<BK code=\"1\"/>");
-                return;
-            }
+        if (go == 1 && cell != null ) {                                                                                                     //opening a cell id 'sell'
             sendMsg(cell.cellXml());
             return;
         }
-        if (sell >= 0 && d >= 0 && s >=0 && StringUtils.isNotBlank(p)) {                                                                    //move an item from user to cell
+        if (sell >= 0 && d >= 0 && s >=0 && cell != null) {                                                                                 //move an item from user to cell
             Set<Item.Params> resetParams = Set.of(Item.Params.user_id);                                                                     //reset param list
             Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, bank.getId(), Item.Params.cell_id, sell, Item.Params.section, s); //set param - values list
-            if (!getItemBox().joinMoveItem(d, c, false, this::getNewId, bank.getItemBox(), resetParams, setParams)) {
+            if (!getItemBox().joinMoveItem(d, c, false, this::getNewId, cell.getItemBox(), resetParams, setParams)) {
                 logger.error("can't put item id %d to bank cell %d", d, sell);
                 disconnect();
             }
+            return;
+        }
+
+        if (sell >= 0 && a >=0 && s >= 0 && cell != null) {
+            Set<Item.Params> resetParams = Set.of(Item.Params.b_id, Item.Params.cell_id);
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                   //params that need to be set to an item before moving to user
+            if (!cell.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), resetParams, setParams)) {
+                logger.error("can't move an item id %d from bank cell to user %s", a, getLogin());
+                disconnect();
+            }
+            return;
+        }
+
+        if (sell >= 0 && f >= 0 && s >= 0 && cell != null) {                                                                                //item is being moving between sections within a cell
+            if (!cell.getItemBox().changeOne(f, Item.Params.section, s))
+                disconnect();
             return;
         }
 

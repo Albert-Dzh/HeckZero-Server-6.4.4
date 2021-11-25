@@ -10,6 +10,7 @@ import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemTemplate;
+import ru.heckzero.server.user.UserManager;
 
 import javax.persistence.*;
 import java.time.Instant;
@@ -38,6 +39,7 @@ public class BankCell {
         key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
         return key;
     }
+
 
     public static BankCell getBankCell(int id) {                                                                                            //try to get a Bank cell instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -78,11 +80,13 @@ public class BankCell {
     public int getId()  {return id;}
     public long getDt() {return dt;}
     public String getPassword() {return password;}
+    public boolean checkPass(String key, String ecnryptedPass) {return ecnryptedPass.equals(UserManager.encrypt(key, password));}           //validate cell's password
 
     public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id, true)) : itemBox;}         //get the building itembox, initialize if needed
 
     public boolean block() {this.block = 1; return sync();}                                                                                 //block the cell
     public boolean unblock() {this.block = 0; return sync();}                                                                               //unblock the cell
+
 
 
     public String cellXml() {                                                                                                               //XML formatted bank data

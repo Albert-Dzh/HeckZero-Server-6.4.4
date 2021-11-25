@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class Bank extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.free, Params.tkey, Params.key);
+    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.cost3, Params.free, Params.tkey, Params.key);
 
     public static Bank getBank(int id) {                                                                                                    //try to get a Bank instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {

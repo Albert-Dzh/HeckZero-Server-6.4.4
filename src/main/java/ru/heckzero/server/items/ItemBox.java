@@ -137,7 +137,7 @@ public class ItemBox implements Iterable<Item> {
             return null;
         }
         if (count > 0 && count < item.getCount()) {                                                                                         //split the item
-            logger.warn("splitting the item %d by cloning and decreasing by count %d", id, count);
+            logger.debug("splitting the item %d by cloning and decreasing by count %d", id, count);
             return item.split(count, noSetNewId, newId, needSync);                                                                          //get a cloned item with a new ID and requested count
         }
         logger.debug("get the entire item id %d stack of count %d", id, item.getCount());

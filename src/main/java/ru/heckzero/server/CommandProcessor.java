@@ -153,9 +153,12 @@ public class CommandProcessor extends DefaultHandler {
         int d = NumberUtils.toInt(attrs.getValue("d"), -1);                                                                                 //item id to put to a cell
         int s = NumberUtils.toInt(attrs.getValue("s"), -1);                                                                                 //section
         int c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                 //count
+        int a = NumberUtils.toInt(attrs.getValue("a"), -1);                                                                                 //withdrawal item id
+        int f = NumberUtils.toInt(attrs.getValue("f"), -1);                                                                                 //item id, whose section to be changed
+
         String p = attrs.getValue("p");
 
-        user.com_BK(put, get, cost, cost2, buy, p, go, sell, d, s, c);
+        user.com_BK(put, get, cost, cost2, buy, p, go, sell, d, s, c, f, a);
         return;
     }
 
