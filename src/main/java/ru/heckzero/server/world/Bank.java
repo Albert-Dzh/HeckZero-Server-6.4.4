@@ -36,18 +36,23 @@ public class Bank extends Building {
         return new Bank();
     }
 
-    @Transient private String key;
+    @Transient private String key;                                                                                                          //encryption key used by client to encrypt cell's password
     private int tkey;                                                                                                                       //does bank offer cells for free
     private int cost;                                                                                                                       //new cell cost
     private int cost2;                                                                                                                      //monthly cell rent
     private int cost3;                                                                                                                      //new cell section cost
-    private int free;                                                                                                                       //number of available cells in bank
+    volatile private int free;                                                                                                              //number of available cells in bank
 
     protected Bank() { }
 
+    public int getCost() {return cost;}
+    public int getFree() {return free;}
+
     public boolean setCost(int cost, int cost2) {this.cost = cost; this.cost2 = cost2; return sync();}                                      //set cost settings
     public boolean setFree(int free) {this.free = free; return sync();}
-    public void setKey(String key) {this.key = key; }
+    public void setKey(String key) {this.key = key; }                                                                                       //set an encryption key
+
+    synchronized public boolean decrementFreeCells() {return free-- > 0 && sync();}                                                         //decrement free cells count
 
     @Override
     protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()).transform(s -> s.startsWith("cash") ? s.replace("cash", "cash1") : s);}

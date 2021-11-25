@@ -478,10 +478,26 @@ public class User {
         }
 
         if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user byes a new cell
-            Item key = BankCell.createCell(bank, id, p);                                                                                    //create a cell and a new key item for that cell
-            if (key == null)
+            if (getMoney().copper < bank.getCost()) {
+                sendMsg("<BK code=\"4\"/>");
+                return;
+            }
+            if (!bank.decrementFreeCells()) {                                                                                               //decrement bank free cells count
+                sendMsg("<BK code=\"8\"/>");
+                return;
+            }
+            decMoney(bank.getCost());                                                                                                       //decrease user money by cell cost
+            if (!bank.addMoney(bank.getCost())) {                                                                                           //add money to bank cash
                 disconnect();
+                return;
+            }
+            Item key = BankCell.createCell(bank, id, p);                                                                                    //create a cell and a new key item for that cell
+            if (key == null) {
+                disconnect();
+                return;
+            }
             addSendItem(key);                                                                                                               //add the cell key to the user item box and send the key-item description to him
+            sendMsg(bank.bkXml());
             return;
         }
 
@@ -530,7 +546,7 @@ public class User {
         }
 
         bank.setKey((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get());
-        sendMsg(((Bank)currBld).bkXml());
+        sendMsg(bank.bkXml());
         return;
     }
 
@@ -706,7 +722,7 @@ public class User {
         return;
     }
 
-    public void decMoney(double amount) { decMoney(ItemsDct.MONEY_COPP, amount);}
+    public void decMoney(double amount) {decMoney(ItemsDct.MONEY_COPP, amount);}
     public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                                            //decrease user money
     public void addMoney(double amount) { addMoney(ItemsDct.MONEY_COPP, amount);}
     synchronized public void addMoney(int type, double amount) {                                                                            //add money to user

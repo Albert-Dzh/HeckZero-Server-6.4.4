@@ -37,6 +37,7 @@ public class BankCell {
         key.setParam(Item.Params.res, bank.getTxt(), false);
         key.setParam(Item.Params.user_id, user_id, false);                                                                                  //user id this key belongs to
         key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
+
         return key;
     }
 
