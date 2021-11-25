@@ -157,8 +157,10 @@ public class CommandProcessor extends DefaultHandler {
         int f = NumberUtils.toInt(attrs.getValue("f"), -1);                                                                                 //item id, whose section to be changed
 
         String p = attrs.getValue("p");
+        String newpsw = attrs.getValue("newpsw");
+        String newemail = attrs.getValue("newemail");
 
-        user.com_BK(put, get, cost, cost2, buy, p, go, sell, d, s, c, f, a);
+        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a);
         return;
     }
 

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
+import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
@@ -40,6 +41,12 @@ public class BankCell {
         return key;
     }
 
+    synchronized public boolean setParam(Params paramName, Object paramValue, boolean sync) {                                               //set an item param to paramValue
+        if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
+            return !sync || sync();
+        }
+        return false;
+    }
 
     public static BankCell getBankCell(int id) {                                                                                            //try to get a Bank cell instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -63,6 +70,8 @@ public class BankCell {
     private String email;                                                                                                                   //email for cell password restoration
     private long dt;                                                                                                                        //valid till date (epoch)
     private int block ;                                                                                                                     //cell is blocked
+
+    public enum Params { bank_id, user_id, password, email, dt, block }
 
     protected BankCell() { }
 

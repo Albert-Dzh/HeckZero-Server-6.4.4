@@ -320,7 +320,7 @@ public class User {
         Portal portal = currBld instanceof Portal ? (Portal) currBld : (Portal) (currBld = Portal.getPortal(getBuilding().getId()));
 
         if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
-            if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                      //set a new discount
+            if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                     //set a new discount
                 disconnect();
                 return;
             }
@@ -396,7 +396,7 @@ public class User {
                 return;
             }
 
-            takenItem.resetParam(Item.Params.b_id, false);                                                                                  //set new params before transfer the item to user's item box
+            takenItem.resetParam(Item.Params.b_id, false);                                                                             //set new params before transfer the item to user's item box
             takenItem.setParam(Item.Params.user_id, this.id, false);
             takenItem.setParam(Item.Params.section, s, false);
             getItemBox().addItem(takenItem);                                                                                                //add the item to user's item box
@@ -413,7 +413,7 @@ public class User {
             return;
         }
 
-//        currBld = Portal.getPortal(getBuilding().getId());                                                                                  //init the portal the user is entering
+//        currBld = Portal.getPortal(getBuilding().getId());                                                                                //init the portal the user is entering
         sendMsg(((Portal)currBld).prXml(isBuildMaster(currBld)));                                                                           //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
@@ -441,7 +441,7 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, int go, int sell, int d, int s, int c, int f, int a) {     //bank workflow
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, int d, int s, int c, int f, int a) {     //bank workflow
         Bank bank = currBld instanceof Bank ? (Bank)currBld : (Bank) (currBld = Bank.getBank(getBuilding().getId()));
         BankCell cell = null;
         if (sell >= 0 && StringUtils.isNotBlank(p)) {
@@ -485,7 +485,7 @@ public class User {
             return;
         }
 
-        if (go == 1 && cell != null ) {                                                                                                     //opening a cell id 'sell'
+        if (go == 1 && cell != null) {                                                                                                      //opening a cell id 'sell'
             sendMsg(cell.cellXml());
             return;
         }
@@ -511,6 +511,18 @@ public class User {
 
         if (sell >= 0 && f >= 0 && s >= 0 && cell != null) {                                                                                //item is being moving between sections within a cell
             if (!cell.getItemBox().changeOne(f, Item.Params.section, s))
+                disconnect();
+            return;
+        }
+
+        if (newpsw != null && newpsw.length() >= 6 && cell != null) {                                                                       //change cell's psw
+            if (!cell.setParam(BankCell.Params.password, newpsw, true))
+                disconnect();
+            return;
+        }
+
+        if (newemail != null && newemail.contains("@") && cell != null) {                                                                   //change cell's holder email
+            if (!cell.setParam(BankCell.Params.email, newemail, true))
                 disconnect();
             return;
         }
