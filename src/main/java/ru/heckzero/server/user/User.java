@@ -516,14 +516,16 @@ public class User {
         }
 
         if (newpsw != null && newpsw.length() >= 6 && cell != null) {                                                                       //change cell's psw
-            if (!cell.setParam(BankCell.Params.password, newpsw, true))
+            if (!cell.setPassword(newpsw))
                 disconnect();
+            sendMsg("<BK code=\"0\"/>");
             return;
         }
 
         if (newemail != null && newemail.contains("@") && cell != null) {                                                                   //change cell's holder email
-            if (!cell.setParam(BankCell.Params.email, newemail, true))
+            if (!cell.setEmail(newemail))
                 disconnect();
+            sendMsg("<BK code=\"0\"/>");
             return;
         }
 
