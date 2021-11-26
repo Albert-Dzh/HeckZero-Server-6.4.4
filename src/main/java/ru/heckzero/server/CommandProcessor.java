@@ -155,12 +155,13 @@ public class CommandProcessor extends DefaultHandler {
         int c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                 //count
         int a = NumberUtils.toInt(attrs.getValue("a"), -1);                                                                                 //withdrawal item id
         int f = NumberUtils.toInt(attrs.getValue("f"), -1);                                                                                 //item id, whose section to be changed
+        int newkey = NumberUtils.toInt(attrs.getValue("newkey"), -1);                                                                       //item id, whose section to be changed
 
         String p = attrs.getValue("p");
         String newpsw = attrs.getValue("newpsw");
         String newemail = attrs.getValue("newemail");
 
-        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a);
+        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey);
         return;
     }
 

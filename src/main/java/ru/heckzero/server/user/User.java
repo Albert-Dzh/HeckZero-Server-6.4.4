@@ -157,7 +157,7 @@ public class User {
     }
 
     public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id, true));}              //return user itembox, init it if necessary
-    public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", 1000000);}                                    //get user weight tk - current, max - maximum, considering the prof influence
+    public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", 1000000);}                                    //get user weight tk - current, max - maximum, considering user profession influence
     public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
 
     synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
@@ -316,15 +316,14 @@ public class User {
     }
 
     public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
-//        Portal portal = (currBld instanceof Portal) ? (Portal) currBld : null;
-        Portal portal = currBld instanceof Portal ? (Portal) currBld : (Portal) (currBld = Portal.getPortal(getBuilding().getId()));
+        Portal portal = currBld instanceof Portal ? (Portal)currBld : (Portal)(currBld = Portal.getPortal(getBuilding().getId()));          //init a currBld if necessary
 
         if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
             if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                     //set a new discount
                 disconnect();
                 return;
             }
-            sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));
+            sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));              //update portal information
             return;
         }
 
@@ -354,7 +353,7 @@ public class User {
                 sendMsg("<PR err=\"1\"/>");
                 return;
             }
-            if (!portal.consumeRes(mass)) {                                                                                                 //portal is running out of resources
+            if (!portal.consumeRes(mass)) {                                                                                                 //portal is out of resources to commit the flight
                 sendMsg("<PR err=\"5\"/>");
                 return;
             }
@@ -371,7 +370,7 @@ public class User {
                 disconnect(UserManager.ErrCodes.SRV_FAIL);
                 return;
             }
-
+            currBld = null;                                                                                                                 //user is gonna to be in a new portal witch needs to be initialized
             setRoom(X, Y, Z, hz, ROOM);
             sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
             return;
@@ -396,7 +395,7 @@ public class User {
                 return;
             }
 
-            takenItem.resetParam(Item.Params.b_id, false);                                                                             //set new params before transfer the item to user's item box
+            takenItem.resetParam(Item.Params.b_id, false);                                                                                  //set new params before transfer the item to user's item box
             takenItem.setParam(Item.Params.user_id, this.id, false);
             takenItem.setParam(Item.Params.section, s, false);
             getItemBox().addItem(takenItem);                                                                                                //add the item to user's item box
@@ -413,7 +412,6 @@ public class User {
             return;
         }
 
-//        currBld = Portal.getPortal(getBuilding().getId());                                                                                //init the portal the user is entering
         sendMsg(((Portal)currBld).prXml(isBuildMaster(currBld)));                                                                           //user entered a portal, sending info about that portal, its routes and warehouse items
         return;
     }
@@ -441,7 +439,7 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, int d, int s, int c, int f, int a) {     //bank workflow
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, int d, int s, int c, int f, int a, int newkey) {    //bank workflow
         Bank bank = currBld instanceof Bank ? (Bank)currBld : (Bank) (currBld = Bank.getBank(getBuilding().getId()));
         BankCell cell = null;
         if (sell >= 0 && StringUtils.isNotBlank(p)) {
@@ -450,15 +448,15 @@ public class User {
                 disconnect();
                 return;
             }
-            if (!cell.checkPass((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get(), p)) {
-                sendMsg("<BK code=\"1\"/>");
+            if (!cell.checkPass((String)gameChannel.attr(AttributeKey.valueOf("encKey")).get(), p)) {                                       //check cell password
+                sendMsg("<BK code=\"1\"/>");                                                                                                //wrong cell password
                 return;
             }
         }
 
         if (get > 0) {                                                                                                                      //take money from bank's cash
             int cashTaken = currBld.decMoney(get);                                                                                          //take money from building
-            addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                       //add money to user
+            addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                       //add money  from bank cash to the user
             sendMsg("<BK code=\"0\"/>");
             return;
         }
@@ -471,13 +469,13 @@ public class User {
             return;
         }
 
-        if (cost >= 0 && cost2 >= 0) {                                                                                                      //save bank cost settings
+        if (cost >= 0 && cost2 >= 0) {                                                                                                      //save bank cost-related settings
             if (!bank.setCost(cost, cost2))
                 disconnect();
             return;
         }
 
-        if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user byes a new cell
+        if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user buys a new cell
             if (getMoney().copper < bank.getCost()) {
                 sendMsg("<BK code=\"4\"/>");
                 return;
@@ -497,7 +495,7 @@ public class User {
                 return;
             }
             addSendItem(key);                                                                                                               //add the cell key to the user item box and send the key-item description to him
-            sendMsg(bank.bkXml());
+            sendMsg(bank.bkXml());                                                                                                          //update bank information to the client
             return;
         }
 
@@ -515,7 +513,7 @@ public class User {
             return;
         }
 
-        if (sell >= 0 && a >=0 && s >= 0 && cell != null) {
+        if (sell >= 0 && a >=0 && s >= 0 && cell != null) {                                                                                 //user takes an item from cell to his item box
             Set<Item.Params> resetParams = Set.of(Item.Params.b_id, Item.Params.cell_id);
             Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                   //params that need to be set to an item before moving to user
             if (!cell.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), resetParams, setParams)) {
@@ -542,6 +540,27 @@ public class User {
             if (!cell.setEmail(newemail))
                 disconnect();
             sendMsg("<BK code=\"0\"/>");
+            return;
+        }
+
+        if (newkey >= 0 && cell != null) {                                                                                                  //key copy request
+            if (getMoney().copper < bank.getCost3()) {
+                sendMsg("<BK code=\"4\"/>");
+                return;
+            }
+            decMoney(bank.getCost3());                                                                                                      //decrease user money by cell cost
+            if (!bank.addMoney(bank.getCost3())) {                                                                                          //add money to bank cash
+                disconnect();
+                return;
+            }
+            Item keyCopy = cell.makeKeyCOpy();                                                                                              //create a key copy from item template
+            if (keyCopy == null) {
+                disconnect();
+                return;
+            }
+            addSendItem(keyCopy);                                                                                                           //send a key item to the client
+            sendMsg("<BK code=\"0\"/>");
+            sendMsg(bank.bkXml());                                                                                                          //update bank information to the client
             return;
         }
 

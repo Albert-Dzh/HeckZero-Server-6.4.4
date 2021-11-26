@@ -37,24 +37,14 @@ public class BankCell {
         key.setParam(Item.Params.res, bank.getTxt(), false);
         key.setParam(Item.Params.user_id, user_id, false);                                                                                  //user id this key belongs to
         key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
-
         return key;
-    }
-
-    public boolean setPassword(String password) {
-        this.password = password;
-        return sync();
-    }
-    public boolean setEmail(String email) {
-        this.email = email;
-        return sync();
     }
     public static BankCell getBankCell(int id) {                                                                                            //try to get a Bank cell instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<BankCell> query = session.createQuery("select c from BankCell c where c.id = :id", BankCell.class).setParameter("id", id).setCacheable(true);
             return query.getSingleResult();
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load bank cell with id %d from database: %s", id, e.getMessage());
+            logger.error("can't load bank cell id %d from database: %s", id, e.getMessage());
         }
         return null;
     }
@@ -79,7 +69,7 @@ public class BankCell {
         this.user_id = user_id;
         this.password = password;
         this.email = StringUtils.EMPTY;
-        this.dt = Instant.now().getEpochSecond() + ServerMain.ONE_MES * 4;                                                                  //now + 4 month, lease time in client will be shown as now + 1 month
+        this.dt = Instant.now().getEpochSecond() + ServerMain.ONE_MES * 4;                                                                  //now + 4 month. Lease time in client will be shown as now + 1 month
         this.block = 0;                                                                                                                     //new cell is now blocked by default
         return;
     }
@@ -87,7 +77,6 @@ public class BankCell {
     public boolean isBlocked() {return block == 1;}                                                                                         //is the cell blocked
     public int getId()  {return id;}
     public long getDt() {return dt;}
-    public String getPassword() {return password;}
     public boolean checkPass(String key, String ecnryptedPass) {return ecnryptedPass.equals(UserManager.encrypt(key, password));}           //validate cell's password
 
     public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id, true)) : itemBox;}         //get the building itembox, initialize if needed
@@ -95,7 +84,29 @@ public class BankCell {
     public boolean block() {this.block = 1; return sync();}                                                                                 //block the cell
     public boolean unblock() {this.block = 0; return sync();}                                                                               //unblock the cell
 
+    public boolean setPassword(String password) {
+        this.password = password;
+        return sync();
+    }
+    public boolean setEmail(String email) {
+        this.email = email;
+        return sync();
+    }
 
+    public Item makeKeyCOpy() {
+        Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY_COPY);                                                                //generate a bank cell key item
+        if (key == null)
+            return null;
+        Bank bank = Bank.getBank(bank_id);
+
+        key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + getId(), false);                                                   //set the key item params to make client display the key hint properly
+        key.setParam(Item.Params.made, String.format("%s%d_%d_%d",  key.getParamStr(Item.Params.made), bank.getX(), bank.getY(), bank.getZ()), false);
+        key.setParam(Item.Params.hz, getId(), false);
+        key.setParam(Item.Params.res, bank.getTxt(), false);
+        key.setParam(Item.Params.user_id, user_id, false);                                                                                  //user id this key belongs to
+        key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
+        return key;
+    }
 
     public String cellXml() {                                                                                                               //XML formatted bank data
         StringJoiner sj = new StringJoiner("", "<BK sell=\"1\">", "</BK>");

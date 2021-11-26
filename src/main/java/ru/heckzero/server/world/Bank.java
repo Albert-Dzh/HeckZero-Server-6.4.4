@@ -46,6 +46,8 @@ public class Bank extends Building {
     protected Bank() { }
 
     public int getCost() {return cost;}
+    public int getCost3() {return cost3;}
+
     public int getFree() {return free;}
 
     public boolean setCost(int cost, int cost2) {this.cost = cost; this.cost2 = cost2; return sync();}                                      //set cost settings
