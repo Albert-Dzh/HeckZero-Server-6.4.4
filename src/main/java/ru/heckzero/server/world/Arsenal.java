@@ -16,8 +16,8 @@ import java.util.List;
 public class Arsenal {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    private final int aid;
-    private ItemBox itemBox;
+    private final int aid;                                                                                                                  //arsenal id, used by the constructor
+    private ItemBox itemBox;                                                                                                                //arsenal item box
 
     private static ItemBox loadItemBox(int aid) {                                                                                           //load an arsenal item box from arsenal_loot and item_templates tables
         List<Object[]> result;

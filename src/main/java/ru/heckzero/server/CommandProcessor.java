@@ -189,10 +189,10 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     public void com_GAME_AR(Attributes attrs) {                                                                                             //arsenal operation
-        String a = attrs.getValue("a");                                                                                                     //item id to take from arsenal
-        String d = attrs.getValue("d");                                                                                                     //item id to put to arsenal
-        String s = attrs.getValue("s");                                                                                                     //section to place an item to
-        String c = attrs.getValue("c");                                                                                                     //item count
+        long a = NumberUtils.toLong(attrs.getValue("a"), -1);                                                                               //item id user takes from arsenal
+        long d = NumberUtils.toLong(attrs.getValue("d"), -1);                                                                               //item id user puts to arsenal
+        int  s = NumberUtils.toInt(attrs.getValue("s"), 0);                                                                                 //section to place an item to
+        int  c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                //item count
         user.com_AR(a, d, s, c);
         return;
     }

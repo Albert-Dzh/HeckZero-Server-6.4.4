@@ -370,7 +370,7 @@ public class User {
                 disconnect(UserManager.ErrCodes.SRV_FAIL);
                 return;
             }
-            currBld = null;                                                                                                                 //user is gonna to be in a new portal witch needs to be initialized
+            currBld = null;                                                                                                                 //user is gonna be in a new portal witch needs to be initialized
             setRoom(X, Y, Z, hz, ROOM);
             sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
             return;
@@ -416,25 +416,25 @@ public class User {
         return;
     }
 
-    public void com_AR(String a, String d, String s, String c) {                                                                            //arsenal workflow
-        if (a != null) {                                                                                                                    //user gets an item from arsenal
-            Map<Item.Params, Object> params = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                      //params that need to be set to an item before moving to user
-            if (!arsenal.getItemBox().moveItem(NumberUtils.toLong(a), NumberUtils.toInt(c), false, this::getNewId, getItemBox(), null, params)) {
-                logger.error("can't move an item id %d from arsenal to user %s", NumberUtils.toLong(a), getLogin());
+    public void com_AR(long a, long d, int s, int c) {                                                                                      //arsenal workflow
+        if (a != -1) {                                                                                                                      //user gets an item from an arsenal
+            Map<Item.Params, Object> params = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                      //params that need to be set to the item before moving it to user
+            if (!this.arsenal.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), null, params)) {
+                logger.error("can't move an item id %d from arsenal to user %s", a, getLogin());
                 disconnect();
             }
             return;
         }
 
-        if (d != null) {                                                                                                                    //put an item to arsenal
-            if (!getItemBox().moveItem(NumberUtils.toLong(d), NumberUtils.toInt(c), false, this::getNewId, arsenal.getItemBox())) {
-                logger.error("can't move an item id %d from user %s to arsenal", NumberUtils.toLong(d), getLogin());
+        if (d != -1) {                                                                                                                      //put an item to arsenal
+            if (!getItemBox().moveItem(d, c, false, this::getNewId, this.arsenal.getItemBox())) {
+                logger.error("can't move an item id %d from user %s to arsenal", d, getLogin());
                 disconnect();
             }
             return;
         }
 
-        arsenal = new Arsenal(getBuilding().getId());                                                                                       //get an arsenal loot XML list and send it to th user
+        this.arsenal = new Arsenal(getBuilding().getId());                                                                                  //get an arsenal loot XML list and send it to th user
         sendMsg(arsenal.lootXml());
         return;
     }
