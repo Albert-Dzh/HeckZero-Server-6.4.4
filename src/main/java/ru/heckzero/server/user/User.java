@@ -417,7 +417,7 @@ public class User {
     }
 
     public void com_AR(long a, long d, int s, int c) {                                                                                      //arsenal workflow
-        if (a != -1) {                                                                                                                      //user gets an item from an arsenal
+        if (a != -1) {                                                                                                                       //user gets an item from an arsenal
             Map<Item.Params, Object> params = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                      //params that need to be set to the item before moving it to user
             if (!this.arsenal.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), null, params)) {
                 logger.error("can't move an item id %d from arsenal to user %s", a, getLogin());
