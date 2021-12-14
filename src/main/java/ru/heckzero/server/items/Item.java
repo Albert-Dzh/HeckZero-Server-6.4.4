@@ -168,7 +168,6 @@ public class Item implements Cloneable {
 
     public boolean setId(long id, boolean sync)      {return setParam(Params.id, id, sync);}
     public boolean setGlobalId(boolean sync) {return setId(getNextGlobalId(), sync);}
-    synchronized public boolean setCount(int count, boolean sync) {return setParam(Params.count, count, sync);}                             //set item count
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
     public int getParamInt(Params param)       {return ParamUtils.getParamInt(this, param.toString());}
@@ -191,7 +190,7 @@ public class Item implements Cloneable {
     public boolean decrease(int num, boolean sync) {                                                                                        //decrease item count by num
         int count = getCount();
         if (num > 0 && num < count)                                                                                                         //check if the item count > num
-            return setCount(count - num, sync);
+            return setParam(Params.count, count - num, sync);
         else
             logger.error("can't decrease item id %d by num %d, current item count %d should be greater than %d", id, num, getCount(), num);
         return false;
@@ -201,7 +200,7 @@ public class Item implements Cloneable {
         if (!this.decrease(count, sync))                                                                                                    //decrease count of the current item
             return null;
         Item splitted = this.clone();
-        splitted.setCount(count, false);                                                                                                    //set the count of the new item
+        splitted.setParam(Params.count, count, false);                                                                                                    //set the count of the new item
         if (!noSetNewId)
             splitted.setId(newId.get(), false);                                                                                             //set a new id for the new item
         return splitted;                                                                                                                    //return a new item

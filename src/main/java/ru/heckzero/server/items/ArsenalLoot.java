@@ -16,13 +16,26 @@ public class ArsenalLoot {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     @Id
-    private int id;
+    private int id;                                                                                                                         //arsenal loot id
+    private int aid;                                                                                                                        //arsenal id
+    private String count;                                                                                                                   //item template override count
 
-    private int aid;
-    private int loot_id;
-    private String count;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "loot_id")
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_ONLY)
+    private ItemTemplate itemTemplate;
 
     protected ArsenalLoot() { }
 
-    public String getCount() { return count;}
+    public ItemTemplate getItemTemplate() {return itemTemplate;}
+    public String getCount() {return count;}
+
+    @Override
+    public String toString() {
+        return "ArsenalLoot{" +
+                "id=" + id +
+                ", count='" + count + '\'' +
+                ", itemTemplate=" + itemTemplate +
+                '}';
+    }
 }

@@ -71,5 +71,5 @@ public class ItemTemplate {
     private String ln;                                                                                                                      //long name text
 
     @Override
-    public String toString() {return "Item{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + "}"; }
+    public String toString() {return "ItemTemplate{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + "}"; }
 }

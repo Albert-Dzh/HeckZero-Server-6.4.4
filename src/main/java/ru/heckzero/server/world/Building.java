@@ -27,18 +27,18 @@ public class Building {
     public enum Params {X, Y, Z, cash, txt, maxHP, HP, name, upg, maxl, repair, clan,      ds, city, p1, p2, clon, bigmap_city, bigmap_shown,   cost, cost2, cost3, free, tkey, key}
     private static final EnumSet<Params> bldParams = EnumSet.of(Params.X, Params.Y, Params.Z, Params.txt, Params.maxHP, Params.HP, Params.name, Params.upg, Params.maxl, Params.repair, Params.clan);
 
-    @Transient private ItemBox itemBox = null;                                                                                              //building Item box
+    @Transient protected ItemBox itemBox = null;                                                                                              //building Item box
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "loc_b_generator_sequence")
     @SequenceGenerator(name = "loc_b_generator_sequence", sequenceName = "locations_b_seq", allocationSize = 1)
-    private Integer id;
+    protected Integer id;
 
     @Column(name = "\"X\"") private int X = 20;                                                                                             //X,Y coordinate within a location
     @Column(name = "\"Y\"") private int Y = 8;
     @Column(name = "\"Z\"") private int Z = 0;                                                                                              //unique building number withing a location
 
-    private String txt = "!!!STUB!!!";                                                                                                      //the building visible name
+    protected String txt = "!!!STUB!!!";                                                                                                      //the building visible name
     @Column(name = "\"maxHP\"") private String maxHP;
     @Column(name = "\"HP\"") private String HP;
     private int name = 188;                                                                                                                 //building type - "ruins" by default

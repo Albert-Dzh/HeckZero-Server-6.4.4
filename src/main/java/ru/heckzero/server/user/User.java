@@ -72,7 +72,6 @@ public class User {
     @Transient private long lastSentId2 = -1;                                                                                               //last id2 value sent to user by com_MYPARAM() or com_NEWID()
     @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized upon a first access
 
-    @Transient private Arsenal arsenal = null;                                                                                              //current user arsenal
     @Transient private Building currBld = null;                                                                                             //current user building
 
     @Id
@@ -417,9 +416,11 @@ public class User {
     }
 
     public void com_AR(long a, long d, int s, int c) {                                                                                      //arsenal workflow
-        if (a != -1) {                                                                                                                       //user gets an item from an arsenal
+        Arsenal arsenal = currBld instanceof Arsenal ? (Arsenal)currBld : (Arsenal)(currBld = Arsenal.getArsenal(getBuilding().getId()));
+
+        if (a != -1) {                                                                                                                      //user gets an item from an arsenal
             Map<Item.Params, Object> params = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                      //params that need to be set to the item before moving it to user
-            if (!this.arsenal.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), null, params)) {
+            if (!arsenal.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), null, params)) {
                 logger.error("can't move an item id %d from arsenal to user %s", a, getLogin());
                 disconnect();
             }
@@ -427,14 +428,12 @@ public class User {
         }
 
         if (d != -1) {                                                                                                                      //put an item to arsenal
-            if (!getItemBox().moveItem(d, c, false, this::getNewId, this.arsenal.getItemBox())) {
+            if (!getItemBox().moveItem(d, c, false, this::getNewId, arsenal.getItemBox())) {
                 logger.error("can't move an item id %d from user %s to arsenal", d, getLogin());
                 disconnect();
             }
             return;
         }
-
-        this.arsenal = new Arsenal(getBuilding().getId());                                                                                  //get an arsenal loot XML list and send it to th user
         sendMsg(arsenal.lootXml());
         return;
     }
