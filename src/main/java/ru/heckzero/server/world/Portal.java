@@ -222,9 +222,9 @@ public class Portal extends Building {
             takenItem.setParam(Item.Params.section, s, false);
             user.getItemBox().addItem(takenItem);                                                                                           //add the item to user's item box
 
-            Item item = this.getItemBox().findItem(a);                                                                                      //we have to check the remnant count of the source item
-            int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remainder count
-            user.sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                             //a1 - how much was taken, a2 - item remainder
+            Item item = this.getItemBox().findItem(a);                                                                                      //we have to check the remaining count of the source item
+            int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remaining quantity
+            user.sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                             //a1 - how much was taken, a2 - the item remnant
             return;
         }
 
