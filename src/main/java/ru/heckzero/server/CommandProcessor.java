@@ -127,16 +127,16 @@ public class CommandProcessor extends DefaultHandler {
     }
 
     private void com_GAME_PR(Attributes attrs) {                                                                                            //portal operations
-        String comein = attrs.getValue("comein");
-        String id = attrs.getValue("id");
-        String new_cost = attrs.getValue("new_cost");
-        String to = attrs.getValue("to");
-        String d = attrs.getValue("d");
-        String a = attrs.getValue("a");
-        String s = attrs.getValue("s");
-        String c = attrs.getValue("c");
-        String get = attrs.getValue("get");                                                                                                 //takes money from cache
-        String ds = attrs.getValue("ds");                                                                                                   //set portal discount
+        int comein = NumberUtils.toInt(attrs.getValue("comein"));                                                                           //incoming route list request
+        int id = NumberUtils.toInt(attrs.getValue("id"), -1);                                                                               //changing an incoming route cost
+        double new_cost = NumberUtils.toDouble(attrs.getValue("new_cost"), -1.0);                                                           //new incoming route cost
+        int to = NumberUtils.toInt(attrs.getValue("to"), -1);                                                                               //destination route id
+        long d = NumberUtils.toLong(attrs.getValue("d"), -1);                                                                               //item id user puts to the portal
+        long a = NumberUtils.toLong(attrs.getValue("a"), -1);                                                                               //item id user takes from portal
+        int s = NumberUtils.toInt(attrs.getValue("s"));                                                                                     //section to put the item into
+        int c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                 //item count
+        int get = NumberUtils.toInt(attrs.getValue("get"), -1);                                                                             //amount of money user takes from portal cache
+        int ds = NumberUtils.toInt(attrs.getValue("ds"), -1);                                                                               //portal discount for the citizens
 
         user.com_PR(comein, id, new_cost, to, d, a, s, c, get, ds);
         return;

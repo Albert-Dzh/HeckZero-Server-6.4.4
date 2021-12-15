@@ -94,6 +94,7 @@ public class User {
     public boolean isGod() {return getParamInt(Params.god) == 1;}                                                                           //this is a privileged user (admin)
     public boolean isCop() {return getParamStr(Params.clan).equals("police");}                                                              //user is a cop (is a member of police clan)
 
+    public Integer getId() {return id;}
     public Channel getGameChannel() {return this.gameChannel;}
     public Channel getChatChannel() {return this.chatChannel;}
     public String getLogin() {return getParamStr(Params.login);}                                                                            //just a shortcut
@@ -244,7 +245,7 @@ public class User {
                 return;
             }
             if (getParamLong(Params.loc_time) > Instant.now().getEpochSecond() + 1 && !isGod()) {                                           //TODO why do we have to add 1 to now()?
-                logger.warn("user %s tried to move at loc_time < now() (%d < %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
+                logger.warn("user %s tried to move at loc_time > now() (%d > %d) Check it out!", getLogin(), getParamLong(Params.loc_time), Instant.now().getEpochSecond());
                 sendMsg(String.format("<MYPARAM time=\"%d\"/><ERRGO code=\"5\"/>", Instant.now().getEpochSecond()));                        //Вы пока не можете двигаться, отдохните
                 return;
             }
@@ -314,127 +315,15 @@ public class User {
         return;
     }
 
-    public void com_PR(String comein, String id, String new_cost, String to, String d, String a, String s, String c, String get, String ds) { //portal workflow
-        Portal portal = currBld instanceof Portal ? (Portal)currBld : (Portal)(currBld = Portal.getPortal(getBuilding().getId()));          //init a currBld if necessary
-
-        if (ds != null) {                                                                                                                   //set a portal citizen arrival discount
-            if (!portal.setDs(NumberUtils.toInt(ds))) {                                                                                     //set a new discount
-                disconnect();
-                return;
-            }
-            sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", portal.getDs(), portal.getCity(), portal.getP2()));              //update portal information
-            return;
-        }
-
-        if (comein != null) {                                                                                                               //incoming routes request
-            sendMsg(portal.cominXml());                                                                                                     //get and send incoming routes for the current portal
-            return;
-        }
-
-        if (id != null && new_cost != null) {                                                                                               //changing an incoming route cost
-            PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(id));                                                                //get the route to change cost for
-            if (route == null || !route.setCost(NumberUtils.toDouble(new_cost)))
-                disconnect();
-            return;
-        }
-
-        if (to != null) {                                                                                                                   //flight request to = routeId where user wants to fly to
-            PortalRoute route = PortalRoute.getRoute(NumberUtils.toInt(to));
-            if (route == null) {                                                                                                            //can't get the route user wants flying to
-                disconnect();
-                return;
-            }
-
-            int mass = getMass().get("tk");                                                                                                 //current user mass
-            Item passport = getPassport();
-            int cost = route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));                                                                            //get the flight cost
-            if (!isGod() && cost > getMoney().copper) {                                                                                     //user is out of money
-                sendMsg("<PR err=\"1\"/>");
-                return;
-            }
-            if (!portal.consumeRes(mass)) {                                                                                                 //portal is out of resources to commit the flight
-                sendMsg("<PR err=\"5\"/>");
-                return;
-            }
-
-            Portal dstPortal = route.getDstPortal();
-            int X = dstPortal.getLocation().getX();
-            int Y = dstPortal.getLocation().getY();
-            int Z = dstPortal.getZ();
-            int hz = dstPortal.getName();
-            int ROOM = route.getROOM();
-
-            decMoney(cost);                                                                                                                 //decrease money from user
-            if (!currBld.addMoney(cost)) {                                                                                                  //add money to portal's cash
-                disconnect(UserManager.ErrCodes.SRV_FAIL);
-                return;
-            }
-            currBld = null;                                                                                                                 //user is gonna be in a new portal witch needs to be initialized
-            setRoom(X, Y, Z, hz, ROOM);
-            sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", getParamInt(Params.kupol), X, Y, Z, hz, ROOM));
-            return;
-        }
-
-        if (d != null) {                                                                                                                    //user puts resource-item to portal's warehouse
-            int count = NumberUtils.toInt(c);
-            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);
-            Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, portal.getId());
-            if (!getItemBox().joinMoveItem(NumberUtils.toLong(d), count, false, this::getNewId, portal.getItemBox(), resetParams, setParams)) {
-                logger.error("can't put item id %s to portal warehouse", d);
-                disconnect();
-            }
-            return;
-        }
-
-        if (a != null) {                                                                                                                    //user takes an item from warehouse
-            int count = NumberUtils.toInt(c);                                                                                               //item count he has selected
-            Item takenItem = portal.getItemBox().getClonnedItem(NumberUtils.toLong(a), count, this::getNewId);
-            if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
-                sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                         //let the client know if it failed to take an item
-                return;
-            }
-
-            takenItem.resetParam(Item.Params.b_id, false);                                                                                  //set new params before transfer the item to user's item box
-            takenItem.setParam(Item.Params.user_id, this.id, false);
-            takenItem.setParam(Item.Params.section, s, false);
-            getItemBox().addItem(takenItem);                                                                                                //add the item to user's item box
-
-            Item item = portal.getItemBox().findItem(NumberUtils.toLong(a));                                                                //we have to check the rest count of the source item
-            int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remainder count
-            sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                                  //a1 - how much was taken, a2 - item remainder
-            return;
-        }
-
-        if (get != null) {                                                                                                                  //withdraw money from portal cash
-            int cashTaken = portal.decMoney(NumberUtils.toInt(get));
-            addMoney(ItemsDct.MONEY_COPP, cashTaken);
-            return;
-        }
-
-        sendMsg(((Portal)currBld).prXml(isBuildMaster(currBld)));                                                                           //user entered a portal, sending info about that portal, its routes and warehouse items
+    public void com_PR(int comein, int id, double new_cost, int to, long d, long a, int s, int c, int get, int ds) {                        //portal workflow
+        Portal portal = currBld instanceof Portal && Objects.equals(currBld.getId(), getBuilding().getId()) ? (Portal)currBld : (Portal)(currBld = Portal.getPortal(getBuilding().getId()));          //init a currBld if necessary
+        portal.processCmd(comein, id, new_cost, to, d, a, s, c, get, ds, this);
         return;
     }
 
     public void com_AR(long a, long d, int s, int c) {                                                                                      //arsenal workflow
         Arsenal arsenal = currBld instanceof Arsenal ? (Arsenal)currBld : (Arsenal)(currBld = Arsenal.getArsenal(getBuilding().getId()));
-
-        if (a != -1) {                                                                                                                      //user gets an item from an arsenal
-            Map<Item.Params, Object> params = Map.of(Item.Params.user_id, id, Item.Params.section, s);                                      //params that need to be set to the item before moving it to user
-            if (!arsenal.getItemBox().moveItem(a, c, false, this::getNewId, getItemBox(), null, params)) {
-                logger.error("can't move an item id %d from arsenal to user %s", a, getLogin());
-                disconnect();
-            }
-            return;
-        }
-
-        if (d != -1) {                                                                                                                      //put an item to arsenal
-            if (!getItemBox().moveItem(d, c, false, this::getNewId, arsenal.getItemBox())) {
-                logger.error("can't move an item id %d from user %s to arsenal", d, getLogin());
-                disconnect();
-            }
-            return;
-        }
-        sendMsg(arsenal.lootXml());
+        arsenal.processCmd(a, d, s, c, this);
         return;
     }
 
@@ -672,6 +561,7 @@ public class User {
         return;
     }
 
+    public boolean isBuildMaster() {return isBuildMaster(getBuilding());}
     public boolean isBuildMaster(Building bld) {return isBuildMaster(bld.getX(), bld.getY(), bld.getZ());}
     private boolean isBuildMaster(int x, int y, int z) {                                                                                    //check if user has a master key to the building with given coordinates
         String keyName = String.format("$key%d_%d_%d", x, y, z);                                                                            //key name is composed of building coordinates

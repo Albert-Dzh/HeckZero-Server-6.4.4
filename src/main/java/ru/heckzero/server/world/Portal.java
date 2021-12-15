@@ -10,6 +10,9 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemsDct;
+import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserManager;
 
 import javax.persistence.*;
 import java.util.*;
@@ -131,6 +134,102 @@ public class Portal extends Building {
         itemsToConsume.forEach((k, v) -> logger.debug("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
         itemsToConsume.forEach((k, v) -> getItemBox().delItem(k.getId(), v));
         return true;
+    }
+
+    public void processCmd(int comein, int id, double new_cost, int to, long d, long a, int s, int c, int get, int ds, User user) {
+        if (get != -1) {                                                                                                                    //withdraw money from portal cash
+            int cashTaken = this.decMoney(get);
+            user.addMoney(ItemsDct.MONEY_COPP, cashTaken);
+            return;
+        }
+
+        if (ds != -1) {                                                                                                                     //set a portal citizen arrival discount
+            if (!setDs(ds)) {                                                                                                               //set a new discount
+                user.disconnect();
+                return;
+            }
+            user.sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", getDs(), getCity(), getP2()));                              //update portal information
+            return;
+        }
+
+        if (comein != 0) {                                                                                                                  //incoming routes request
+            user.sendMsg(cominXml());                                                                                                       //get and send incoming routes for the current portal
+            return;
+        }
+
+        if (id != -1 && new_cost != -1.0) {                                                                                                 //changing an incoming route cost
+            PortalRoute route = PortalRoute.getRoute(id);                                                                                   //get the route to change cost for
+            if (route == null || !route.setCost(new_cost))
+                user.disconnect();
+            return;
+        }
+
+        if (to != -1) {                                                                                                                     //flight request to = routeId where user wants to fly to
+            PortalRoute route = PortalRoute.getRoute(to);
+            if (route == null) {                                                                                                            //can't get the route user wants flying to
+                user.disconnect();
+                return;
+            }
+
+            int mass = user.getMass().get("tk");                                                                                            //current user mass
+            Item passport = user.getPassport();
+            int cost = route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));             //get the flight cost
+            if (!user.isGod() && cost > user.getMoney().getCopper()) {                                                                      //user is out of money
+                user.sendMsg("<PR err=\"1\"/>");
+                return;
+            }
+            if (!consumeRes(mass)) {                                                                                                        //portal is out of resources to commit the flight
+                user.sendMsg("<PR err=\"5\"/>");
+                return;
+            }
+
+            Portal dstPortal = route.getDstPortal();
+            int X = dstPortal.getLocation().getX();
+            int Y = dstPortal.getLocation().getY();
+            int Z = dstPortal.getZ();
+            int hz = dstPortal.getName();
+            int ROOM = route.getROOM();
+
+            user.decMoney(cost);                                                                                                            //decrease money from user
+            if (!user.getBuilding().addMoney(cost)) {                                                                                       //add money to portal's cash
+                user.disconnect(UserManager.ErrCodes.SRV_FAIL);
+                return;
+            }
+            user.setRoom(X, Y, Z, hz, ROOM);
+            user.sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", user.getParamInt(User.Params.kupol), X, Y, Z, hz, ROOM));
+            return;
+        }
+
+        if (d != -1) {                                                                                                                      //user puts resource-item to portal's warehouse
+            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId());
+            if (!user.getItemBox().joinMoveItem(d, c, false, user::getNewId, this.getItemBox(), resetParams, setParams)) {
+                logger.error("can't put item id %d to portal warehouse", d);
+                user.disconnect();
+            }
+            return;
+        }
+
+        if (a != -1) {                                                                                                                      //user takes an item from portal warehouse
+            Item takenItem = this.getItemBox().getClonnedItem(a, c, user::getNewId);
+            if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
+                user.sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                    //let the client know if it failed in taking an item
+                return;
+            }
+
+            takenItem.resetParam(Item.Params.b_id, false);                                                                                  //set new params before transfer the item to user's item box
+            takenItem.setParam(Item.Params.user_id, user.getId(), false);
+            takenItem.setParam(Item.Params.section, s, false);
+            user.getItemBox().addItem(takenItem);                                                                                           //add the item to user's item box
+
+            Item item = this.getItemBox().findItem(a);                                                                                      //we have to check the remnant count of the source item
+            int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remainder count
+            user.sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                             //a1 - how much was taken, a2 - item remainder
+            return;
+        }
+
+        user.sendMsg(prXml(user.isBuildMaster()));                                                                                          //user entered a portal, sending info about that portal, its routes and warehouse items
+        return;
     }
 
 }

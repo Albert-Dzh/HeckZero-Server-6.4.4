@@ -9,6 +9,7 @@ import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import ru.heckzero.server.ParamUtils;
@@ -129,8 +130,10 @@ public class Item implements Cloneable {
         Field[ ] tmplFields = ItemTemplate.class.getDeclaredFields();
         Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
             try {
-                FieldUtils.getField(Item.class, f.getName(), true).set(this, FieldUtils.readField(f, itmpl, true));
-            } catch (IllegalAccessException e) {logger.error("can't create an Item from the template: %s", e.getMessage()); }
+                FieldUtils.getField(Item.class, f.getName(), true).set(this, FieldUtils.readField(f, itmpl instanceof HibernateProxy ? Hibernate.unproxy(itmpl) : itmpl, true));
+            } catch (IllegalAccessException e) {
+                logger.error("can't create an Item from the template: %s", e.getMessage());
+            }
         });
         return;
     }

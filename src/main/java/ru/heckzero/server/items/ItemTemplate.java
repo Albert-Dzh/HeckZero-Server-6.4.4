@@ -70,6 +70,8 @@ public class ItemTemplate {
     private String tm;
     private String ln;                                                                                                                      //long name text
 
+    public int getId() {return id;}
+
     @Override
-    public String toString() {return "ItemTemplate{" + "id=" + id + ", txt='" + txt + '\'' + ", count=" + count + "}"; }
+    public String toString() {return "ItemTemplate{" + "id=" + id + " type=" + type + ", txt='" + txt + '\'' + ", count=" + count + "}"; }
 }
