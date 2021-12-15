@@ -23,6 +23,7 @@ import java.util.StringJoiner;
 public class BankCell {
     private static final Logger logger = LogManager.getFormatterLogger();
 
+/*
     public static Item createCell(Bank bank, int user_id, String password) {                                                                //create a bank cell and return a key item for that cell
         BankCell bankCell = new BankCell(bank.getId(), user_id, password);                                                                  //create a new bank cell
         if (!bankCell.sync())
@@ -39,6 +40,7 @@ public class BankCell {
         key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
         return key;
     }
+*/
     public static BankCell getBankCell(int id) {                                                                                            //try to get a Bank cell instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<BankCell> query = session.createQuery("select c from BankCell c where c.id = :id", BankCell.class).setParameter("id", id).setCacheable(true);
@@ -93,7 +95,7 @@ public class BankCell {
         return sync();
     }
 
-    public Item makeKeyCOpy() {
+    public Item makeKeyCopy() {
         Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY_COPY);                                                                //generate a bank cell key item
         if (key == null)
             return null;
