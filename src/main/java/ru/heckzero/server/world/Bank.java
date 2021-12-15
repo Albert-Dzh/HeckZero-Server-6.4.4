@@ -46,9 +46,9 @@ public class Bank extends Building {
     @Transient private String key;                                                                                                          //encryption key used by client to encrypt cell's password
     private int tkey;                                                                                                                       //does bank offer cells for free
     private int cost;                                                                                                                       //new cell cost
-    private int cost2;                                                                                                                      //monthly cell rent
-    private int cost3;                                                                                                                      //new cell section cost
-    volatile private int free;                                                                                                              //number of available cells in bank
+    private int cost2;                                                                                                                      //monthly cell rent cost
+    private int cost3;                                                                                                                      //cell key duplicate and an additional cell section cost
+    volatile private int free;                                                                                                              //number of available cells in a bank
 
     protected Bank() { }
 
@@ -56,7 +56,7 @@ public class Bank extends Building {
     public int getCost3() {return cost3;}
 
     public boolean setCost(int cost, int cost2) {this.cost = cost; this.cost2 = cost2; return sync();}                                      //set cost settings
-    public void setKey(String key) {this.key = key; }                                                                                       //set an encryption key
+    public void setKey(String key) {this.key = key;}                                                                                        //set an encryption key
 
     synchronized public boolean decrementFreeCells() {return free-- > 0 && sync();}                                                         //decrement free cells count
 
@@ -80,7 +80,6 @@ public class Bank extends Building {
         return key;
     }
 
-
     public String bkXml() {                                                                                                                 //XML formatted bank data
         StringJoiner sj = new StringJoiner("", "", "</BK>");
         sj.add(bankParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<BK ", ">")));   //add XML bank params
@@ -95,7 +94,7 @@ public class Bank extends Building {
                 user.disconnect();
                 return;
             }
-            if (!cell.checkPass((String)user.getGameChannel().attr(AttributeKey.valueOf("encKey")).get(), p)) {                             //check the cell password
+            if (!cell.checkPass(key, p)) {                                                                                                  //check the cell password
                 user.sendMsg("<BK code=\"1\"/>");                                                                                           //wrong cell password
                 return;
             }
@@ -190,7 +189,7 @@ public class Bank extends Building {
             return;
         }
 
-        if (newkey >= 0 && cell != null) {                                                                                                  //key copy request
+        if (newkey >= 0 && cell != null) {                                                                                                  //cell key duplicate request
             if (user.getMoney().getCopper() < getCost3()) {
                 user.sendMsg("<BK code=\"4\"/>");
                 return;
