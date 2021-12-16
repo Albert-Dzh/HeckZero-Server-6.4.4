@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+@org.hibernate.annotations.NamedQuery(name = "UserById", query = "select u from User u where id = ?1")
+@org.hibernate.annotations.NamedQuery(name = "UserByLogin", query = "select u from User u where lower(u.params.login) = lower(?1)")
 @Entity(name = "User")
 @Table(name = "users")
 @Cacheable
@@ -327,9 +329,9 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend) {    //bank workflow
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell) {    //bank workflow
         Bank bank = currBld instanceof Bank ? (Bank)currBld : (Bank) (currBld = Bank.getBank(getBuilding().getId()));
-        bank.processCmd(put, get,cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, this);
+        bank.processCmd(put, get,cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, check_sell, this);
         return;
     }
 

@@ -158,12 +158,13 @@ public class CommandProcessor extends DefaultHandler {
         int newkey = NumberUtils.toInt(attrs.getValue("newkey"), -1);                                                                       //duplicate cell key request
         int addsection = NumberUtils.toInt(attrs.getValue("addsection"));                                                                   //add an additional section to the cell
         int extend = NumberUtils.toInt(attrs.getValue("extend"));                                                                           //increase cell capacity
+        int check_sell = NumberUtils.toInt(attrs.getValue("check_sell"), -1);                                                               //cell account to transfer resources to
 
         String p = attrs.getValue("p");
         String newpsw = attrs.getValue("newpsw");
         String newemail = attrs.getValue("newemail");
 
-        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend);
+        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, check_sell);
         return;
     }
 

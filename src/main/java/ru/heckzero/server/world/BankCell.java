@@ -28,7 +28,7 @@ public class BankCell {
             Query<BankCell> query = session.createQuery("select c from BankCell c where c.id = :id", BankCell.class).setParameter("id", id).setCacheable(true);
             return query.getSingleResult();
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load bank cell id %d from database: %s", id, e.getMessage());
+            logger.info("can't load bank cell id %d from database: %s", id, e.getMessage());
         }
         return null;
     }
@@ -68,6 +68,7 @@ public class BankCell {
     public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id, true)) : itemBox;}         //get the building itembox, initialize if needed
     public int getBookmark_add() {return bookmark_add;}
     public int getCapacity() {return capacity;}
+    public int getUser_id() {return user_id;}
 
     public boolean block() {this.block = 1; return sync();}                                                                                 //block the cell
     public boolean unblock() {this.block = 0; return sync();}                                                                               //unblock the cell

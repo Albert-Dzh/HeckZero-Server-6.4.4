@@ -14,6 +14,7 @@ import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.user.UserManager;
 
 import javax.persistence.Entity;
 import javax.persistence.PrimaryKeyJoinColumn;
@@ -92,7 +93,7 @@ public class Bank extends Building {
         return sj.toString();
     }
 
-    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, User user) {
+    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell, User user) {
         BankCell cell = null;
         if (sell >= 0 && StringUtils.isNotBlank(p)) {                                                                                       //opening a cell
             cell = BankCell.getBankCell(sell);                                                                                              //get cell data by id from database
@@ -267,6 +268,17 @@ public class Bank extends Building {
             user.sendMsg(bkXml());                                                                                                          //update bank information to the client
             return;
         }
+
+        if (check_sell >= 0) {                                                                                                              //check the cell id  and return the owner login  or an empty string
+            BankCell checkCell = BankCell.getBankCell(check_sell);
+            if (checkCell == null) {
+                user.sendMsg("<BK login_cell=\"\"/>");
+                return;
+            }
+            user.sendMsg(String.format("<BK login_cell=\"%s\"/>", UserManager.getUser(checkCell.getUser_id()).getLogin()));
+            return;
+        }
+
         setKey((String)user.getGameChannel().attr(AttributeKey.valueOf("encKey")).get());
         user.sendMsg(bkXml());
         return;

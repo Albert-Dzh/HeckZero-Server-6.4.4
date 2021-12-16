@@ -87,18 +87,23 @@ public class UserManager {                                                      
     public static User getOnlineUserGame(String login) {                                                                                    //search from cached online game users by login
         return getCachedUsers(UserType.ONLINE_GAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
     }
-    public static User getUser(String login) {                                                                                              //search from all cached users by login
-        return cachedUsers.stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(() -> getDbUser(login));
+
+    public static User getUser(int id) {                                                                                                    //search from all cached users by id
+        return cachedUsers.stream().filter(u -> u.getId().equals(id)).findFirst().orElseGet(() -> getDbUser("UserById", id));
     }
 
-    private static User getDbUser(String login) {                                                                                           //instantiate a User from a database
+    public static User getUser(String login) {                                                                                              //search from all cached users by login
+        return cachedUsers.stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(() -> getDbUser("UserByLogin", login));
+    }
+
+    private static User getDbUser(String namedQueryName, Object paramValue) {                                                               //instantiate a User from a database
         Session session = ServerMain.sessionFactory.openSession();
-        Query<User> query = session.createQuery("select u from User u where lower(u.params.login) = lower(:login)", User.class).setParameter("login", login).setCacheable(false);
+        Query<User> query = session.createNamedQuery(namedQueryName, User.class).setParameter(1, paramValue).setCacheable(false);
         try (session) {
             User user = query.uniqueResult();
             return (user == null) ? new User() : user;                                                                                      //return a user or an empty user if none found
         } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load user %s from database: %s", login, e.getMessage());
+            logger.error("can't load user %s from database: %s", paramValue, e.getMessage());
         }
         return null;                                                                                                                        //in case of database error
     }
