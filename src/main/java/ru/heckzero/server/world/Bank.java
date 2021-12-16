@@ -2,6 +2,7 @@ package ru.heckzero.server.world;
 
 import io.netty.util.AttributeKey;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class Bank extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.cost3, Params.free, Params.tkey, Params.key);
+    private static final EnumSet<Params> bankParams = EnumSet.of(Params.cash, Params.cost, Params.cost2, Params.cost3, Params.cost_to200, Params.cost_to300, Params.cost_to400, Params.cost_to500,Params.free, Params.tkey, Params.key);
 
     public static Bank getBank(int id) {                                                                                                    //try to get a Bank instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -48,6 +49,11 @@ public class Bank extends Building {
     private int cost;                                                                                                                       //new cell cost
     private int cost2;                                                                                                                      //monthly cell rent cost
     private int cost3;                                                                                                                      //cell key duplicate and an additional cell section cost
+    private int cost_to200;                                                                                                                 //increase cell capacity up to 200 items
+    private int cost_to300;
+    private int cost_to400;
+    private int cost_to500;
+
     volatile private int free;                                                                                                              //number of available cells in a bank
 
     protected Bank() { }
@@ -86,7 +92,7 @@ public class Bank extends Building {
         return sj.toString();
     }
 
-    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, User user) {
+    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, User user) {
         BankCell cell = null;
         if (sell >= 0 && StringUtils.isNotBlank(p)) {                                                                                       //opening a cell
             cell = BankCell.getBankCell(sell);                                                                                              //get cell data by id from database
@@ -145,8 +151,26 @@ public class Bank extends Building {
             return;
         }
 
-        if (addsection == 1) {
-
+        if (cell != null && addsection == 1) {                                                                                              //add a tab to the cell
+            if (cell.getBookmark_add() >= 8) {
+                user.sendMsg("<BK code=\"29\"/>");
+                return;
+            }
+            if (!cell.setBookmark_add(cell.getBookmark_add() + 1)) {
+                user.sendMsg("<BK code=\"9\"/>");
+                return;
+            }
+            if (user.getMoney().getCopper() < getCost3()) {
+                user.sendMsg("<BK code=\"4\"/>");
+                return;
+            }
+            user.decMoney(getCost3());                                                                                                      //decrease user money
+            if (!addMoney(getCost3())) {                                                                                                    //add money to bank cash
+                user.disconnect();
+                return;
+            }
+            String cellUpdate = "<BK sell=\"1\" update=\"1\" bookmark_add=\"" + cell.getBookmark_add() + "\"" + " capacity=\"" + cell.getCapacity() +"\">";
+            user.sendMsg(cellUpdate);
             return;
         }
 
@@ -158,10 +182,39 @@ public class Bank extends Building {
         if (sell >= 0 && d >= 0 && s >=0 && cell != null) {                                                                                 //move an item from user to cell
             Set<Item.Params> resetParams = Set.of(Item.Params.user_id);                                                                     //reset param list
             Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId(), Item.Params.cell_id, sell, Item.Params.section, s);      //set param - values list
-            if (!getItemBox().joinMoveItem(d, c, false, user::getNewId, cell.getItemBox(), resetParams, setParams)) {
+            if (!user.getItemBox().joinMoveItem(d, c, false, user::getNewId, cell.getItemBox(), resetParams, setParams)) {
                 logger.error("can't put an item id %d to bank cell id %d", d, sell);
                 user.disconnect();
             }
+            return;
+        }
+
+        if (cell != null && extend == 1) {                                                                                                  //increase cell capacity
+            int currCapacity = cell.getCapacity();                                                                                          //get cell current capacity
+            if (currCapacity == 500) {                                                                                                      //current cell capacity is already maximum
+                user.sendMsg("<BK code=\"30\"/>");
+                return;
+            }
+
+            int nextCapacityCost;
+            try {
+                nextCapacityCost = (int)FieldUtils.readDeclaredField(this, String.format("cost_to%d", currCapacity + 100), true);
+            } catch (IllegalAccessException | IllegalArgumentException e) {
+                logger.error("can't increase cell capacity: %s", e.getMessage());
+                user.sendMsg("<BK code=\"9\"/>");
+                return;
+            }
+            if (user.getMoney().getCopper() < nextCapacityCost) {                                                                           //user doesn't have enough money
+                user.sendMsg("<BK code=\"4\"/>");
+                return;
+            }
+            user.decMoney(nextCapacityCost);                                                                                                //decrease user money by cell cost
+            if (!(addMoney(nextCapacityCost) && cell.setCapacity(cell.getCapacity() + 100))) {                                              //add money to bank cash and actually increase cell capacity
+                user.disconnect();
+                return;
+            }
+            String cellUpdate = "<BK sell=\"1\" update=\"1\" bookmark_add=\"" + cell.getBookmark_add() + "\"" + " capacity=\"" + cell.getCapacity() +"\">";
+            user.sendMsg(cellUpdate);
             return;
         }
 

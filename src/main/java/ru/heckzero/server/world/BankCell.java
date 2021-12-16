@@ -23,24 +23,6 @@ import java.util.StringJoiner;
 public class BankCell {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-/*
-    public static Item createCell(Bank bank, int user_id, String password) {                                                                //create a bank cell and return a key item for that cell
-        BankCell bankCell = new BankCell(bank.getId(), user_id, password);                                                                  //create a new bank cell
-        if (!bankCell.sync())
-            return null;
-        Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);                                                                     //generate a bank cell key item
-        if (key == null)
-            return null;
-        key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + bankCell.getId(), false);                                          //set the key item params to make client display the key hint properly
-        key.setParam(Item.Params.made, String.format("%s%d_%d_%d",  key.getParamStr(Item.Params.made), bank.getX(), bank.getY(), bank.getZ()), false);
-        key.setParam(Item.Params.dt, bankCell.getDt(), false);
-        key.setParam(Item.Params.hz, bankCell.getId(), false);
-        key.setParam(Item.Params.res, bank.getTxt(), false);
-        key.setParam(Item.Params.user_id, user_id, false);                                                                                  //user id this key belongs to
-        key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
-        return key;
-    }
-*/
     public static BankCell getBankCell(int id) {                                                                                            //try to get a Bank cell instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<BankCell> query = session.createQuery("select c from BankCell c where c.id = :id", BankCell.class).setParameter("id", id).setCacheable(true);
@@ -84,9 +66,21 @@ public class BankCell {
     public boolean checkPass(String key, String ecnryptedPass) {return ecnryptedPass.equals(UserManager.encrypt(key, password));}           //validate cell's password
 
     public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id, true)) : itemBox;}         //get the building itembox, initialize if needed
+    public int getBookmark_add() {return bookmark_add;}
+    public int getCapacity() {return capacity;}
 
     public boolean block() {this.block = 1; return sync();}                                                                                 //block the cell
     public boolean unblock() {this.block = 0; return sync();}                                                                               //unblock the cell
+
+    public boolean setCapacity(int capacity) {
+        this.capacity = capacity;
+        return sync();
+    }
+
+    public boolean setBookmark_add(int bookmark_add) {
+        this.bookmark_add = bookmark_add;
+        return sync();
+    }
 
     public boolean setPassword(String password) {
         this.password = password;
@@ -112,7 +106,7 @@ public class BankCell {
         return key;
     }
 
-    public String cellXml() {                                                                                                               //XML formatted bank data
+    public String cellXml() {                                                                                                               //XML formatted cell data included item box
         StringJoiner sj = new StringJoiner("", "<BK sell=\"1\" bookmark_add=\"" + bookmark_add + "\"" + " capacity=\"" + capacity +"\">", "</BK>");
         sj.add(getItemBox().getXml());
         return sj.toString();
