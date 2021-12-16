@@ -36,6 +36,7 @@ import ru.heckzero.server.user.UserLevelData;
 import ru.heckzero.server.world.*;
 
 import java.io.File;
+import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -71,6 +72,7 @@ public class ServerMain {
     }
 
     public static void main(String[] args) {
+        Locale.setDefault(Locale.US);                                                                                                       //makes String.format() format doubles properly
         new ServerMain().startOperation();
         return;
     }

@@ -52,7 +52,7 @@ public class Bank extends Building {
 
     protected Bank() { }
 
-    public int getCost() {return cost;}
+    public int getCost()  {return cost;}
     public int getCost3() {return cost3;}
 
     public boolean setCost(int cost, int cost2) {this.cost = cost; this.cost2 = cost2; return sync();}                                      //set cost settings
@@ -86,7 +86,7 @@ public class Bank extends Building {
         return sj.toString();
     }
 
-    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, User user) {
+    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, User user) {
         BankCell cell = null;
         if (sell >= 0 && StringUtils.isNotBlank(p)) {                                                                                       //opening a cell
             cell = BankCell.getBankCell(sell);                                                                                              //get cell data by id from database
@@ -115,7 +115,7 @@ public class Bank extends Building {
             return;
         }
 
-        if (cost >= 0 && cost2 >= 0) {                                                                                                      //save bank cost-related settings
+        if (cost >= 0 && cost2 >= 0) {                                                                                                      //save the bank cost-related settings
             if (!setCost(cost, cost2))
                 user.disconnect();
             return;
@@ -142,6 +142,11 @@ public class Bank extends Building {
             }
             user.addSendItem(key);                                                                                                          //add the cell key to the user item box and send the key-item description to him
             user.sendMsg(bkXml());                                                                                                          //update bank information to the client
+            return;
+        }
+
+        if (addsection == 1) {
+
             return;
         }
 

@@ -62,7 +62,9 @@ public class BankCell {
     private String password;                                                                                                                //cell password
     private String email;                                                                                                                   //email for cell password restoration
     private long dt;                                                                                                                        //valid till date (epoch)
-    private int block ;                                                                                                                     //cell is blocked
+    private int block;                                                                                                                      //cell is blocked
+    private int bookmark_add;                                                                                                               //cell's tabs amount
+    private int capacity;                                                                                                                   //cell's capacity (in items)
 
     protected BankCell() { }
 
@@ -111,7 +113,7 @@ public class BankCell {
     }
 
     public String cellXml() {                                                                                                               //XML formatted bank data
-        StringJoiner sj = new StringJoiner("", "<BK sell=\"1\">", "</BK>");
+        StringJoiner sj = new StringJoiner("", "<BK sell=\"1\" bookmark_add=\"" + bookmark_add + "\"" + " capacity=\"" + capacity +"\">", "</BK>");
         sj.add(getItemBox().getXml());
         return sj.toString();
     }
