@@ -98,7 +98,7 @@ public class UserManager {                                                      
 
     private static User getDbUser(String namedQueryName, Object paramValue) {                                                               //instantiate a User from a database
         Session session = ServerMain.sessionFactory.openSession();
-        Query<User> query = session.createNamedQuery(namedQueryName, User.class).setParameter(1, paramValue).setCacheable(false);
+        Query<User> query = session.createNamedQuery(namedQueryName, User.class).setParameter(1, paramValue).setCacheable(false);           //param might be a login or id
         try (session) {
             User user = query.uniqueResult();
             return (user == null) ? new User() : user;                                                                                      //return a user or an empty user if none found

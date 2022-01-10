@@ -69,7 +69,7 @@ public class ItemBox implements Iterable<Item> {
         }
 
         logger.info("can't find an item to join our item with, will split the item id %d by count %d", id, count);
-        item = getSplitItem(id, count, false, newId);
+        item = getSplitItem(id, count, noSetNewId, newId);
         if (item == null)
             return false;
         if (resetParams != null)

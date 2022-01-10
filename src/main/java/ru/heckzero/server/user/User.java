@@ -329,9 +329,9 @@ public class User {
         return;
     }
 
-    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell) {    //bank workflow
+    public void com_BK(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell, int tr, int sell2) {    //bank workflow
         Bank bank = currBld instanceof Bank ? (Bank)currBld : (Bank) (currBld = Bank.getBank(getBuilding().getId()));
-        bank.processCmd(put, get,cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, check_sell, this);
+        bank.processCmd(this, put, get,cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, check_sell, tr, sell2);
         return;
     }
 

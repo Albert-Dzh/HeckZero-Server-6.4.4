@@ -12,8 +12,8 @@
 	</ServerSetup>
 
 	<ServerList>
-		<Server first="1">192.168.2.14</Server>
-		<ChatServer>192.168.2.14</ChatServer>
+		<Server first="1">192.168.1.14</Server>
+		<ChatServer>192.168.1.14</ChatServer>
 	</ServerList>
 
 </HZServerConfig>

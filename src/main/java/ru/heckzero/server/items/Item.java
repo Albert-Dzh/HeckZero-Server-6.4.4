@@ -203,9 +203,11 @@ public class Item implements Cloneable {
         if (!this.decrease(count, sync))                                                                                                    //decrease count of the current item
             return null;
         Item splitted = this.clone();
-        splitted.setParam(Params.count, count, false);                                                                                                    //set the count of the new item
+        splitted.setParam(Params.count, count, false);                                                                                      //set the count of the new item
         if (!noSetNewId)
             splitted.setId(newId.get(), false);                                                                                             //set a new id for the new item
+        else
+            splitted.setGlobalId(false);
         return splitted;                                                                                                                    //return a new item
     }
 

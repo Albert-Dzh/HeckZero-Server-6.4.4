@@ -11,6 +11,7 @@ import org.hibernate.query.Query;
 import ru.heckzero.server.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
@@ -93,7 +94,7 @@ public class Bank extends Building {
         return sj.toString();
     }
 
-    public void processCmd(int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell, User user) {
+    public void processCmd(User user, int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell, int tr, int cell2) {
         BankCell cell = null;
         if (sell >= 0 && StringUtils.isNotBlank(p)) {                                                                                       //opening a cell
             cell = BankCell.getBankCell(sell);                                                                                              //get cell data by id from database
@@ -222,7 +223,7 @@ public class Bank extends Building {
         if (sell >= 0 && a >=0 && s >= 0 && cell != null) {                                                                                 //user takes an item from cell to his item box
             Set<Item.Params> resetParams = Set.of(Item.Params.b_id, Item.Params.cell_id);
             Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s);                         //params that need to be set to an item before moving to user
-            if (!cell.getItemBox().moveItem(a, c, false, user::getNewId, getItemBox(), resetParams, setParams)) {
+            if (!cell.getItemBox().moveItem(a, c, false, user::getNewId, user.getItemBox(), resetParams, setParams)) {
                 logger.error("can't move an item id %d from bank cell to user %s", a, user.getLogin());
                 user.disconnect();
             }
@@ -272,10 +273,31 @@ public class Bank extends Building {
         if (check_sell >= 0) {                                                                                                              //check the cell id  and return the owner login  or an empty string
             BankCell checkCell = BankCell.getBankCell(check_sell);
             if (checkCell == null) {
-                user.sendMsg("<BK login_cell=\"\"/>");
+                user.sendMsg("<BK login_cell=\"\"/>");                                                                                      //cell's owner was not found
                 return;
             }
             user.sendMsg(String.format("<BK login_cell=\"%s\"/>", UserManager.getUser(checkCell.getUser_id()).getLogin()));
+            return;
+        }
+
+        if (tr > 0 && cell2 > 0 && c > 0 ) {                                                                                                //transfer sources between cells
+            BankCell dstCell = BankCell.getBankCell(cell2);
+            if (cell == null || dstCell == null) {
+                logger.error("can't transfer resources from cell id %d to cell id %d, one of the cells is null", cell, cell2);
+                user.disconnect();
+                return;
+            }
+            ItemBox srcBox = cell.getItemBox();
+            ItemBox dstBox = dstCell.getItemBox();
+
+            Set<Item.Params> resetParams = Set.of(Item.Params.cell_id, Item.Params.section);
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.cell_id, cell2, Item.Params.section, 0);
+            if (!srcBox.joinMoveItem(tr, c, true, user::getNewId, dstBox, resetParams, setParams)) {
+                logger.error("can't transfer item id %d from cell id %d to cell id %d", tr, cell, cell2);
+                user.disconnect();
+                return;
+            }
+            user.sendMsg("<BK code=\"0\"/>");                                                                                               //sources have been transferred successfully
             return;
         }
 

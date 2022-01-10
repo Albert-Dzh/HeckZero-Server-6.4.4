@@ -150,21 +150,23 @@ public class CommandProcessor extends DefaultHandler {
         int buy = NumberUtils.toInt(attrs.getValue("buy"));                                                                                 //buy a new cell
         int go = NumberUtils.toInt(attrs.getValue("go"));                                                                                   //open a cell
         int sell = NumberUtils.toInt(attrs.getValue("sell"), -1);                                                                           //cell id
+        int sell2 = NumberUtils.toInt(attrs.getValue("sell2"), -1);                                                                         //cell id to transfer items to
         long a = NumberUtils.toLong(attrs.getValue("a"), -1);                                                                               //item id to take from the bank cell
         long d = NumberUtils.toLong(attrs.getValue("d"), -1);                                                                               //item id to put to a cell
         int s = NumberUtils.toInt(attrs.getValue("s"), -1);                                                                                 //section
         int c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                 //count
-        long f = NumberUtils.toLong(attrs.getValue("f"), -1);                                                                               //item id, whose section to be changed
+        long f = NumberUtils.toLong(attrs.getValue("f"), -1);                                                                               //item id, whose section is to be changed
         int newkey = NumberUtils.toInt(attrs.getValue("newkey"), -1);                                                                       //duplicate cell key request
         int addsection = NumberUtils.toInt(attrs.getValue("addsection"));                                                                   //add an additional section to the cell
         int extend = NumberUtils.toInt(attrs.getValue("extend"));                                                                           //increase cell capacity
         int check_sell = NumberUtils.toInt(attrs.getValue("check_sell"), -1);                                                               //cell account to transfer resources to
+        int tr = NumberUtils.toInt(attrs.getValue("tr"));                                                                                   //transfer resources between cells
 
         String p = attrs.getValue("p");
         String newpsw = attrs.getValue("newpsw");
         String newemail = attrs.getValue("newemail");
 
-        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, check_sell);
+        user.com_BK(put, get, cost, cost2, buy, p, newpsw, newemail, go, sell, d, s, c, f, a, newkey, addsection, extend, check_sell, tr, sell2);
         return;
     }
 
