@@ -67,6 +67,25 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_GETINFO(Attributes attrs) {                                                                                       //user information query
+        logger.debug("processing <GETINFO/> command from user %s", user.getLogin());
+        String login = attrs.getValue("login");                                                                                             //login attribute
+        int details = NumberUtils.toInt(attrs.getValue("details"));                                                                         //extended user info request
+        user.com_GETINFO(login, details);
+        return;
+    }
+
+    private void com_GAME_PT(Attributes attrs) {                                                                                            //post workflow
+        logger.debug("processing <PT/> command from user %s", user.getLogin());
+        int get = NumberUtils.toInt(attrs.getValue("get"), -1);                                                                             //user wants to get some cash from post office
+        int me = NumberUtils.toInt(attrs.getValue("me"), -1);                                                                               //user tries to get his parcels/telegrams
+        int p1 = 10;                                                                                                                        //telegram cost
+        int p2 = 500;                                                                                                                       //parcel cost (for 100 weight)
+        int d1 = 750;                                                                                                                       //urgent parcel cost (for 100 weight)
+        int cash = 555333;
+        user.sendMsg(String.format("<PT p1=\"%d\" p2=\"%d\" d1=\"%d\" cash=\"%d\" err=\"15\"/>", p1, p2, d1, cash));
+    }
+
     private void com_GAME_CHAT(Attributes attrs) {                                                                                          //chat server host request comes from a game channel
         logger.debug("processing <CHAT/> command from %s", ch.attr(AttributeKey.valueOf("chStr")).get());
         String xmlReply = String.format("<CHAT server=\"%s\"/>", ServerMain.hzConfiguration.getString("ServerList.ChatServer", StringUtils.EMPTY)); //get and send chat server host from the configuration
