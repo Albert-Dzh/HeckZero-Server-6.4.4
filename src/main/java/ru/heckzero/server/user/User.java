@@ -410,15 +410,14 @@ public class User {
                 case "intu" -> Params.intu;
                 default -> null;
             };
-            if (stat == null) {
-                logger.error("unknown param %s for item id %d in item.up field, check the database data", item.getParamStr(Item.Params.up), item.getId());
-                disconnect();
-                return;
-            }
-            int influence = Integer.parseInt(bonusStat.split("=")[1]);                                                                      //get the influence value
+
+            if (stat == null)                                                                                                               //current stat is not valid
+                continue;
+
+            int influence = Integer.parseInt(bonusStat.split("=")[1]);                                                                      //get the stat influence value
             setParam(stat, getParamInt(stat) + (isEquipping ? influence : influence * -1));                                                 //update the corresponding user stat param
-            return;
         }
+        return;
     }
 
     public void com_SILUET(String slt, String set) {                                                                                        //set user body type
