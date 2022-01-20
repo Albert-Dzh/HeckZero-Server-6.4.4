@@ -38,9 +38,9 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, which is set on login by onlineGame() and onlineChat() methods
-    public enum Params {time, tdt, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, login, password, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, clr, img, alliance, man, HP, psy, stamina, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, virus, brokenslots, poisoning, ill, illtime, sp_head, sp_left, sp_right, sp_foot, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock}  //all possible params that can be accessed via get/setParam()
+    public enum Params {login, password, crypt_pass, email, reg_time, lastlogin, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, alliance, clr, img, man, HP, psy, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, brokenslots, poisoning, virus, ill, illtime, sp_head, sp_left, sp_right, sp_foot, df_eff, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock, dl, time, tdt, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, group, stamina}  //all possible params that can be accessed via get/setParam()
     private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
-    private static final EnumSet<Params> getinfoParams = EnumSet.of(Params.level, Params.maxHP, Params.maxPsy, Params.kupol, Params.login,  Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow, Params.acc, Params.intel, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <GETINFO/>
+    private static final EnumSet<Params> getinfoParams = EnumSet.of(Params.login, Params.pro, Params.propwr, Params.clan, Params.clan_img, Params.alliance, Params.img, Params.man, Params.HP, Params.psy, Params.str, Params.dex, Params.intu, Params.pow, Params.acc, Params.intel, Params.siluet, Params.name, Params.city, Params.about, Params.brokenslots, Params.poisoning, Params.virus, Params.ill, Params.dismiss, Params.chatblock, Params.forumblock, Params.maxHP, Params.maxPsy, Params.kupol, Params.level);
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
 
     public class UserMoney {
@@ -240,6 +240,27 @@ public class User {
 
         StringJoiner sj = new StringJoiner("", "<USERPARAM ", "</USERPARAM>");
         sj.add(user.getParamsXml(getinfoParams, false));
+
+
+        if (user.isOnlineGame()) {                                              // если игрок в сети
+            if (!user.isOnlineChat()) sj.add("nochat=\"1\" ");                  // если чат выключен
+            sj.add(String.format(" X=\"%d\" Y=\"%d\" serverid=\"1\"", getParamInt(Params.X), getParamInt(Params.Y)));
+        }
+
+        sj.add(String.format(" boxp=\"%d\"", user.getMass().get("tk")));        // "загруженность рюкзака" (в процентах)
+        sj.add(" battleid=\"1\" ft=\"0\"");                                     // если перс в бою (ft - сделан ли уже ход)
+
+        sj.add(" freechallenge=\"1\"");                                         // "вызвать на бой" (НА АРЕНЕ) (между обменом и админскими функциями)
+        sj.add(" confattack=\"1\"");                                            // "вызвать на бой" (ДУЕЛЬ) (над кнопкой "напасть на этого перса")
+
+        sj.add(" freeexchange=\"1\"");                                          // "обменяться предметами"
+        sj.add(" freeattack=\"1\"");                                            // "напасть на этого персонажа"
+
+        // challenge_t=10       -- таймаут арены (сек)
+        // challenge_m=10       -- ставка (если бой на деньги) медных монет
+        // challenge_a='В?[0-3]' -- типа сражения: B-кровавый бой, 0-на ножах, 1-легкое оружие, 2-среднее, 3-тяжёлое
+
+
         sj.add(details > 0 ? " details=\"1\">" : ">");
 
         Predicate<Item> dressed = i -> !i.getParamStr(Item.Params.slot).isEmpty();                                                          //dressed items
