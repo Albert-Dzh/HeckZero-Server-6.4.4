@@ -260,10 +260,8 @@ public class User {
         Predicate<Item> other = i -> i.getBaseType() == 802;                                                                                //other items we have to send in GETINFO
         Predicate<Item> getInfoItems = dressed.or(other);
 
-/*
         ItemBox dressedItems = user.getItemBox().findItems(getInfoItems);
         sj.add(dressedItems.getXml());
-*/
         sendMsg(sj.toString());
         return;
     }
