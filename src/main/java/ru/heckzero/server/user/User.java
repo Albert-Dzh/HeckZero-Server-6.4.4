@@ -245,7 +245,6 @@ public class User {
         StringJoiner sj = new StringJoiner(" ", "<USERPARAM ", "</USERPARAM>");
         sj.add(user.getParamsXml(getinfoParams, false));                                                                                    //send a list of getinfo params
 
-        logger.error("isOnlineGame = %s", user.isOnlineGame());
         if (user.isOnlineGame()) {                                                                                                          //user is online
             sj.add(String.format("X=\"%d\"", getParamInt(Params.X)));                                                                       //"X" is always sent if user is online
             if (user.getParamInt(Params.kupol) > 0)                                                                                         //"Y" is sent only if user is in city
@@ -255,14 +254,16 @@ public class User {
         }
 
         sj.add("freeattack=\"1\"");                                                                                                         //напасть на этого персонажа
-        sj.add(details > 0 ? " details=\"1\">" : ">");                                                                                      //add detail=1 in case it was requested from client
+        sj.add(details > 0 ? "details=\"1\">" : ">");                                                                                      //add detail=1 in case it was requested from client
 
         Predicate<Item> dressed = i -> !i.getParamStr(Item.Params.slot).isEmpty();                                                          //dressed items
         Predicate<Item> other = i -> i.getBaseType() == 802;                                                                                //other items we have to send in GETINFO
         Predicate<Item> getInfoItems = dressed.or(other);
 
+/*
         ItemBox dressedItems = user.getItemBox().findItems(getInfoItems);
         sj.add(dressedItems.getXml());
+*/
         sendMsg(sj.toString());
         return;
     }
