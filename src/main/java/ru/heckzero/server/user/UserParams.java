@@ -14,6 +14,9 @@ public class UserParams {
     public UserParams() { }
 
     @Transient int stamina = 100;                                                                                                           //stamina initial value 100, it makes sense only in a battle and is not persistent
+    @Transient int battle_id ;                                                                                                              //user battle id
+    @Transient int ft;                                                                                                                      //user has made it's turn in a battle
+    @Transient int serverid = 1 ;                                                                                                           //user server id
 
     private String login, password, email;                                                                                                  //ask the Captain Obvious about that params
     private long reg_time;                                                                                                                  //user registration time (epoch)

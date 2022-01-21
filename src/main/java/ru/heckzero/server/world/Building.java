@@ -38,7 +38,7 @@ public class Building {
     @Column(name = "\"Y\"") private int Y = 8;
     @Column(name = "\"Z\"") private int Z = 0;                                                                                              //unique building number withing a location
 
-    protected String txt = "!!!STUB!!!";                                                                                                      //the building visible name
+    protected String txt = "!!!STUB!!!";                                                                                                    //the building visible name
     @Column(name = "\"maxHP\"") private String maxHP;
     @Column(name = "\"HP\"") private String HP;
     private int name = 188;                                                                                                                 //building type - "ruins" by default

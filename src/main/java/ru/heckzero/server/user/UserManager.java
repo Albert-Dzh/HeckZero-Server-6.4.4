@@ -85,7 +85,7 @@ public class UserManager {                                                      
     }
 
     public static User getOnlineUserGame(String login) {                                                                                    //search from cached online game users by login
-        return getCachedUsers(UserType.ONLINE_GAME).stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(User::new);
+        return getCachedUsers(UserType.ONLINE_GAME).stream().filter(u -> u.getLogin().equalsIgnoreCase(login)).findFirst().orElseGet(User::new);
     }
 
     public static User getUser(int id) {                                                                                                    //search from all cached users by id
@@ -93,7 +93,7 @@ public class UserManager {                                                      
     }
 
     public static User getUser(String login) {                                                                                              //search from all cached users by login
-        return cachedUsers.stream().filter(u -> u.getLogin().equals(login)).findFirst().orElseGet(() -> getDbUser("UserByLogin", login));
+        return cachedUsers.stream().filter(u -> u.getLogin().equalsIgnoreCase(login)).findFirst().orElseGet(() -> getDbUser("UserByLogin", login));
     }
 
     private static User getDbUser(String namedQueryName, Object paramValue) {                                                               //instantiate a User from a database
