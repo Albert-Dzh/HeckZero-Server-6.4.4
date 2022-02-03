@@ -78,12 +78,14 @@ public class CommandProcessor extends DefaultHandler {
     private void com_GAME_PT(Attributes attrs) {                                                                                            //post workflow
         logger.debug("processing <PT/> command from user %s", user.getLogin());
         int get = NumberUtils.toInt(attrs.getValue("get"), -1);                                                                             //user wants to get some cash from post office
-        int me = NumberUtils.toInt(attrs.getValue("me"), -1);                                                                               //user tries to get his parcels/telegrams
-        int p1 = 10;                                                                                                                        //telegram cost
-        int p2 = 500;                                                                                                                       //parcel cost (for 100 weight)
-        int d1 = 750;                                                                                                                       //urgent parcel cost (for 100 weight)
-        int cash = 555333;
-        user.sendMsg(String.format("<PT p1=\"%d\" p2=\"%d\" d1=\"%d\" cash=\"%d\" err=\"15\"/>", p1, p2, d1, cash));
+        int me = NumberUtils.toInt(attrs.getValue("me"), -1);                                                                               //user checks if there are parcels for him
+        int p1 = NumberUtils.toInt(attrs.getValue("p1"), -1);                                                                               //set p1 - wire cost
+        int p2 = NumberUtils.toInt(attrs.getValue("p2"), -1);                                                                               //set p2 - parcel cost
+        int d1 = NumberUtils.toInt(attrs.getValue("d1"), -1);                                                                               //set d1 - urgent parcel costs
+        String login = attrs.getValue("login");                                                                                             //
+        String wire = attrs.getValue("wire");                                                                                               //send a wire to user 'login'
+
+        user.com_PT(get, me, p1, p2, d1, login, wire);
     }
 
     private void com_GAME_CHAT(Attributes attrs) {                                                                                          //chat server host request comes from a game channel

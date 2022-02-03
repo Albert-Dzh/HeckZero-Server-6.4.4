@@ -381,6 +381,12 @@ public class User {
         return;
     }
 
+    public void com_PT(int get, int me, int p1, int p2, int d1, String login, String wire) {                                                //PT workflow
+        PostOffice postOffice = currBld instanceof PostOffice ? (PostOffice) currBld : (PostOffice) (currBld = PostOffice.getPostOffice(getBuilding().getId()));
+        postOffice.processCmd(this, get, me, p1, p2, d1, login, wire);
+        return;
+    }
+
     public void com_TAKE_ON(String id, String slot) {                                                                                       //user takes on an item on a specified slot
         Item item = getItemBox().findItem(NumberUtils.toLong(id));
         if (item == null) {
