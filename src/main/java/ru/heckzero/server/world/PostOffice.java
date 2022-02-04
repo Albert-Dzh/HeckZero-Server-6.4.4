@@ -60,9 +60,9 @@ public class PostOffice extends Building {
 
     public void processCmd(User user, int get, int me, int p1, int p2, int d1, String login, String wire) {
         if (get > 0 && user.isBuildMaster()) {                                                                                              //take money from post office's cash
-            int cashTaken = user.getBuilding().decMoney(get);                                                                               //take money from building
+            int cashTaken = decMoney(get);                                                                                                  //take money from building
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                  //add money from postOffice cash to the user
-//            return;
+            return;
         }
 
         if (p1 != -1 && p2 != -1 && d1 != -1) {                                                                                             //set a post office settings

@@ -109,7 +109,7 @@ public class Bank extends Building {
         }
 
         if (get > 0) {                                                                                                                      //take money from bank's cash
-            int cashTaken = user.getBuilding().decMoney(get);                                                                               //take money from building
+            int cashTaken = decMoney(get);                                                                                                  //take money from building
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                  //add money  from bank cash to the user
             user.sendMsg("<BK code=\"0\"/>");
             return;
