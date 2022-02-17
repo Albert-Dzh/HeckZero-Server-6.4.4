@@ -82,7 +82,7 @@ public class CommandProcessor extends DefaultHandler {
         int p1 = NumberUtils.toInt(attrs.getValue("p1"), -1);                                                                               //set p1 - wire cost
         int p2 = NumberUtils.toInt(attrs.getValue("p2"), -1);                                                                               //set p2 - parcel cost
         int d1 = NumberUtils.toInt(attrs.getValue("d1"), -1);                                                                               //set d1 - urgent parcel costs
-        String login = attrs.getValue("login");                                                                                             //
+        String login = attrs.getValue("login");                                                                                             //wire recipient
         String wire = attrs.getValue("wire");                                                                                               //send a wire to user 'login'
 
         user.com_PT(get, me, p1, p2, d1, login, wire);

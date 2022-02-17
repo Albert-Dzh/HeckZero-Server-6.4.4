@@ -14,6 +14,9 @@ import ru.heckzero.server.user.UserManager;
 import javax.persistence.Entity;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -65,7 +68,7 @@ public class PostOffice extends Building {
             return;
         }
 
-        if (p1 != -1 && p2 != -1 && d1 != -1) {                                                                                             //set a post office settings
+        if (p1 != -1 && p2 != -1 && d1 != -1) {                                                                                             //set(change) post office settings
             this.p1 = p1;
             this.p2 = p2;
             this.d1 = d1;
@@ -75,12 +78,18 @@ public class PostOffice extends Building {
             }
         }
 
-        if (login != null && wire != null) {
-            User rcptUser  = UserManager.getUser(login);
-            if (rcptUser == null || rcptUser.isEmpty()) {
-                user.sendMsg("<PT err=\"3\"/>");
+        if (login != null && wire != null) {                                                                                                //sending a wire to user login
+            User rcptUser = UserManager.getUser(login);
+            if (rcptUser == null || rcptUser.isEmpty()) {                                                                                   //recipient is not found
+                user.sendMsg("<PT err=\"1\"/>");
                 return;
             }
+            long now = Instant.now().getEpochSecond();
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
+
+            String ims = String.format("<IMS m=\"%s %s\t%d\t%s\t%s\n\" />", dateFormat.format(new Date(now * 1000L)), timeFormat.format(new Date(now * 1000L)), 100, user.getLogin(), wire);
+            user.sendMsg("<PT ok=\"1\"/>");
+            user.sendMsg(ims);
         }
 
         user.sendMsg(ptXml());
