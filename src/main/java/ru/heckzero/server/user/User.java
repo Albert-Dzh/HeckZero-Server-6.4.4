@@ -14,7 +14,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import ru.heckzero.server.Chat;
-import ru.heckzero.server.ParamUtils;
+import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;

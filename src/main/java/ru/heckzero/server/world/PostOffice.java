@@ -5,7 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
-import ru.heckzero.server.ParamUtils;
+import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;

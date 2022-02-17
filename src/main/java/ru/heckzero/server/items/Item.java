@@ -12,7 +12,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
-import ru.heckzero.server.ParamUtils;
+import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;

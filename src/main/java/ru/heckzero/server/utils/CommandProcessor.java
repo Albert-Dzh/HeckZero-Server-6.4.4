@@ -1,4 +1,4 @@
-package ru.heckzero.server;
+package ru.heckzero.server.utils;
 
 import io.netty.channel.Channel;
 import io.netty.util.AttributeKey;
@@ -10,6 +10,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
+import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
 

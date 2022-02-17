@@ -1,4 +1,4 @@
-package ru.heckzero.server;
+package ru.heckzero.server.utils;
 
 import org.apache.commons.beanutils.converters.DoubleConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
