@@ -14,14 +14,16 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import ru.heckzero.server.Chat;
-import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemsDct;
+import ru.heckzero.server.utils.HistoryUser;
+import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.world.*;
 
 import javax.persistence.*;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -589,6 +591,19 @@ public class User {
             lastsynctime = Instant.now().getEpochSecond();                                                                                  //reset lastsynctime(set it to now)
         } else
             logger.info("skipping syncing user %s cause he hasn't been changed (AFK?)", getLogin());
+        return;
+    }
+
+    public void sendIMS(int code, String... params) {                                                                                       //send an IMS to user and add history record
+        long now = Instant.now().getEpochSecond();                                                                                          //format date time
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
+        String date = String.format("%s %s", dateFormat.format(new Date(now * 1000L)), timeFormat.format(new Date(now * 1000L)));
+
+        StringJoiner sj = new StringJoiner("\t", "m=\"" + date + "\t" + code + "\t", "\n\"");
+        Arrays.stream(params).forEach(sj::add);
+        sendMsg(String.format("<IMS %s />", sj));
+
+        HistoryUser.addIms(code, this, params);                                                                                             //add history record with IMS flag set
         return;
     }
 

@@ -1,60 +1,42 @@
 package ru.heckzero.server.utils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.annotations.DiscriminatorFormula;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
+import java.lang.reflect.Field;
 import java.time.Instant;
 
 @Entity(name = "History")
 @Table(name = "history")
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.INTEGER)
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "History_Region")
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorFormula("case when user_id is not null then 'HistoryUser' " +
-        "else ( case when b_id is not null then 'HistoryBuilding' else 'HistoryBankCell' end ) " +
-        "end ")
-
 public abstract class History {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     protected History() { }
 
-    public History(int ims, long dt, int code) {
-        this.ims = ims;
-        this.dt = dt;
+    public History(int code, String...param) {
         this.code = code;
+        try { setParams(param); }
+            catch (IllegalAccessException e) { e.printStackTrace(); }
+        return;
     }
 
-    public History(int ims, long dt, int code, String param1) {
-        this(ims, dt, code);
-        this.param1 = param1;
+    private void setParams(String... params) throws IllegalAccessException {                                                                //set params1-params5 if any
+        for (int i = 0; i < params.length; i++) {
+            String fieldName = String.format("param%d", i + 1);
+            Field f = FieldUtils.getDeclaredField(History.class, fieldName, true);
+            f.set(this, params[i]);
+        }
+        return;
     }
-
-    public History(int ims, long dt, int code, String param1, String param2) {
-        this(ims, dt, code, param1);
-        this.param2 = param2;
-    }
-
-    public History(int ims, long dt, int code, String param1, String param2, String param3) {
-        this(ims, dt, code, param1, param2);
-        this.param3 = param3;
-    }
-
-    public History(int ims, long dt, int code, String param1, String param2, String param3, String param4) {
-        this(ims, dt, code, param1, param2, param3);
-        this.param4 = param4;
-    }
-
-    public History(int ims, long dt, int code, String param1, String param2, String param3, String param4, String param5) {
-        this(ims, dt, code, param1, param2, param3, param4);
-        this.param5 = param5;
-    }
-
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "history_sequence_generator")
