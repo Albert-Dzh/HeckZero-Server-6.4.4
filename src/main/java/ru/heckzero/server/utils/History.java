@@ -20,9 +20,23 @@ import java.time.Instant;
 public abstract class History {
     private static final Logger logger = LogManager.getFormatterLogger();
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "history_sequence_generator")
+    @SequenceGenerator(name = "history_sequence_generator", sequenceName = "history_id_seq", allocationSize = 1)
+    private Integer id;
+
+    private long dt;                                                                                                                        //event time (epoch sec)
+    private int code;                                                                                                                       //history code
+    protected String param1 = StringUtils.EMPTY;
+    protected String param2 = StringUtils.EMPTY;
+    protected String param3 = StringUtils.EMPTY;
+    protected String param4 = StringUtils.EMPTY;
+    protected String param5 = StringUtils.EMPTY;
+
     protected History() { }
 
-    public History(int code, String...param) {
+    protected History(int code, String...param) {
+        this.dt = Instant.now().getEpochSecond();
         this.code = code;
         try { setParams(param); }
             catch (IllegalAccessException e) { e.printStackTrace(); }
@@ -38,19 +52,5 @@ public abstract class History {
         return;
     }
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "history_sequence_generator")
-    @SequenceGenerator(name = "history_sequence_generator", sequenceName = "history_id_seq", allocationSize = 1)
-    private Integer id;
-
-    private int ims;                                                                                                                        //will this event be sent as an IMS
-    private long dt = Instant.now().getEpochSecond();                                                                                       //time (epoch)
-    private int code;                                                                                                                       //history code
-    private String param1 = StringUtils.EMPTY;
-    private String param2 = StringUtils.EMPTY;
-    private String param3 = StringUtils.EMPTY;
-    private String param4 = StringUtils.EMPTY;
-    private String param5 = StringUtils.EMPTY;
-
-    public boolean sync() {return ServerMain.sync(this);}
+    protected boolean sync() {return ServerMain.sync(this);}
 }

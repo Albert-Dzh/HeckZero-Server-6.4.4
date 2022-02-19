@@ -10,25 +10,12 @@ import javax.persistence.*;
 public class HistoryUser extends History {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    public static void add(int code, User user, String...params) {                                                                           //add a history record for use
-        new HistoryUser(code, user, params).sync();
-    }
-
-    public static void addIms(int code, User user, String...params) {                                                                       //add a history record for user that will be sent as IMS
-        new HistoryUser(1, code, user, params).sync();
-    }
-
-    protected HistoryUser() { }
-
-    private HistoryUser(int ims, int code, User user, String...params) {
-        super(code, params);
-        this.ims = ims;
-        this.user = user;
+    public static void add(int code, User user, String...params) {                                                                          //add a history record for use
+        new HistoryUser(0, code, user, params).sync();
         return;
     }
-    private HistoryUser(int code, User user, String...params) {
-        super(code, params);
-        this.user = user;
+    public static void addIms(int code, User user, String...params) {                                                                       //add a history record for user that will be sent as IMS
+        new HistoryUser(1, code, user, params).sync();
         return;
     }
 
@@ -36,6 +23,13 @@ public class HistoryUser extends History {
     @JoinColumn(name = "user_id")
     private User user;                                                                                                                      //User this record relates to
 
-    private int ims = 0;                                                                                                                    //send this message as IMS upon every user login
+    private int ims;                                                                                                                        //if this event gonna be sent as an IMS on every user login
+    protected HistoryUser() { }
 
+    private HistoryUser(int ims, int code, User user, String...params) {                                                                    //history records are intended to be instantiated using add() methods
+        super(code, params);
+        this.ims = ims;
+        this.user = user;
+        return;
+    }
 }
