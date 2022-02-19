@@ -83,7 +83,7 @@ public class PostOffice extends Building {
                 return;
             }
             wire = wire.replace("\"", "&quot;").replace("'", "&apos;").replace("\r", "&#xD;");                                              //replace quotes in a wire by the XML equivalent
-            rcptUser.sendIMS(HistoryCodes.LOG_WIRE, "Vacya", wire);                                                                         //send a wire as an IMS to the recipient
+            rcptUser.sendIMS(HistoryCodes.LOG_WIRE, user.getLogin(), wire);                                                                 //send a wire as an IMS to the recipient
             user.sendMsg("<PT ok=\"1\"/>");
         }
 
