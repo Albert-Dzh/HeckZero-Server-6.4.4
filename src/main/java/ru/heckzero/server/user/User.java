@@ -107,7 +107,7 @@ public class User {
     private String getParam_group() {return StringUtils.EMPTY;}
 
     private long getParam_time() {return Instant.now().getEpochSecond();}                                                                   //always return epoch time is seconds
-    private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getOffset(Instant.now().getEpochSecond() / 3600L);}             //user time zone, used in user history log
+    private int getParam_tdt() {return Calendar.getInstance().getTimeZone().getRawOffset() / 1000 / 3600;}                                  //server timezone offset in hours (must be user timezone?)
     private int getParam_level() {return UserLevelData.getLevel(this);}                                                                     //compute the user level by its experience value
     private int getParam_predlevel() {return UserLevelData.getExpLastLvl(this);}                                                            //get the experience value of current level beginning
     private int getParam_nextlevel() {return UserLevelData.getExpNextLvl(this);}                                                            //get the experience value of current level end
