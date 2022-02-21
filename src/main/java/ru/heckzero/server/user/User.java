@@ -248,7 +248,7 @@ public class User {
 
     public void com_GETINFO(String login, int details) {                                                                                    //get and send information about a user
         logger.info("processing <GETINFO/> from %s", getLogin());
-        User user = UserManager.getUser(login);                                                                                             //get the user data
+        User user = login == null ? this : UserManager.getUser(login);                                                                      //login might be null when user clicks on his own avatar
         if (user.isEmpty()) {                                                                                                               //user is not found
             sendMsg(String.format("<NOUSER login=\"%s\"/>", login));
             return;
