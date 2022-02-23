@@ -215,6 +215,15 @@ public class CommandProcessor extends DefaultHandler {
         return;                                                                                                                             //congratulations to the client
     }
 
+    private void com_GAME_GETH(Attributes attrs) {                                                                                          //player requests log
+        String login = attrs.getValue("login");                                                                                             //login for which log is requested
+        String date = attrs.getValue("date");                                                                                               //requested date
+        String dx = attrs.getValue("dx");                                                                                                   //date shift (+/-) from the last date the log was sent
+        String b = attrs.getValue("b");                                                                                                     //request from a policeman
+        user.com_HISTORY(login, date, dx, b);
+        return;
+    }
+
     public void com_GAME_AR(Attributes attrs) {                                                                                             //arsenal operation
         long a = NumberUtils.toLong(attrs.getValue("a"), -1);                                                                               //item id user takes from arsenal
         long d = NumberUtils.toLong(attrs.getValue("d"), -1);                                                                               //item id user puts to arsenal

@@ -10,7 +10,7 @@ import ru.heckzero.server.world.Building;
 
 import javax.persistence.*;
 
-@Entity(name = "History")
+@Entity(name = "HistoryBuilding")
 @Table(name = "history")
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "History_Region")

@@ -4,13 +4,18 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 
+@org.hibernate.annotations.NamedQuery(name = "History_USER", query = "select h from HistoryUser h where h.user.id = :id order by h.id", readOnly = true)
 @Entity(name = "History")
 @Table(name = "history")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
@@ -18,7 +23,19 @@ import java.time.Instant;
 @Cacheable
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "History_Region")
 public abstract class History {
+    public enum Subject {USER, BUILDING, CELL, CLAN}
     private static final Logger logger = LogManager.getFormatterLogger();
+
+    public static List<History> getHistory(Subject subject, int id) {
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<History> query = session.createNamedQuery(String.format("History_%s", subject.toString()), History.class).setParameter("id", id).setCacheable(true);
+            List<History> historyLogs = query.list();
+            return historyLogs;
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't get history logs: %s", e.getMessage());
+        }
+        return Collections.emptyList();
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "history_sequence_generator")
@@ -42,6 +59,14 @@ public abstract class History {
             catch (IllegalAccessException e) { e.printStackTrace(); }
         return;
     }
+
+    public long getDt() {return dt;}                                                                                                        //regular getters
+    public int getCode() {return code;}
+    public String getParam1() {return param1;}
+    public String getParam2() {return param2;}
+    public String getParam3() {return param3;}
+    public String getParam4() {return param4;}
+    public String getParam5() {return param5;}
 
     private void setParams(String... params) throws IllegalAccessException {                                                                //set params1-params5 if any
         for (int i = 0; i < params.length; i++) {
