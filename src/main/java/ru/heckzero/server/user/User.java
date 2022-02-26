@@ -20,7 +20,6 @@ import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.utils.History;
 import ru.heckzero.server.utils.HistoryCodes;
-import ru.heckzero.server.utils.HistoryUser;
 import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.world.*;
 
@@ -192,7 +191,7 @@ public class User {
         setParam(Params.loc_time, Math.min(Instant.now().getEpochSecond() + 12, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time))); //compute client loc_time - time when user is allowed to leave his current location
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
-        HistoryUser.add(HistoryCodes.LOG_LOGIN, this, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());                              //add a login log record
+        addHistory(HistoryCodes.LOG_LOGIN, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());
         chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him
         return;
     }
@@ -203,7 +202,7 @@ public class User {
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
         disconnectChat();                                                                                                                   //chat without a game channel is ridiculous, so shut the chat down
         chat.updateMyStatus();                                                                                                              //will remove user from room
-        HistoryUser.add(HistoryCodes.LOG_LOGOUT, this);                                                                                     //add a logout log record
+        addHistory(HistoryCodes.LOG_LOGOUT);
         sync();                                                                                                                             //update the user in database
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
         logger.info("user '%s' game channel logged out", getLogin());
@@ -397,28 +396,29 @@ public class User {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
         Calendar cReq = Calendar.getInstance(), cMin = Calendar.getInstance(), cCurr = Calendar.getInstance();
 
-
         cReq.set(2000 + Integer.parseInt(date.split("\\.")[2]), Integer.parseInt(date.split("\\.")[1]) - 1, Integer.parseInt(date.split("\\.")[0]), 0, 0, 0);
+
         cCurr.setTime(new Date());
         cCurr.set(Calendar.HOUR_OF_DAY, 0); cCurr.set(Calendar.MINUTE, 0); cCurr.set(Calendar.SECOND, 0);
 
-        History.Subject subject = History.Subject.USER;                                                                                     //user
-        int subjectId = getId();
-        if (login != null) {
-            if (NumberUtils.isDigits(login)) {                                                                                              //cell
+        History.Subject subject = History.Subject.USER;                                                                                     //history subject type - user
+        int subjectId = getId();                                                                                                            //subjectId - current user id
+        if (login != null) {                                                                                                                //set the subject type and id based on login
+            if (NumberUtils.isDigits(login)) {                                                                                              //this is the bank cell number
                 subject = History.Subject.CELL;
-                subjectId = NumberUtils.toInt(login);
+                subjectId = NumberUtils.toInt(login);                                                                                       //login contains cell number
             } else
                 if (login.equals("$building")) {                                                                                            //building
                     subject = History.Subject.BUILDING;
                     subjectId = getBuilding().getId();
-                } else {                                                                                                                    //some user login
-                    User u = UserManager.getUser(login);
+                } else {                                                                                                                    //some user user login
+                    User u = UserManager.getUser(login);                                                                                    //we must make sure that requested user exists
                     subjectId = (u != null && !u.isEmpty()) ? u.getId() : -1;
                 }
         }
-        cReq.add(Calendar.DATE, dx == null ? 0 : (dx.equals("-") ? -1 : 1));
-        List<History> historyLogs = History.getHistory(subject, subjectId);
+
+//        cReq.add(Calendar.DATE, dx == null ? 0 : (dx.equals("-") ? -1 : 1));
+        List<History> historyLogs = History.getHistory(subject, subjectId, cReq.getTimeInMillis() / 1000L);
         StringJoiner sj = new StringJoiner("", String.format("<HISTORY date=\"%s\">", dateFormat.format(cReq.getTime())), "</HISTORY>");
         historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s\n", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
         sendMsg(sj.toString());
@@ -632,6 +632,11 @@ public class User {
         return;
     }
 
+    public void addHistory(int code, String ... params) {
+        History.add(getId(), History.Subject.USER, code, params);                                                                           //add a record to the history log
+        return;
+    }
+
     public void sendIMS(int code, String... params) {                                                                                       //send an IMS to user and add history record
         long now = Instant.now().getEpochSecond();                                                                                          //format date time
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
@@ -641,7 +646,7 @@ public class User {
         Arrays.stream(params).forEach(sj::add);
         sendMsg(String.format("<IMS %s />", sj));
 
-        HistoryUser.addIms(code, this, params);                                                                                             //add history record with IMS flag set
+        History.addIms(getId(), code, params);                                                                                              //add history record with IMS flag set
         return;
     }
 
