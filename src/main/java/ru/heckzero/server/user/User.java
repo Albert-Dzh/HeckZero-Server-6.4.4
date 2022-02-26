@@ -394,33 +394,28 @@ public class User {
 
     public void com_HISTORY(String login, String date, String dx, String b) {                                                               //log request
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
-        Calendar cReq = Calendar.getInstance(), cMin = Calendar.getInstance(), cCurr = Calendar.getInstance();
-
+        Calendar cReq = Calendar.getInstance();
         cReq.set(2000 + Integer.parseInt(date.split("\\.")[2]), Integer.parseInt(date.split("\\.")[1]) - 1, Integer.parseInt(date.split("\\.")[0]), 0, 0, 0);
 
-        cCurr.setTime(new Date());
-        cCurr.set(Calendar.HOUR_OF_DAY, 0); cCurr.set(Calendar.MINUTE, 0); cCurr.set(Calendar.SECOND, 0);
+        History.Subject subject = login == null ? History.Subject.USER : (NumberUtils.isDigits(login) ? History.Subject.CELL : (login.equals("$building") ? History.Subject.BUILDING : History.Subject.CLAN)); //what is this request for? User, building, cell, clan.
+        int subjectId = switch (subject) {                                                                                                  //determine subject id based on subject
+            case USER -> {User u = login == null ? this : UserManager.getUser(login); yield !u.isEmpty() ? u.getId() : -1;}                 //user id (self or requested)
+            case BUILDING -> getBuilding().getId();                                                                                         //building id
+            case CELL, CLAN -> NumberUtils.toInt(login);                                                                                    //cell or clan id
+        };
 
-        History.Subject subject = History.Subject.USER;                                                                                     //history subject type - user
-        int subjectId = getId();                                                                                                            //subjectId - current user id
-        if (login != null) {                                                                                                                //set the subject type and id based on login
-            if (NumberUtils.isDigits(login)) {                                                                                              //this is the bank cell number
-                subject = History.Subject.CELL;
-                subjectId = NumberUtils.toInt(login);                                                                                       //login contains cell number
-            } else
-                if (login.equals("$building")) {                                                                                            //building
-                    subject = History.Subject.BUILDING;
-                    subjectId = getBuilding().getId();
-                } else {                                                                                                                    //some user user login
-                    User u = UserManager.getUser(login);                                                                                    //we must make sure that requested user exists
-                    subjectId = (u != null && !u.isEmpty()) ? u.getId() : -1;
-                }
+        List<History> historyLogs = History.getHistory(subject, subjectId, cReq.getTimeInMillis() / 1000L, dx);                             //this will query the database
+        if (!historyLogs.isEmpty())                                                                                                         //returned history is NOT empty
+            cReq.setTimeInMillis(historyLogs.get(0).getDt() * 1000);                                                                        //setting the returning date to the date of the first history record
+        else {                                                                                                                              //result set is empty - no history found
+            if (dx != null) {                                                                                                               //leave the CReq (requested date) unchanged if dx is not set - this was request for the certain date
+                long dt = "-".equals(dx) ? (getParamLong(Params.reg_time) - 86400) * 1000L : (Instant.now().getEpochSecond() + 86400) * 1000L;//compute the epoch of the day before user registration time (-) or  tomorrow 00:00 (+)
+                cReq.setTimeInMillis(dt);                                                                                                 //set the cReq to dt
+            }
         }
 
-//        cReq.add(Calendar.DATE, dx == null ? 0 : (dx.equals("-") ? -1 : 1));
-        List<History> historyLogs = History.getHistory(subject, subjectId, cReq.getTimeInMillis() / 1000L);
-        StringJoiner sj = new StringJoiner("", String.format("<HISTORY date=\"%s\">", dateFormat.format(cReq.getTime())), "</HISTORY>");
-        historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s\n", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
+        StringJoiner sj = new StringJoiner("\n", String.format("<HISTORY date=\"%s\">", dateFormat.format(cReq.getTime())), "</HISTORY>");
+        historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
         sendMsg(sj.toString());
         return;
     }

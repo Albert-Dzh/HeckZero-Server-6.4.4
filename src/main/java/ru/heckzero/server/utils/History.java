@@ -6,7 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.query.Query;
+import org.hibernate.query.NativeQuery;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
@@ -14,18 +14,14 @@ import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-//with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(max(dt)))) as max_dt from history where user_id = 8 and dt < 1645736400)
-//        select id, user_id, dt, to_timestamp(dt) from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id;
 
-/*
 @org.hibernate.annotations.NamedNativeQueries({
-        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryCertainDate", query = "select * from history where  order by id", resultSetMapping = , cacheable = true),
-        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryPrevDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(max(dt)))) as max_dt from history where sbj_id = :id and dt < :dt) select id, sbj_id, dt, to_timestamp(dt) from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id", resultClass = History.class, cacheable = true)
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryCertainDate", query = "select * from history h where h.sbj_id = :sbj_id and sbj_type = :sbj_type and h.dt >= :dt and h.dt <  :dt + 86400 order by h.id"),
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryPrevDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(max(dt)))) as min_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt < :dt) select * from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= (select min_dt from tmp_table) and dt < (select min_dt + 86400 from tmp_table) order by id"),
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryNextDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(min(dt)))) as max_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= :dt + 86400) select * from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id")
     }
 )
-*/
 
-@org.hibernate.annotations.NamedQuery(name = "History", query = "select h from History h where h.sbj_id = :sbj_id  and sbj_type = :sbj_type and h.dt >= :dt_start and h.dt < :dt_end order by h.id", readOnly = true, cacheable = true)
 @Entity(name = "History")
 @Table(name = "history")
 @Cacheable
@@ -42,9 +38,10 @@ public class History {
         new History(user_id, Subject.USER, 1, code, params).sync();
         return;
     }
-    public static List<History> getHistory(Subject sbj_type, int sbj_id, long date) {
+    public static List<History> getHistory(Subject sbj_type, int sbj_id, long date, String dx) {                                            //date - the requested date with time reset to 00:00:00
+        String queryName = dx == null ? "HistoryCertainDate" : (dx.equals("-") ? "HistoryPrevDate" : "HistoryNextDate");
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<History> query = session.createNamedQuery(String.format("History", History.class)).setParameter("sbj_id", sbj_id).setParameter("sbj_type", sbj_type).setParameter("dt_start", date).setParameter("dt_end", date + 86400).setCacheable(true);
+            NativeQuery query = session.getNamedNativeQuery(queryName).setParameter("sbj_id", sbj_id).setParameter("sbj_type", sbj_type.ordinal()).setParameter("dt", date).addEntity(History.class).setCacheable(true);
             List<History> historyLogs = query.list();
             return historyLogs;
         } catch (Exception e) {                                                                                                             //database problem occurred
@@ -60,9 +57,9 @@ public class History {
 
     private int sbj_id;                                                                                                                     //subject id this record is related to
     private Subject sbj_type;                                                                                                               //subject type (user, building, bank cell, etc..)
-    private int ims;                                                                                                                        //if this event gonna be sent as an IMS on every user login
+    private int ims;                                                                                                                        //if this event is gonna be sent as an IMS on every user login
     private long dt;                                                                                                                        //event time (epoch sec)
-    private int code;                                                                                                                       //history code
+    private int code;                                                                                                                       //the code (history message type)
     protected String param1 = StringUtils.EMPTY;
     protected String param2 = StringUtils.EMPTY;
     protected String param3 = StringUtils.EMPTY;
@@ -98,5 +95,5 @@ public class History {
     public String getParam4() {return param4;}
     public String getParam5() {return param5;}
 
-    private boolean sync() {return ServerMain.sync(this);}
+    private void sync() {ServerMain.sync(this);}
 }
