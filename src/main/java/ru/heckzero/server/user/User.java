@@ -405,12 +405,12 @@ public class User {
         };
 
         List<History> historyLogs = History.getHistory(subject, subjectId, cReq.getTimeInMillis() / 1000L, dx);                             //this will query the database
+
         if (!historyLogs.isEmpty())                                                                                                         //returned history is NOT empty
             cReq.setTimeInMillis(historyLogs.get(0).getDt() * 1000);                                                                        //setting the returning date to the date of the first history record
         else {                                                                                                                              //result set is empty - no history found
             if (dx != null) {                                                                                                               //leave the CReq (requested date) unchanged if dx is not set - this was request for the certain date
-                long dt = "-".equals(dx) ? (getParamLong(Params.reg_time) - 86400) * 1000L : (Instant.now().getEpochSecond() + 86400) * 1000L;//compute the epoch of the day before user registration time (-) or  tomorrow 00:00 (+)
-                cReq.setTimeInMillis(dt);                                                                                                 //set the cReq to dt
+                com_HISTORY(login, date, null, b);
             }
         }
 
