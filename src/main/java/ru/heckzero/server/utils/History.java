@@ -5,8 +5,10 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
+import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.NativeQuery;
+import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
@@ -38,12 +40,37 @@ public class History {
         new History(user_id, Subject.USER, 1, code, params).sync();
         return;
     }
+
+    public static void clIMS(int user_id) {                                                                                                 //clear IMS flag for messages on user id user_id
+        Transaction tx = null;
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            tx = session.beginTransaction();
+            session.createQuery("update History set ims = 0 where sbj_id = :user_id and sbj_type = 0 and ims = 1").setParameter("user_id", user_id).executeUpdate();
+            tx.commit();
+            return;
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't update history  (delete IMS) for user id %d: %s:%s", user_id, e.getClass().getSimpleName(), e.getMessage());
+            if (tx != null && tx.isActive())
+                tx.rollback();
+        }
+        return;
+    }
+
+    public static List<History> getIMS(int user_id) {                                                                                       //select IMS messages for user by user_id
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<History> query = session.createQuery("select h from History h where h.sbj_id = :user_id and h.sbj_type = 0 and h.ims = 1 order by h.id", History.class).setParameter("user_id", user_id).setCacheable(false);
+            return query.list();
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't get history IMS logs: %s", e.getMessage());
+        }
+        return Collections.emptyList();
+    }
+
     public static List<History> getHistory(Subject sbj_type, int sbj_id, long date, String dx) {                                            //date - the requested date with time reset to 00:00:00
         String queryName = dx == null ? "HistoryCertainDate" : (dx.equals("-") ? "HistoryPrevDate" : "HistoryNextDate");
         try (Session session = ServerMain.sessionFactory.openSession()) {
             NativeQuery query = session.getNamedNativeQuery(queryName).setParameter("sbj_id", sbj_id).setParameter("sbj_type", sbj_type.ordinal()).setParameter("dt", date).addEntity(History.class).setCacheable(true);
-            List<History> historyLogs = query.list();
-            return historyLogs;
+            return (List<History>) query.list();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't get history logs: %s", e.getMessage());
         }

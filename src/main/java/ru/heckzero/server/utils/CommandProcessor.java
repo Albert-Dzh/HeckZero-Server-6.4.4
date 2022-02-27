@@ -224,6 +224,11 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_CLIMS(Attributes attrs) {                                                                                         //clear user IMS messages (set ims flag to 0)
+        user.com_CLIMS();
+        return;
+    }
+
     public void com_GAME_AR(Attributes attrs) {                                                                                             //arsenal operation
         long a = NumberUtils.toLong(attrs.getValue("a"), -1);                                                                               //item id user takes from arsenal
         long d = NumberUtils.toLong(attrs.getValue("d"), -1);                                                                               //item id user puts to arsenal

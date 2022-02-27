@@ -241,11 +241,14 @@ public class User {
 
     public void com_MYPARAM() {                                                                                                             //provision the client initial params as a reply for <GETME/>
         logger.info("processing <GETME/> from %s", gameChannel.attr(AttributeKey.valueOf("chStr")).get());
+
         StringJoiner sj = new StringJoiner("", "<MYPARAM ", "</MYPARAM>");
         sj.add(getParamsXml(getmeParams, false)).add(">");
         sj.add(getItemBox().getXml());
+
         lastSentId2 = getParamLong(Params.id2);
         sendMsg(sj.toString());
+        checkIMS();
         return;
     }
 
@@ -405,14 +408,10 @@ public class User {
         };
 
         List<History> historyLogs = History.getHistory(subject, subjectId, cReq.getTimeInMillis() / 1000L, dx);                             //this will query the database
-
-        if (!historyLogs.isEmpty())                                                                                                         //returned history is NOT empty
+        if (historyLogs.isEmpty() && dx != null)                                                                                            //no records for the previous or next date
+            com_HISTORY(login, date, null, b);                                                                                              //return records for the selected (requested) date without any shifting
+        if (!historyLogs.isEmpty())                                                                                                         //there are records in a result set
             cReq.setTimeInMillis(historyLogs.get(0).getDt() * 1000);                                                                        //setting the returning date to the date of the first history record
-        else {                                                                                                                              //result set is empty - no history found
-            if (dx != null) {                                                                                                               //leave the CReq (requested date) unchanged if dx is not set - this was request for the certain date
-                com_HISTORY(login, date, null, b);
-            }
-        }
 
         StringJoiner sj = new StringJoiner("\n", String.format("<HISTORY date=\"%s\">", dateFormat.format(cReq.getTime())), "</HISTORY>");
         historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
@@ -497,8 +496,6 @@ public class User {
             logger.warn("invalid <POST/> command received from user %s, t = %s, got nothing to process", getLogin(), t);
         return;
     }
-
-
 
     public void com_NEWID() {                                                                                                               //client has just created a new ID for an item
         long userId2 = getParamLong(Params.id2);                                                                                            //last id2 value was sent to user
@@ -632,6 +629,22 @@ public class User {
         return;
     }
 
+    public void com_CLIMS() {                                                                                                               //clear IMS - set ims flag to 0 for user history records
+        History.clIMS(getId());
+        return;
+    }
+    public void checkIMS() {                                                                                                                //get and send all unread IMS to user
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
+
+        List<History> historyLogs = History.getIMS(getId());                                                                                //get all IMS messages for the user (history records having ims=1)
+        if (historyLogs.isEmpty())                                                                                                          //no IMS for user, so nothing to send
+            return;
+
+        StringJoiner sj = new StringJoiner("\n", "<IMS m=\">", "\" />");
+        historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
+        sendMsg(sj.toString());
+        return;
+    }
     public void sendIMS(int code, String... params) {                                                                                       //send an IMS to user and add history record
         long now = Instant.now().getEpochSecond();                                                                                          //format date time
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
