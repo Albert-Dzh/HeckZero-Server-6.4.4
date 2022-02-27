@@ -32,16 +32,16 @@ public class History {
     public enum Subject {USER, BUILDING, CELL, CLAN}
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    public static void add(int sbj_id, Subject sbj_type, int code, String...params) {                                                       //add a history record
+    public static void add(int sbj_id, Subject sbj_type, int code, String...params) {                                                       //add a history record for some subject
         new History(sbj_id, sbj_type, 0, code, params).sync();
         return;
     }
-    public static void addIms(int user_id, int code, String...params) {                                                                     //add a history record for user that will be sent as IMS
+    public static void addIms(int user_id, int code, String...params) {                                                                     //add a history record for user that will be sent as IMS (shown upon each user login)
         new History(user_id, Subject.USER, 1, code, params).sync();
         return;
     }
 
-    public static void clIMS(int user_id) {                                                                                                 //clear IMS flag for messages on user id user_id
+    public static void clIMS(int user_id) {                                                                                                 //clear IMS flag for the messages of user id user_id
         Transaction tx = null;
         try (Session session = ServerMain.sessionFactory.openSession()) {
             tx = session.beginTransaction();
@@ -95,7 +95,7 @@ public class History {
 
     protected History() { }
 
-    private History(int sbj_id, Subject sbj_type, int ims, int code, String...param) {
+    private History(int sbj_id, Subject sbj_type, int ims, int code, String...param) {                                                      //a private constructor, use add() methods to add a history record
         this.sbj_id = sbj_id;
         this.sbj_type = sbj_type;
         this.ims = ims;

@@ -633,28 +633,27 @@ public class User {
         History.clIMS(getId());
         return;
     }
-    public void checkIMS() {                                                                                                                //get and send all unread IMS to user
+    public void checkIMS() {                                                                                                                //send all unread IMS to the user
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
-
         List<History> historyLogs = History.getIMS(getId());                                                                                //get all IMS messages for the user (history records having ims=1)
-        if (historyLogs.isEmpty())                                                                                                          //no IMS for user, so nothing to send
+        if (historyLogs.isEmpty())                                                                                                          //no IMS found for the user, so nothing to send
             return;
 
-        StringJoiner sj = new StringJoiner("\n", "<IMS m=\">", "\" />");
+        StringJoiner sj = new StringJoiner("\n", "<IMS m=\"", "\" />");
         historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
         sendMsg(sj.toString());
         return;
     }
+
     public void sendIMS(int code, String... params) {                                                                                       //send an IMS to user and add history record
         long now = Instant.now().getEpochSecond();                                                                                          //format date time
+        History.addIms(getId(), code, params);                                                                                              //add history record with IMS flag set
+
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
         String date = String.format("%s %s", dateFormat.format(new Date(now * 1000L)), timeFormat.format(new Date(now * 1000L)));
-
-        StringJoiner sj = new StringJoiner("\t", "m=\"" + date + "\t" + code + "\t", "\n\"");
+        StringJoiner sj = new StringJoiner("\t", "<IMS m=\"" + date + "\t" + code + "\t", "\n\"/>");                                        //format and send IMS to the user if he is online
         Arrays.stream(params).forEach(sj::add);
-        sendMsg(String.format("<IMS %s />", sj));
-
-        History.addIms(getId(), code, params);                                                                                              //add history record with IMS flag set
+        sendMsg(sj.toString());
         return;
     }
 
