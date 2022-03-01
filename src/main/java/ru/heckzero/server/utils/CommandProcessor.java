@@ -84,9 +84,13 @@ public class CommandProcessor extends DefaultHandler {
         int p2 = NumberUtils.toInt(attrs.getValue("p2"), -1);                                                                               //set p2 - parcel cost
         int d1 = NumberUtils.toInt(attrs.getValue("d1"), -1);                                                                               //set d1 - urgent parcel costs
         String login = attrs.getValue("login");                                                                                             //wire recipient
-        String wire = attrs.getValue("wire");                                                                                               //send a wire to user 'login'
+        String wire = attrs.getValue("wire");                                                                                               //send a wire to user 'login' (wire content)
+        String parcel = attrs.getValue("parcel");                                                                                           //parcel recipient
+        String itm = attrs.getValue("itm");                                                                                                 //items to send in parcel
+        int fast = NumberUtils.toInt(attrs.getValue("fast"));                                                                               //urgent delivery
 
-        user.com_PT(get, me, p1, p2, d1, login, wire);
+        user.com_PT(get, me, p1, p2, d1, login, wire, parcel, itm, fast);
+        return;
     }
 
     private void com_GAME_CHAT(Attributes attrs) {                                                                                          //chat server host request comes from a game channel

@@ -389,9 +389,9 @@ public class User {
         return;
     }
 
-    public void com_PT(int get, int me, int p1, int p2, int d1, String login, String wire) {                                                //PT workflow
+    public void com_PT(int get, int me, int p1, int p2, int d1, String login, String wire, String parcel, String itm, int fast) {                     //PT workflow
         PostOffice postOffice = currBld instanceof PostOffice ? (PostOffice) currBld : (PostOffice) (currBld = PostOffice.getPostOffice(getBuilding().getId()));
-        postOffice.processCmd(this, get, me, p1, p2, d1, login, wire);
+        postOffice.processCmd(this, get, me, p1, p2, d1, login, wire, parcel, itm, fast);
         return;
     }
 
@@ -640,7 +640,7 @@ public class User {
             return;
 
         StringJoiner sj = new StringJoiner("\n", "<IMS m=\"", "\" />");
-        historyLogs.forEach(hl -> sj.add(String.format(" \r%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
+        historyLogs.forEach(hl -> sj.add(String.format(" &#13;%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
         sendMsg(sj.toString());
         return;
     }
@@ -651,7 +651,7 @@ public class User {
 
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yy"), timeFormat = new SimpleDateFormat("HH:mm");
         String date = String.format("%s %s", dateFormat.format(new Date(now * 1000L)), timeFormat.format(new Date(now * 1000L)));
-        StringJoiner sj = new StringJoiner("\t", "<IMS m=\" \r" + date + "\t" + code + "\t", "\n\"/>");                                        //format and send IMS to the user if he is online
+        StringJoiner sj = new StringJoiner("\t", "<IMS m=\" &#13;" + date + "\t" + code + "\t", "\n\"/>");                                        //format and send IMS to the user if he is online
         Arrays.stream(params).forEach(sj::add);
         sendMsg(sj.toString());
         return;

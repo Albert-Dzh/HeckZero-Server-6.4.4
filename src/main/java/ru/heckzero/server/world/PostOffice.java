@@ -1,11 +1,14 @@
 package ru.heckzero.server.world;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
@@ -59,7 +62,7 @@ public class PostOffice extends Building {
         return sj.toString();
     }
 
-    public void processCmd(User user, int get, int me, int p1, int p2, int d1, String login, String wire) {
+    public void processCmd(User user, int get, int me, int p1, int p2, int d1, String login, String wire, String parcel, String itm, int fast) {
         if (get > 0 && user.isBuildMaster()) {                                                                                              //take money from post office's cash
             int cashTaken = decMoney(get);                                                                                                  //take money from building
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                  //add money from postOffice cash to the user
@@ -87,6 +90,24 @@ public class PostOffice extends Building {
             user.sendMsg("<PT ok=\"1\"/>");
         }
 
+        if (parcel != null && itm != null) {
+            User rcptUser = UserManager.getUser(parcel);
+            if (rcptUser == null || rcptUser.isEmpty()) {                                                                                   //recipient is not found
+                user.sendMsg("<PT err=\"1\"/>");
+                return;
+            }
+            ItemBox parcelBox = new ItemBox();
+            String[] items = itm.split(",");
+            for (int i = 0; i < items.length; i += 2) {
+                Item item = user.getItemBox().getSplitItem(NumberUtils.toLong(items[i]), NumberUtils.toInt(items[i + 1]), false, user::getNewId);
+                parcelBox.addItem(item);
+            }
+            int parcelWeight = parcelBox.getMass();
+            int parcelCost = (int)Math.ceil(parcelWeight * (fast == 1 ? this.d1  : this.p2) / 100.0);
+
+            logger.info(parcelBox);
+            logger.info("parcel weight = %d, cost = %d", parcelWeight, parcelCost);
+        }
         user.sendMsg(ptXml());
         return;
     }
