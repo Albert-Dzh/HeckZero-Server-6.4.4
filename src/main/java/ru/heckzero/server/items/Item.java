@@ -36,7 +36,7 @@ import java.util.stream.LongStream;
 public class Item implements Cloneable {
     private static final Logger logger = LogManager.getFormatterLogger();
 
-    public enum Params {id, pid,    user_id, section, slot,  b_id, cell_id,  name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
+    public enum Params {id, pid,    user_id, section, slot,  b_id, cell_id, rcpt_id, rcpt_dt, name, txt, massa, st, made, min, protect, quality, maxquality, OD, rOD, type, damage, calibre, shot, nskill, max_count, up, grouping, range, nt, build_in, c, radius, cost, cost2, s1, s2, s3, s4, count, lb, dt, hz, res, owner, tm, ln}
     private static final EnumSet<Params> itemParams = EnumSet.of(Params.id, Params.section, Params.slot, Params.name, Params.txt, Params.massa, Params.st, Params.made, Params.min, Params.protect, Params.quality, Params.maxquality, Params.OD, Params.rOD, Params.type, Params.damage, Params.calibre, Params.shot, Params.nskill, Params.max_count, Params.up, Params.grouping, Params.range, Params.nt, Params.build_in, Params.c, Params.radius, Params.cost, Params.cost2, Params.s1, Params.s2, Params.s3, Params.s4, Params.count, Params.lb, Params.dt, Params.hz, Params.res, Params.owner, Params.tm, Params.ln);
 
     @SuppressWarnings("unchecked")
@@ -120,6 +120,9 @@ public class Item implements Cloneable {
     private Integer b_id;                                                                                                                   //building id this item belongs to
     private Integer cell_id;                                                                                                                //bank cell id
 
+    private Integer rcpt_id;                                                                                                                //parcel recipient id
+    private Long rcpt_dt;                                                                                                                   //parcel delivery date
+
     @OneToMany(fetch = FetchType.LAZY)                                                                                                      //built-in items having item.pid = item.id
     @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
     private List<Item> included = new ArrayList<>();
@@ -145,7 +148,7 @@ public class Item implements Cloneable {
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
     public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                     //item is a building owner key
 
-    public boolean needCreateNewId(int count) {return count > 0 && count < getParamInt(Params.count) || getParamDouble(Params.calibre) > 0.0;} //shall we create a new id when do something with this item
+    public boolean needCreateNewId(int count) {return count > 0 && count < getCount() || (getCount() > 0 && getParamDouble(Params.calibre) > 0.0);} //shall we create a new id when messing around with this item
 
     public Long getId()   {return id; }                                                                                                     //item id
     public long getPid()  {return pid;}                                                                                                     //item master's id
@@ -153,7 +156,7 @@ public class Item implements Cloneable {
     public int getBaseType() {return (int)Math.floor(getParamDouble(Params.type));}                                                         //get the base type of the item
 
     public ItemBox getIncluded() {return Hibernate.isInitialized(included) ? new ItemBox(included) : new ItemBox();}                        //return included items as item box
-    public ItemBox getAllItems() {
+    public ItemBox getAllItems() {                                                                                                          //return an ItemBox containing this item along with included
         ItemBox box = Hibernate.isInitialized(included) ? new ItemBox(included) : new ItemBox();
         box.addItem(this);
         return box;

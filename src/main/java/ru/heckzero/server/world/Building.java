@@ -56,12 +56,14 @@ public class Building {
 
     public boolean isEmpty() {return id == null;}
 
-    public Integer getId() { return id; }
-    public int getX()      {return location.getX();}
-    public int getY()      {return location.getY();}
-    public int getZ()      {return Z; }
-    public int getName()   {return name;}
-    public String getTxt() {return txt;}
+    public Integer getId()      { return id; }
+    public int getX()           {return location.getX();}
+    public int getY()           {return location.getY();}
+    public int getLocalX()      {return location.getLocalX();}
+    public int getLocalY()      {return location.getLocalY();}
+    public int getZ()           {return Z; }
+    public int getName()        {return name;}
+    public String getTxt()      {return txt;}
 
     public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
     public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());};

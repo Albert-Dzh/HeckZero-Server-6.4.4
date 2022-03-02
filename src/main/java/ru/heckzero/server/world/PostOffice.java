@@ -1,9 +1,9 @@
 package ru.heckzero.server.world;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
@@ -18,8 +18,8 @@ import ru.heckzero.server.utils.ParamUtils;
 import javax.persistence.Entity;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
-import java.util.EnumSet;
-import java.util.StringJoiner;
+import java.time.Instant;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity(name = "PostOffice")
@@ -27,13 +27,15 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class PostOffice extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
+    private static final int DELIVERY_TIME_MIN = 300, DELIVERY_TIME_MAX = 1800;                                                             //delivery time in seconds
     private static final EnumSet<Params> postParams = EnumSet.of(Params.cash, Params.p1, Params.p2, Params.d1);
+
 
     public static PostOffice getPostOffice(int id) {                                                                                        //try to get a PostOffice instance by building id
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<PostOffice> query = session.createQuery("select b from PostOffice b where b.id = :id", PostOffice.class).setParameter("id", id).setCacheable(true);
             PostOffice postOffice = query.getSingleResult();
-//            Hibernate.initialize(postOffice.getLocation());                                                                                 //need by bank cells to get bank coordinates
+            Hibernate.initialize(postOffice.getLocation());                                                                                 //need by bank cells to get bank coordinates
             return postOffice;
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load post office with id %d from database: %s", id, e.getMessage());
@@ -90,24 +92,32 @@ public class PostOffice extends Building {
             user.sendMsg("<PT ok=\"1\"/>");
         }
 
-        if (parcel != null && itm != null) {
+        if (parcel != null && itm != null) {                                                                                                //user sends a parcel, recipient is in parcel argument
             User rcptUser = UserManager.getUser(parcel);
             if (rcptUser == null || rcptUser.isEmpty()) {                                                                                   //recipient is not found
                 user.sendMsg("<PT err=\"1\"/>");
                 return;
             }
-            ItemBox parcelBox = new ItemBox();
-            String[] items = itm.split(",");
-            for (int i = 0; i < items.length; i += 2) {
-                Item item = user.getItemBox().getSplitItem(NumberUtils.toLong(items[i]), NumberUtils.toInt(items[i + 1]), false, user::getNewId);
-                parcelBox.addItem(item);
-            }
-            int parcelWeight = parcelBox.getMass();
-            int parcelCost = (int)Math.ceil(parcelWeight * (fast == 1 ? this.d1  : this.p2) / 100.0);
 
-            logger.info(parcelBox);
+            int deliveryTime = DELIVERY_TIME_MIN + (int)(Math.random() * ((DELIVERY_TIME_MAX - DELIVERY_TIME_MIN) + 1));                    //parcel delivery time - random seconds between MIN and MAX delivery time
+            long rcpt_dt = Instant.now().getEpochSecond() + deliveryTime;                                                                   //time (epoch) when parcel can be delivered
+            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);                                                                     //reset param list
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.rcpt_id, rcptUser.getId(), Item.Params.rcpt_dt, fast == 1 ? Instant.now().getEpochSecond() : rcpt_dt);      //set param - value list
+            ItemBox parcelBox = new ItemBox(true);                                                                                          //new synchronised Item Box to place parcel items to
+            long[ ] itemsIdsCount = Arrays.stream(itm.split(",")).mapToLong(Long::parseLong).toArray();                                     //items along with ids placed in a parcel
+            for (int i = 0; i < itemsIdsCount.length; i += 2) {                                                                             //move items to parcelBox - will perform database changes
+                if (!user.getItemBox().moveItem(itemsIdsCount[i], (int)itemsIdsCount[i + 1], false, Item::getNextGlobalId, parcelBox, resetParams, setParams)) { // new id will be set to the next global id if the item is going to split, or leave unchanged otherwise
+                    logger.error("can't put an item id %d to post office", itemsIdsCount[i]);
+                    user.disconnect();
+                }
+            }
+            int parcelWeight = parcelBox.getMass();                                                                                         //parcel weight
+            int parcelCost = (int)Math.ceil(parcelWeight * (fast == 1 ? this.d1 : this.p2) / 100.0);                                        //parcel delivery cost
             logger.info("parcel weight = %d, cost = %d", parcelWeight, parcelCost);
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + parcelCost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_PARCEL, String.valueOf(user.getMoney().getCopper()));
+            user.sendMsg("<PT ok=\"2\"/>");
         }
+
         user.sendMsg(ptXml());
         return;
     }
