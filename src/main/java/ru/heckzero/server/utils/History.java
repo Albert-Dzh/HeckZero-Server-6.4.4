@@ -18,9 +18,13 @@ import java.util.Collections;
 import java.util.List;
 
 @org.hibernate.annotations.NamedNativeQueries({
-        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryCertainDate", query = "select * from history h where h.sbj_id = :sbj_id and sbj_type = :sbj_type and h.dt >= :dt and h.dt <  :dt + 86400 order by h.id"),
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryGivenDate", query = "select * from history h where h.sbj_id = :sbj_id and sbj_type = :sbj_type and h.dt >= :dt and h.dt <  :dt + 86400 order by h.id"),
         @org.hibernate.annotations.NamedNativeQuery(name = "HistoryPrevDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(max(dt)))) as min_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt < :dt) select * from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= (select min_dt from tmp_table) and dt < (select min_dt + 86400 from tmp_table) order by id"),
-        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryNextDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(min(dt)))) as max_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= :dt + 86400) select * from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id")
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryNextDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(min(dt)))) as max_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= :dt + 86400) select * from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id"),
+
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryGivenDateDZ", query ="SELECT * FROM history WHERE sbj_id = :sbj_id AND sbj_type = :sbj_type AND CAST(to_timestamp(dt) AS DATE) = CAST(:date AS DATE) ORDER BY id"),
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryPrevDateDZ", query ="WITH aux AS (SELECT MAX(CAST(to_timestamp(dt) AS DATE)) AS dt_preceding FROM history WHERE sbj_id = :sbj_id AND sbj_type = :sbj_type AND CAST(to_timestamp(dt) AS DATE) < CAST(:date AS DATE)) SELECT * FROM history WHERE sbj_id = :sbj_id AND sbj_type = :sbj_type AND CAST(to_timestamp(dt) AS DATE) = (SELECT dt_preceding FROM aux) ORDER BY id"),
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryNextDateDZ", query ="WITH aux AS (SELECT MIN(CAST(to_timestamp(dt) AS DATE)) AS dt_following FROM history WHERE sbj_id = :sbj_id AND sbj_type = :sbj_type AND CAST(to_timestamp(dt) AS DATE) > CAST(:date AS DATE)) SELECT * FROM history WHERE sbj_id = :sbj_id AND sbj_type = :sbj_type AND CAST(to_timestamp(dt) AS DATE) = (SELECT dt_following FROM aux) ORDER BY id")
     }
 )
 
@@ -66,10 +70,10 @@ public class History {
         return Collections.emptyList();
     }
 
-    public static List<History> getHistory(Subject sbj_type, int sbj_id, long date, String dx) {                                            //date - the requested date with time reset to 00:00:00
-        String queryName = dx == null ? "HistoryCertainDate" : (dx.equals("-") ? "HistoryPrevDate" : "HistoryNextDate");
+    public static List<History> getHistory(Subject sbj_type, int sbj_id, String date, String dx) {                                          //date - the requested date "dd.MM.YY"; dx - "+/-"
+        String queryName = dx == null ? "HistoryGivenDateDZ" : (dx.equals("-") ? "HistoryPrevDateDZ" : "HistoryNextDateDZ");
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            NativeQuery query = session.getNamedNativeQuery(queryName).setParameter("sbj_id", sbj_id).setParameter("sbj_type", sbj_type.ordinal()).setParameter("dt", date).addEntity(History.class).setCacheable(true);
+            NativeQuery query = session.getNamedNativeQuery(queryName).setParameter("sbj_id", sbj_id).setParameter("sbj_type", sbj_type.ordinal()).setParameter("date", date).addEntity(History.class).setCacheable(true);
             return (List<History>) query.list();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't get history logs: %s", e.getMessage());

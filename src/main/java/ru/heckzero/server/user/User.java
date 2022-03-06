@@ -400,16 +400,16 @@ public class User {
         Calendar cReq = Calendar.getInstance();
         cReq.set(2000 + Integer.parseInt(date.split("\\.")[2]), Integer.parseInt(date.split("\\.")[1]) - 1, Integer.parseInt(date.split("\\.")[0]), 0, 0, 0);
 
-        History.Subject subject = login == null ? History.Subject.USER : (NumberUtils.isDigits(login) ? History.Subject.CELL : (login.equals("$building") ? History.Subject.BUILDING : History.Subject.CLAN)); //what is this request for? User, building, cell, clan.
+        History.Subject subject = login == null ? History.Subject.USER : (NumberUtils.isDigits(login) ? History.Subject.CELL : (login.equals("$building") ? History.Subject.BUILDING : History.Subject.CLAN)); //what is this request for: User, building, cell, clan.
         int subjectId = switch (subject) {                                                                                                  //determine subject id based on subject
             case USER -> {User u = login == null ? this : UserManager.getUser(login); yield !u.isEmpty() ? u.getId() : -1;}                 //user id (self or requested)
             case BUILDING -> getBuilding().getId();                                                                                         //building id
             case CELL, CLAN -> NumberUtils.toInt(login);                                                                                    //cell or clan id
         };
 
-        List<History> historyLogs = History.getHistory(subject, subjectId, cReq.getTimeInMillis() / 1000L, dx);                             //this will query the database
+        List<History> historyLogs = History.getHistory(subject, subjectId, date, dx);                                                       //this will query the database
         if (historyLogs.isEmpty() && dx != null)                                                                                            //no records for the previous or next date
-            com_HISTORY(login, date, null, b);                                                                                              //return records for the selected (requested) date without any shifting
+            com_HISTORY(login, date, null, b);                                                                                              //return records for the given date without any shifting
         if (!historyLogs.isEmpty())                                                                                                         //there are records in a result set
             cReq.setTimeInMillis(historyLogs.get(0).getDt() * 1000);                                                                        //setting the returning date to the date of the first history record
 
