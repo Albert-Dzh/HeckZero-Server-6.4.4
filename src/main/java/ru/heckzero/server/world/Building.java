@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import ru.heckzero.server.utils.History;
 import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.ItemBox;
@@ -86,6 +87,10 @@ public class Building {
         return sync();
     }
 
+    public void addHistory(int code, String ... params) {
+        History.add(getId(), History.Subject.BUILDING, code, params);                                                                       //add a record to the building history log
+        return;
+    }
     public boolean sync() {                                                                                                                 //force=true means sync the item anyway, whether needSync is true
         logger.info("syncing building id %d '%s'", getId(), getTxt());
         if (!ServerMain.sync(this)) {

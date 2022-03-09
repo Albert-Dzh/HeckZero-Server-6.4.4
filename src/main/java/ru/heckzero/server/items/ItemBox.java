@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 public class ItemBox implements Iterable<Item> {
     private static final Logger logger = LogManager.getFormatterLogger();
-    public enum BoxType {USER, BUILDING, BANK_CELL}
+    public enum BoxType {USER, BUILDING, BANK_CELL, PARCEL}
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
     private boolean needSync = false;
 
@@ -150,7 +150,7 @@ public class ItemBox implements Iterable<Item> {
         return item;
     }
 
-    public Item getClonnedItem(long id, int count, Supplier<Long> newId) {
+    public Item getClonnedItem(long id, int count, Supplier<Long> newId) {                                                                  //used by portal
         Item item = findItem(id);
         if (item == null || !ServerMain.refresh(item)) {                                                                                    //after refreshing we know if the item exists in database and the actual item count
             logger.info("can't find an item id %d in the item box, the item doesn't exist anymore", id);

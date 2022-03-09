@@ -26,6 +26,7 @@ import java.util.stream.LongStream;
 
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.included where i.user_id = :id order by i.id")
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i left join fetch i.included where i.b_id = :id order by i.id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_PARCEL", query = "select i from Item i left join fetch i.included where i.rcpt_id = :id and function('to_timestamp', i.rcpt_dt) <= function('now') order by i.id")
 @org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i left join fetch i.included where i.cell_id = :id order by i.cell_id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
@@ -61,6 +62,7 @@ public class Item implements Cloneable {
     }
 
     public static boolean delFromDB(long id, boolean withSub) {                                                                             //delete item from database
+        logger.info("deleting item id %d with sub = %s", id, withSub);
         Transaction tx = null;
         try (Session session = ServerMain.sessionFactory.openSession()) {
             tx = session.beginTransaction();
@@ -123,7 +125,7 @@ public class Item implements Cloneable {
     private Integer rcpt_id;                                                                                                                //parcel recipient id
     private Long rcpt_dt;                                                                                                                   //parcel delivery date
 
-    @OneToMany(fetch = FetchType.LAZY)                                                                                                      //built-in items having item.pid = item.id
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)                                                                           //built-in items having item.pid = item.id
     @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
     private List<Item> included = new ArrayList<>();
 
@@ -224,6 +226,12 @@ public class Item implements Cloneable {
             logger.error("can't clone item: %s", e.getMessage());
         }
         return null;
+    }
+
+    public String getLogDescription() {
+        StringJoiner sj = new StringJoiner(",");
+        sj.add(String.format("%s%s", getParamStr(Params.txt), getCount() > 0 ? "[" + count + "]" : ""));
+        return sj.toString();
     }
 
     public boolean sync() {                                                                                                                 //force=true means sync the item anyway, whether needSync is true

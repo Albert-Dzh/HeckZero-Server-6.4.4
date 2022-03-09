@@ -389,9 +389,9 @@ public class User {
         return;
     }
 
-    public void com_PT(int get, int me, int p1, int p2, int d1, String login, String wire, String parcel, String itm, int fast) {                     //PT workflow
+    public void com_PT(int get, int me, int p1, int p2, int d1, long a, int c, int s, String login, String wire, String parcel, String itm, int fast) {                     //PT workflow
         PostOffice postOffice = currBld instanceof PostOffice ? (PostOffice) currBld : (PostOffice) (currBld = PostOffice.getPostOffice(getBuilding().getId()));
-        postOffice.processCmd(this, get, me, p1, p2, d1, login, wire, parcel, itm, fast);
+        postOffice.processCmd(this, get, me, p1, p2, d1, a, c, s, login, wire, parcel, itm, fast);
         return;
     }
 
