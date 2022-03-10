@@ -24,7 +24,7 @@ public class ItemBox implements Iterable<Item> {
     public static ItemBox init(BoxType boxType, int id, boolean needSync) {
         ItemBox itemBox = new ItemBox(needSync);                                                                                            //needSync - if a returned ItemBox has to sync its items with a db
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id).setCacheable(true).setHint(QueryHints.HINT_PASS_DISTINCT_THROUGH, false);
+            Query<Item> query = session.createNamedQuery(String.format("ItemBox_%s", boxType.toString()), Item.class).setParameter("id", id).setCacheable(false).setHint(QueryHints.HINT_PASS_DISTINCT_THROUGH, false);
             List<Item> items = query.list();
             itemBox.items.addAll(items);
         } catch (Exception e) {                                                                                                             //database problem occurred

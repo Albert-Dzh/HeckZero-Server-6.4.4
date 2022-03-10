@@ -127,6 +127,7 @@ public class Item implements Cloneable {
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)                                                                           //built-in items having item.pid = item.id
     @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
+    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
     private List<Item> included = new ArrayList<>();
 
     protected Item() { }
@@ -229,8 +230,9 @@ public class Item implements Cloneable {
     }
 
     public String getLogDescription() {
-        StringJoiner sj = new StringJoiner(",");
+        StringJoiner sj = new StringJoiner("");
         sj.add(String.format("%s%s", getParamStr(Params.txt), getCount() > 0 ? "[" + count + "]" : ""));
+        sj.add(Hibernate.isInitialized(included) ? included.stream().map(Item::getLogDescription).collect(Collectors.joining(",", "(", ")")) : StringUtils.EMPTY);
         return sj.toString();
     }
 
