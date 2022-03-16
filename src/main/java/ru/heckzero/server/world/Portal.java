@@ -213,13 +213,13 @@ public class Portal extends Building {
         if (a != -1) {                                                                                                                      //user takes an item from portal warehouse
             Item takenItem = this.getItemBox().getClonnedItem(a, c, user::getNewId);
             if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
-                user.sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                    //let the client know if it failed in taking an item
+                user.sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                    //let the client know if it failed with taking an item
                 return;
             }
 
-            takenItem.resetParam(Item.Params.b_id, false);                                                                                  //set new params before transfer the item to user's item box
-            takenItem.setParam(Item.Params.user_id, user.getId(), false);
-            takenItem.setParam(Item.Params.section, s, false);
+            takenItem.resetParam(Item.Params.b_id);                                                                                         //set new params before transfer the item to user's item box
+            takenItem.setParam(Item.Params.user_id, user.getId());
+            takenItem.setParam(Item.Params.section, s);
             user.getItemBox().addItem(takenItem);                                                                                           //add the item to user's item box
 
             Item item = this.getItemBox().findItem(a);                                                                                      //we have to check the remaining count of the source item

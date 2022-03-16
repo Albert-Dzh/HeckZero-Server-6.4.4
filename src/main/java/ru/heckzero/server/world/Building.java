@@ -6,10 +6,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import ru.heckzero.server.utils.History;
-import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.ItemBox;
+import ru.heckzero.server.utils.History;
+import ru.heckzero.server.utils.ParamUtils;
 
 import javax.persistence.*;
 import java.util.EnumSet;
@@ -72,7 +72,7 @@ public class Building {
     protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()); }                                    //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     protected String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 
-    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BUILDING, id, true)) : itemBox;}          //get the building itembox, initialize if needed
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BUILDING, id)) : itemBox;}          //get the building itembox, initialize if needed
 
     synchronized public int decMoney(int amount) {
         amount = Math.min(amount, cash);

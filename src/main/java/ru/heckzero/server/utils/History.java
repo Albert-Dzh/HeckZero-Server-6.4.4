@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 @org.hibernate.annotations.NamedNativeQueries({
-        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryGivenDate", query = "select * from history h where h.sbj_id = :sbj_id and sbj_type = :sbj_type and h.dt >= :dt and h.dt <  :dt + 86400 order by h.id"),
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryGivenDate", query = "select * from history h where h.sbj_id = :sbj_id and sbj_type = :sbj_type and h.dt >= :dt and h.dt < :dt + 86400 order by h.id"),
         @org.hibernate.annotations.NamedNativeQuery(name = "HistoryPrevDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(max(dt)))) as min_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt < :dt) select * from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= (select min_dt from tmp_table) and dt < (select min_dt + 86400 from tmp_table) order by id"),
         @org.hibernate.annotations.NamedNativeQuery(name = "HistoryNextDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(min(dt)))) as max_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= :dt + 86400) select * from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id"),
 

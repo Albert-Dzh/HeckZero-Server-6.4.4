@@ -65,7 +65,7 @@ public class BankCell {
     public long getDt() {return dt;}
     public boolean checkPass(String key, String ecnryptedPass) {return ecnryptedPass.equals(UserManager.encrypt(key, password));}           //validate cell's password
 
-    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id, true)) : itemBox;}         //get the building itembox, initialize if needed
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id)) : itemBox;}         //get the building itembox, initialize if needed
     public int getBookmark_add() {return bookmark_add;}
     public int getCapacity() {return capacity;}
     public int getUser_id() {return user_id;}
@@ -98,12 +98,12 @@ public class BankCell {
             return null;
         Bank bank = Bank.getBank(bank_id);
 
-        key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + getId(), false);                                                   //set the key item params to make client display the key hint properly
-        key.setParam(Item.Params.made, String.format("%s%d_%d_%d",  key.getParamStr(Item.Params.made), bank.getX(), bank.getY(), bank.getZ()), false);
-        key.setParam(Item.Params.hz, getId(), false);
-        key.setParam(Item.Params.res, bank.getTxt(), false);
-        key.setParam(Item.Params.user_id, user_id, false);                                                                                  //user id this key belongs to
-        key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
+        key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + getId());                                                           //set the key item params to make client display the key hint properly
+        key.setParam(Item.Params.made, String.format("%s%d_%d_%d",  key.getParamStr(Item.Params.made), bank.getX(), bank.getY(), bank.getZ()));
+        key.setParam(Item.Params.hz, getId());
+        key.setParam(Item.Params.res, bank.getTxt());
+        key.setParam(Item.Params.user_id, user_id);                                                                                         //user id this key belongs to
+        key.setParam(Item.Params.section, 0);                                                                                               //user box sections this key will be placed to
         return key;
     }
 

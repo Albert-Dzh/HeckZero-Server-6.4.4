@@ -122,14 +122,14 @@ public class PostOffice extends Building {
         }
 
         if (me == 1) {                                                                                                                      //check if there is a parcel ready for delivery for the user
-            ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId(), false);
+            ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId());
             logger.info("parcel box: %s", parcelBox);
             user.sendMsg(String.format("<PT me=\"1\">%s</PT>", parcelBox.getXml()));                                                        //send parcel ItemBox context to the user
             return;
         }
 
         if (a != -1) {                                                                                                                      //user takes an item from a parcel
-            ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId(), true);
+            ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId());
             logger.info("parcel box: %s", parcelBox);
             Item item = parcelBox.getSplitItem(a, c, false, user::getNewId);                                                                //get an item form the parcel ItemBox
             logger.info("got item %s from parcelBox", item);
@@ -140,8 +140,8 @@ public class PostOffice extends Building {
                 return;
             }
             user.addHistory(HistoryCodes.LOG_RECEIVE_ITEMS, item.getLogDescription(), item.getParamStr(Item.Params.owner));                 //add to user log
-            item.resetParams(Set.of(Item.Params.rcpt_id, Item.Params.rcpt_dt, Item.Params.owner), false);                                   //reset params list
-            item.setParams(Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s), false);                                       //set user_id and section before moving the item to the user
+            item.resetParams(Set.of(Item.Params.rcpt_id, Item.Params.rcpt_dt, Item.Params.owner));                                          //reset params list
+            item.setParams(Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s));                                              //set user_id and section before moving the item to the user
             logger.info("adding item %s", item);
             user.getItemBox().addItem(item);                                                                                                //place the item to the user ItemBox
             return;

@@ -128,7 +128,7 @@ public class ServerMain {
                 addAnnotatedClass(User.class).addAnnotatedClass(Location.class).addAnnotatedClass(Building.class).addAnnotatedClass(Portal.class).addAnnotatedClass(Bank.class).addAnnotatedClass(BankCell.class).
                 addAnnotatedClass(PortalRoute.class).addAnnotatedClass(Item.class).addAnnotatedClass(ItemTemplate.class).addAnnotatedClass(Arsenal.class).addAnnotatedClass(ArsenalLoot.class).
                 addAnnotatedClass(UserLevelData.class).addAnnotatedClass(PostOffice.class).
-                addAnnotatedClass(History.class);
+                addAnnotatedClass(History.class).addAnnotatedClass(Item.class);
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();

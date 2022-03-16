@@ -7,10 +7,7 @@ import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
-import ru.heckzero.server.items.ArsenalLoot;
-import ru.heckzero.server.items.Item;
-import ru.heckzero.server.items.ItemBox;
-import ru.heckzero.server.items.ItemTemplate;
+import ru.heckzero.server.items.*;
 import ru.heckzero.server.user.User;
 
 import javax.persistence.*;
@@ -42,12 +39,11 @@ public class Arsenal extends Building {
         ItemBox itemBox = new ItemBox();
         List<Long> ids = Item.getNextGlobalId(arsenalLoot.size());                                                                          //get result.size() numbers from main_id_seq
 
-
         for (ArsenalLoot loot: arsenalLoot) {
             ItemTemplate itemTemplate = loot.getItemTemplate();                                                                             //ItemTemplate instance
             Item item = new Item(itemTemplate);                                                                                             //create an Item by an ItemTemplate instance
-            item.setParam(Item.Params.count, loot.getCount(), false);                                                                       //set new item count from arsenal loot
-            item.setId(ids.get(arsenalLoot.indexOf(loot)), false);                                                                          //set a new next global id from 'ids' pool
+            item.setParam(Item.Params.count, loot.getCount());                                                                              //set new item count from arsenal loot
+            item.setParam(Item.Params.id, ids.get(arsenalLoot.indexOf(loot)));                                                              //set a new next global id from 'ids' pool
             if (item.getId() != -1L)                                                                                                        //add the item to new item box
                 itemBox.addItem(item);
         }

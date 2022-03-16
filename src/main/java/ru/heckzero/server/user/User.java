@@ -176,7 +176,7 @@ public class User {
         return;
     }
 
-    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id, true));}              //return user itembox, init it if necessary
+    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id));}              //return user itembox, init it if necessary
     public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", getMaxLoad());}                               //get user weight tk - current, max - maximum, considering user profession influence
     public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
 
@@ -536,14 +536,6 @@ public class User {
         sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", item.getXml()));
         return;
     }
-    public void delSendItems(ItemBox box) {box.forEach(this::delSendItem);}
-    public void delSendItem(Item item) {
-        if (!getItemBox().delItem(item.getId())) {
-            disconnect();
-            return;
-        }
-        sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
-    }
 
     public void setRoom() {setRoom(-1, -1, 0, 0, 0);}                                                                                       //coming out
     public void setLocation(int X, int Y) {setRoom(X, Y, -1, -1, -1);}                                                                      //only change a location
@@ -576,14 +568,16 @@ public class User {
 
         expired.forEach(item -> {
             logger.info("deleting expired item %s for user %s", item, getLogin());
-            delSendItem(item);                                                                                                              //delete an item from users item box and db and send <DEL_ONE> to the client
+
+            getItemBox().delItem(item.getId(), false);
+            sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
 
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {
-                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
-                included.forEach(i -> i.resetParam(Item.Params.pid, false));
-                included.forEach(i -> i.setParam(Item.Params.user_id, id, false));
-                included.forEach(i -> i.setParam(Item.Params.section, 0, false));
+//                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
+                included.forEach(i -> i.resetParam(Item.Params.pid));
+                included.forEach(i -> i.setParam(Item.Params.user_id, id));
+                included.forEach(i -> i.setParam(Item.Params.section, 0));
                 addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
         });

@@ -12,8 +12,8 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
-import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.utils.ParamUtils;
 
 import javax.persistence.*;
 import java.lang.reflect.Field;
@@ -24,12 +24,17 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_USER", query = "select distinct i from Item i left join fetch i.included where i.user_id = :id order by i.id")
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_BUILDING", query = "select i from Item i left join fetch i.included where i.b_id = :id order by i.id")
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_PARCEL", query = "select i from Item i left join fetch i.included where i.rcpt_id = :id and function('to_timestamp', i.rcpt_dt) <= function('now') order by i.id")
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_BANK_CELL", query = "select i from Item i left join fetch i.included where i.cell_id = :id order by i.cell_id")
+@org.hibernate.annotations.NamedQuery(name = "ItemBox_PARCEL", query = "select i from Item i where i.rcpt_id = :id and function('to_timestamp', i.rcpt_dt) <= function('now') order by i.id")
+
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
+
+@org.hibernate.annotations.NamedNativeQueries({
+    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_USER", query = "with main_items as (select * from items_inventory where user_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
+    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BUILDING", query = "with main_items as (select * from items_inventory where b_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
+    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BANK_CELL", query = "with main_items as (select * from items_inventory where cell_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id")
+})
+
 @Entity(name = "Item")
 @Table(name = "items_inventory")
 @Cacheable
@@ -61,25 +66,9 @@ public class Item implements Cloneable {
         return LongStream.range(0, num).map(i -> -1L).boxed().toList();                                                                     //will return a list filled by -1
     }
 
-    public static boolean delFromDB(long id, boolean withSub) {                                                                             //delete item from database
-        logger.info("deleting item id %d with sub = %s", id, withSub);
-        Transaction tx = null;
-        try (Session session = ServerMain.sessionFactory.openSession()) {
-            tx = session.beginTransaction();
-            session.createNamedQuery(withSub ? "Item_DeleteItemByIdWithSub" : "Item_DeleteItemByIdWithoutSub").setParameter("id", id).executeUpdate();
-            tx.commit();
-            return true;
-        } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't delete item id %d from database: %s:%s", id, e.getClass().getSimpleName(), e.getMessage());
-            if (tx != null && tx.isActive())
-                tx.rollback();
-        }
-        return false;
-    }
 
     @Id
     private long id;
-
     private Long pid;                                                                                                                       //parent item id (-1 means no parent, a master item)
     private String name = "foobar";                                                                                                         //item name in a client (.swf and sprite)
     private String txt = "Unknown";                                                                                                         //item text representation for human
@@ -115,24 +104,22 @@ public class Item implements Cloneable {
     private String tm;
     private String ln;                                                                                                                      //long name text
 
-    private Integer user_id;                                                                                                                //user id this item belongs to
+    private Long user_id;                                                                                                                   //user id this item belongs to
     private String section = StringUtils.EMPTY;                                                                                             //the section number in user box or building warehouse
     private String slot = StringUtils.EMPTY;                                                                                                //user's slot this item is on
 
-    private Integer b_id;                                                                                                                   //building id this item belongs to
-    private Integer cell_id;                                                                                                                //bank cell id
+    private Long b_id;                                                                                                                      //building id this item belongs to
+    private Long cell_id;                                                                                                                   //bank cell id
 
-    private Integer rcpt_id;                                                                                                                //parcel recipient id
-    private Long rcpt_dt;                                                                                                                   //parcel delivery date
+    private Long rcpt_id;                                                                                                                   //parcel recipient id (PostOffice)
+    private Long rcpt_dt;                                                                                                                   //parcel delivery date (PostOffice)
 
-    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)                                                                           //built-in items having item.pid = item.id
-    @JoinTable(name = "items_inventory", joinColumns = {@JoinColumn(name = "pid")}, inverseJoinColumns = {@JoinColumn(name = "id")})
-    @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
-    private List<Item> included = new ArrayList<>();
+    @Transient
+    private ItemBox included = new ItemBox(true);
 
     protected Item() { }
 
-    public Item(ItemTemplate itmpl) {                                                                                                       //create (clone) an Item from ItemTemplate
+    public Item(ItemTemplate itmpl) {                                                                                                      //create (clone) an Item from ItemTemplate
         Field[ ] tmplFields = ItemTemplate.class.getDeclaredFields();
         Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
             try {
@@ -144,39 +131,34 @@ public class Item implements Cloneable {
         return;
     }
 
-    public boolean isIncluded()   {return pid != null && pid != -1;}                                                                        //item is an included one itself (it has pid = parent.id)
+    public boolean isIncluded()   {return pid != null;}                                                                                     //item is an included one itself (it has pid = parent.id)
+    public boolean isMaster()     {return !isIncluded();}                                                                                   //item is an included one itself (it has pid = parent.id)
     public boolean isExpired()    {return Range.between(1L, Instant.now().getEpochSecond()).contains(getParamLong(Params.dt));}             //item is expired (has dt < now)
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
-    public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                     //item is a building owner key
+    public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                     //item is an owner's building key
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getCount() || (getCount() > 0 && getParamDouble(Params.calibre) > 0.0);} //shall we create a new id when messing around with this item
 
-    public Long getId()   {return id; }                                                                                                     //item id
-    public long getPid()  {return pid;}                                                                                                     //item master's id
-    public int getCount() {return getParamInt(Params.count);}                                                                               //item count - 0 if item is not stackable
+    public long getId()      {return id; }                                                                                                  //item id
+    public Long getPid()     {return pid;}                                                                                                  //item master's id (may be null)
+    public int getCount()    {return getParamInt(Params.count);}                                                                            //item count - 0 if item is not stackable
+    public int getMass()     {return getParamInt(Params.massa) * Math.max(getCount(), 1) + included.getMass();}
     public int getBaseType() {return (int)Math.floor(getParamDouble(Params.type));}                                                         //get the base type of the item
 
-    public ItemBox getIncluded() {return Hibernate.isInitialized(included) ? new ItemBox(included) : new ItemBox();}                        //return included items as item box
-    public ItemBox getAllItems() {                                                                                                          //return an ItemBox containing this item along with included
-        ItemBox box = Hibernate.isInitialized(included) ? new ItemBox(included) : new ItemBox();
-        box.addItem(this);
-        return box;
-    }
+    public ItemBox getIncluded() {return included;}                                                                                         //return included items as item box
 
-    synchronized public boolean setParam(Params paramName, Object paramValue, boolean sync) {                                               //set an item param to paramValue
-        if (ParamUtils.setParam(this, paramName.toString(), paramValue)) {                                                                  //delegate param setting to ParamUtils
-            return !sync || sync();
-        }
-        return false;
-    }
-    public void setParams(Map<Params, Object> params, boolean sync) {params.forEach((p, v) -> setParam(p, v, sync));}
-    public boolean resetParam(Params paramName, boolean sync) {return setParam(paramName, null, sync);}
-    public void resetParams(Set<Item.Params> resetParams, boolean sync) {resetParams.forEach(p -> resetParam(p, sync));}
 
-    public boolean setId(long id, boolean sync)      {return setParam(Params.id, id, sync);}
-    public boolean setGlobalId(boolean sync) {return setId(getNextGlobalId(), sync);}
+    public void setParam(Params paramName, Object paramValue) {                                                                             //set an item param to paramValue
+        ParamUtils.setParam(this, paramName.toString(), paramValue);                                                                        //delegate param setting to ParamUtils
+        return;
+    }
+    public void setParams(Map<Params, Object> params) {params.forEach(this::setParam);}
+    public void resetParam(Params paramName) {setParam(paramName, null);}
+    public void resetParams(Set<Item.Params> resetParams) {resetParams.forEach(this::resetParam);}
+    public void decrease(int count) {setParam(Params.count, getCount() - count);}
+
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
     public int getParamInt(Params param)       {return ParamUtils.getParamInt(this, param.toString());}
@@ -184,55 +166,42 @@ public class Item implements Cloneable {
     public double getParamDouble(Params param) {return ParamUtils.getParamDouble(this, param.toString());}
     private String getParamXml(Params param)   {return ParamUtils.getParamXml(this, param.toString());}                                     //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
 
-    public String getXml() {return getXml(true);}
-    public String getXml(boolean withIncluded) {
+    public String getXml() {
         StringJoiner sj = new StringJoiner("", "", "</O>");
         sj.add(itemParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<O ", ">")));    //parent item
-        sj.add(withIncluded && Hibernate.isInitialized(included) ? included.stream().map(i -> itemParams.stream().map(i::getParamXml).filter(StringUtils::isNoneBlank).collect(Collectors.joining(" ", "<O ", "/>"))).collect(Collectors.joining()) : StringUtils.EMPTY);
+        sj.add(getIncluded().getXml());
         return sj.toString();
     }
 
-    public boolean removeSub(long id) {return included.removeIf(i -> i.getId() == id);}                                                     //remove and item from included
-
-    public boolean decrement(boolean sync) {return decrease(1, sync);}
-    public boolean increase(int num, boolean sync) {return setParam(Params.count, getCount() + num, sync);}                                 //increase item count by num
-    public boolean decrease(int num, boolean sync) {                                                                                        //decrease item count by num
-        int count = getCount();
-        if (num > 0 && num < count)                                                                                                         //check if the item count > num
-            return setParam(Params.count, count - num, sync);
-        else
-            logger.error("can't decrease item id %d by num %d, current item count %d should be greater than %d", id, num, getCount(), num);
-        return false;
-    }
-
-    public Item split(int count, boolean noSetNewId, Supplier<Long> newId, boolean sync) {                                                  //split an item and return a new one
-        if (!this.decrease(count, sync))                                                                                                    //decrease count of the current item
+    synchronized public Item split(int count, Supplier<Long> newId) {                                                                      //split an item and return a new one
+        int itmCount = getCount();
+        if (itmCount <= 1 || itmCount <= count) {
+            logger.warn("can't split item id %d %s, item's count %d is <= then requested count %d", id, getLogDescription(), itmCount, count);
             return null;
-        Item splitted = this.clone();
-        splitted.setParam(Params.count, count, false);                                                                                      //set the count of the new item
-        if (!noSetNewId)
-            splitted.setId(newId.get(), false);                                                                                             //set a new id for the new item
-        else
-            splitted.setGlobalId(false);
+        }
+        setParam(Params.count, itmCount - count);
+        Item splitted = null;
+        try {
+            splitted = this.clone();
+        } catch (CloneNotSupportedException e) {
+            logger.error("can't clone item %d", getId());
+            return null;
+        }
+        splitted.setParam(Params.count, count);                                                                                             //set the count of the new item
+        splitted.setParam(Params.id, newId.get());                                                                                          //set a new id for the new item
         return splitted;                                                                                                                    //return a new item
     }
 
     @Override
-    public Item clone() {                                                                                                                   //guess what?
-        try {
-            Item cloned = (Item)super.clone();                                                                                              //clone primitive fields by super.clone()
-            cloned.included = new ArrayList<>();
-            return cloned;
-        }catch (CloneNotSupportedException e) {
-            logger.error("can't clone item: %s", e.getMessage());
-        }
-        return null;
+    protected Item clone() throws CloneNotSupportedException {                                                                              //guess what?
+        Item cloned = (Item)super.clone();                                                                                                  //clone only primitive fields by super.clone()
+        cloned.included = new ItemBox();
+        return cloned;
     }
 
     public String getLogDescription() {
         StringJoiner sj = new StringJoiner("");
         sj.add(String.format("%s%s", getParamStr(Params.txt), getCount() > 0 ? "[" + count + "]" : ""));
-        sj.add(Hibernate.isInitialized(included) ? included.stream().map(Item::getLogDescription).collect(Collectors.joining(",", "(", ")")) : StringUtils.EMPTY);
         return sj.toString();
     }
 
@@ -243,6 +212,22 @@ public class Item implements Cloneable {
             return false;
         }
         return true;
+    }
+
+    public boolean delFromDB(boolean withSub) {                                                                                             //delete item from database
+        logger.info("deleting item id %d with sub = %s", id, withSub);
+        Transaction tx = null;
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            tx = session.beginTransaction();
+            session.createNamedQuery(withSub ? "Item_DeleteItemByIdWithSub" : "Item_DeleteItemByIdWithoutSub").setParameter("id", id).executeUpdate();
+            tx.commit();
+            return true;
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't delete item id %d from database: %s:%s", id, e.getClass().getSimpleName(), e.getMessage());
+            if (tx != null && tx.isActive())
+                tx.rollback();
+        }
+        return false;
     }
 
     @Override
