@@ -132,7 +132,7 @@ public class Portal extends Building {
             itemsToConsume.put(item, requiredRes);                                                                                          //item to consume and a count to decrease
         }
         itemsToConsume.forEach((k, v) -> logger.debug("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
-        itemsToConsume.forEach((k, v) -> getItemBox().delItem(k.getId(), v));
+        itemsToConsume.forEach((k, v) -> getItemBox().getSplitItem(k.getId(), v, false, Item::getNextGlobalId));
         return true;
     }
 
@@ -201,9 +201,8 @@ public class Portal extends Building {
         }
 
         if (d != -1) {                                                                                                                      //user puts resource-item to portal's warehouse
-            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);
             Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId());
-            if (!user.getItemBox().joinMoveItem(d, c, false, user::getNewId, this.getItemBox(), resetParams, setParams)) {
+            if (user.getItemBox().joinMoveItem(d, c, user::getNewId, this.getItemBox(), setParams) == null) {
                 logger.error("can't put item id %d to portal warehouse", d);
                 user.disconnect();
             }
@@ -211,7 +210,13 @@ public class Portal extends Building {
         }
 
         if (a != -1) {                                                                                                                      //user takes an item from portal warehouse
-            Item takenItem = this.getItemBox().getClonnedItem(a, c, user::getNewId);
+            Item takenItem = this.getItemBox().moveItem(a, c, user::getNewId, true, user.getItemBox(), Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s));
+            if (takenItem == null) {
+                user.sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                    //let the client know if it failed with taking an item
+                return;
+            }
+
+            /*Item takenItem = this.getItemBox().getSplitItem(a, c, true, user::getNewId);
             if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
                 user.sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                    //let the client know if it failed with taking an item
                 return;
@@ -221,6 +226,7 @@ public class Portal extends Building {
             takenItem.setParam(Item.Params.user_id, user.getId());
             takenItem.setParam(Item.Params.section, s);
             user.getItemBox().addItem(takenItem);                                                                                           //add the item to user's item box
+            */
 
             Item item = this.getItemBox().findItem(a);                                                                                      //we have to check the remaining count of the source item
             int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remaining quantity

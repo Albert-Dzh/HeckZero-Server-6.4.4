@@ -101,13 +101,12 @@ public class PostOffice extends Building {
             int deliveryTime = DELIVERY_TIME_MIN + (int)(Math.random() * ((DELIVERY_TIME_MAX - DELIVERY_TIME_MIN) + 1));                    //parcel delivery time - get random number of seconds between MIN and MAX delivery time
             long rcpt_dt = Instant.now().getEpochSecond() + deliveryTime;                                                                   //the time (epoch) when parcel can be delivered
 
-            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);                                                                     //reset param list
             Map<Item.Params, Object> setParams = Map.of(Item.Params.rcpt_id, rcptUser.getId(), Item.Params.owner, user.getLogin(), Item.Params.rcpt_dt, fast == 1 ? Instant.now().getEpochSecond() : rcpt_dt);      //set param - value list
 
             ItemBox parcelBox = new ItemBox(true);                                                                                          //new synchronised Item Box to place parcel items into
             long[ ] itemsIdsCount = Arrays.stream(itm.split(",")).mapToLong(Long::parseLong).toArray();                                     //items ids along with their count that was placed in a parcel by player
             for (int i = 0; i < itemsIdsCount.length; i += 2) {                                                                             //move items to parcelBox including database changes
-                if (!user.getItemBox().moveItem(itemsIdsCount[i], (int)itemsIdsCount[i + 1], false, Item::getNextGlobalId, parcelBox, resetParams, setParams)) { // new id will be set to the next global id if the item is going to be split, or leave the id unchanged otherwise
+                if (user.getItemBox().moveItem(itemsIdsCount[i], (int)itemsIdsCount[i + 1], Item::getNextGlobalId, false, parcelBox, setParams) == null) { // new id will be set to the next global id if the item is going to be split, or leave the id unchanged otherwise
                     logger.error("can't put an item id %d to post office", itemsIdsCount[i]);
                     user.disconnect();
                 }

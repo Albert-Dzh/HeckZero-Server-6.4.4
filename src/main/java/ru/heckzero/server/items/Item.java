@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-@org.hibernate.annotations.NamedQuery(name = "ItemBox_PARCEL", query = "select i from Item i where i.rcpt_id = :id and function('to_timestamp', i.rcpt_dt) <= function('now') order by i.id")
+//@org.hibernate.annotations.NamedQuery(name = "ItemBox_PARCEL", query = "select i from Item i where i.rcpt_id = :id and function('to_timestamp', i.rcpt_dt) <= function('now') order by i.id")
 
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
@@ -32,7 +32,8 @@ import java.util.stream.LongStream;
 @org.hibernate.annotations.NamedNativeQueries({
     @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_USER", query = "with main_items as (select * from items_inventory where user_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
     @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BUILDING", query = "with main_items as (select * from items_inventory where b_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
-    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BANK_CELL", query = "with main_items as (select * from items_inventory where cell_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id")
+    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BANK_CELL", query = "with main_items as (select * from items_inventory where cell_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
+    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_PARCEL", query = "with main_items as (select * from items_inventory where rcpt_id = :id and to_timestamp(rcpt_dt) <= now()) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id")
 })
 
 @Entity(name = "Item")
@@ -105,8 +106,8 @@ public class Item implements Cloneable {
     private String ln;                                                                                                                      //long name text
 
     private Long user_id;                                                                                                                   //user id this item belongs to
-    private String section = StringUtils.EMPTY;                                                                                             //the section number in user box or building warehouse
-    private String slot = StringUtils.EMPTY;                                                                                                //user's slot this item is on
+    private String section;                                                                                                                 //the section number in user box or building warehouse
+    private String slot;                                                                                                                    //user's slot this item is on
 
     private Long b_id;                                                                                                                      //building id this item belongs to
     private Long cell_id;                                                                                                                   //bank cell id
@@ -150,15 +151,14 @@ public class Item implements Cloneable {
     public ItemBox getIncluded() {return included;}                                                                                         //return included items as item box
 
 
-    public void setParam(Params paramName, Object paramValue) {                                                                             //set an item param to paramValue
-        ParamUtils.setParam(this, paramName.toString(), paramValue);                                                                        //delegate param setting to ParamUtils
-        return;
+    public boolean setParam(Params paramName, Object paramValue) {                                                                          //set an item param to paramValue
+        return  ParamUtils.setParam(this, paramName.toString(), paramValue);                                                                //delegate param setting to ParamUtils
     }
     public void setParams(Map<Params, Object> params) {params.forEach(this::setParam);}
     public void resetParam(Params paramName) {setParam(paramName, null);}
     public void resetParams(Set<Item.Params> resetParams) {resetParams.forEach(this::resetParam);}
-    public void decrease(int count) {setParam(Params.count, getCount() - count);}
-
+    public void decrease(int count) {setParam(Params.count, Math.max(1, getCount() - count));}
+    public void setNextGlobalId() {setParam(Params.id, getNextGlobalId());}
 
     public String getParamStr(Params param)    {return ParamUtils.getParamStr(this, param.toString());}
     public int getParamInt(Params param)       {return ParamUtils.getParamInt(this, param.toString());}
@@ -173,9 +173,9 @@ public class Item implements Cloneable {
         return sj.toString();
     }
 
-    synchronized public Item split(int count, Supplier<Long> newId) {                                                                      //split an item and return a new one
+    synchronized public Item split(int count, Supplier<Long> newId) {                                                                       //split an item and return a new one
         int itmCount = getCount();
-        if (itmCount <= 1 || itmCount <= count) {
+        if (count < 1 || count >= itmCount) {
             logger.warn("can't split item id %d %s, item's count %d is <= then requested count %d", id, getLogDescription(), itmCount, count);
             return null;
         }
@@ -211,7 +211,7 @@ public class Item implements Cloneable {
             logger.error("can't sync item id %d", id);
             return false;
         }
-        return true;
+        return included.sync();
     }
 
     public boolean delFromDB(boolean withSub) {                                                                                             //delete item from database

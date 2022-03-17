@@ -57,18 +57,19 @@ public class Building {
 
     public boolean isEmpty() {return id == null;}
 
-    public Integer getId()      { return id; }
+    public Integer getId()      {return id;}
     public int getX()           {return location.getX();}
     public int getY()           {return location.getY();}
     public int getLocalX()      {return location.getLocalX();}
     public int getLocalY()      {return location.getLocalY();}
-    public int getZ()           {return Z; }
+    public int getZ()           {return Z;}
     public int getName()        {return name;}
     public String getTxt()      {return txt;}
+    public String getLogDescription() {return String.format("%s[%d/%d]", txt, getX(), getY());}
 
-    public Location getLocation() {return location;}                                                                                        //get the location this Building belongs to
+    public Location getLocation()           {return location;}                                                                              //get the location this Building belongs to
     public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());};
-    public int getParamInt(Params param) {return intConv.convert(Integer.class, ParamUtils.getParamInt(this, param.toString()));}
+    public int getParamInt(Params param)    {return intConv.convert(Integer.class, ParamUtils.getParamInt(this, param.toString()));}
     protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()); }                                    //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
     protected String getXml() {return bldParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<B ", "/>"));}
 

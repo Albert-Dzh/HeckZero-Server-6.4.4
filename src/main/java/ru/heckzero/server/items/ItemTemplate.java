@@ -26,7 +26,7 @@ public class ItemTemplate {
             Query<ItemTemplate> query = session.createQuery("select it from ItemTemplate it where id = :id", ItemTemplate.class).setParameter("id", templateId).setCacheable(true);
             ItemTemplate itemTemplate = query.getSingleResult();
             Item newItem = new Item(itemTemplate);
-            newItem.setGlobalId(false);
+            newItem.setNextGlobalId();
             return newItem;
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't clone template item with id %d: %s", templateId, e.getMessage());

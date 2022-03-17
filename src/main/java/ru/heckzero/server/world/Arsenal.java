@@ -9,6 +9,7 @@ import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.*;
 import ru.heckzero.server.user.User;
+import ru.heckzero.server.utils.HistoryCodes;
 
 import javax.persistence.*;
 import java.util.ArrayList;
@@ -25,14 +26,13 @@ public class Arsenal extends Building {
         try (Session session = ServerMain.sessionFactory.openSession()) {
             Query<Arsenal> query = session.createQuery("select a from Arsenal a inner join fetch a.arsenalLoot al inner join fetch al.itemTemplate it where a.id = :id", Arsenal.class).setParameter("id", id).setCacheable(true);
             Arsenal arsenal = query.getSingleResult();
-            if (arsenal == null)
-                return new Arsenal();
+            Hibernate.initialize(arsenal.getLocation());                                                                                    //need by bank cells to get bank coordinates
             arsenal.arsenalLoot.forEach(l -> Hibernate.initialize(l.getItemTemplate()));
             return arsenal;
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load arsenal id %d from database: %s", id, e.getMessage());
         }
-        return new Arsenal();
+        return null;
     }
 
     private ItemBox loadItemBox() {                                                                                                         //load an arsenal item box from arsenal_loot and item_templates tables
@@ -55,7 +55,6 @@ public class Arsenal extends Building {
 
     protected Arsenal() { }
 
-
     @Override
     public ItemBox getItemBox() {                                                                                                           //load an ItemBox from items_template
         return itemBox == null ? (itemBox = loadItemBox()) : itemBox;
@@ -67,21 +66,26 @@ public class Arsenal extends Building {
 
     public void processCmd(long a, long d, int s, int c, User user) {
         if (a != -1) {                                                                                                                      //user gets an item from an arsenal
-            Map<Item.Params, Object> params = Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s);                            //params that need to be set to the item before moving it to user
-            if (!this.getItemBox().moveItem(a, c, false, user::getNewId, user.getItemBox(), null, params)) {
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s);                         //params that need to be set to the item before moving it to user
+            Item takenItem = this.getItemBox().moveItem(a, c, user::getNewId, false, user.getItemBox(), setParams);
+            if (takenItem == null) {
                 logger.error("can't move an item id %d from arsenal to user %s", a, user.getLogin());
                 user.disconnect();
+                return;
             }
+            user.addHistory(HistoryCodes.LOG_GET_ITEMS_IN_HOUSE, takenItem.getLogDescription(), this.getLogDescription());
             return;
         }
         if (d != -1) {                                                                                                                      //put an item to arsenal
-            if (!user.getItemBox().moveItem(d, c, false, user::getNewId, this.getItemBox())) {
+            Item givenItem = user.getItemBox().moveItem(d, c, user::getNewId, false, this.getItemBox(), null);
+            if (givenItem == null) {
                 logger.error("can't move an item id %d from user %s to arsenal", d, user.getLogin());
                 user.disconnect();
+                return;
             }
+            user.addHistory(HistoryCodes.LOG_PUT_ITEMS_IN_HOUSE, givenItem.getLogDescription(), this.getLogDescription());
             return;
         }
-
         user.sendMsg(lootXml());
         return;
     }

@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
-import ru.heckzero.server.utils.ParamUtils;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
@@ -16,6 +15,7 @@ import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
+import ru.heckzero.server.utils.ParamUtils;
 
 import javax.persistence.Entity;
 import javax.persistence.PrimaryKeyJoinColumn;
@@ -23,7 +23,6 @@ import javax.persistence.Table;
 import javax.persistence.Transient;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
@@ -78,13 +77,13 @@ public class Bank extends Building {
         Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);                                                                     //generate a bank cell key item
         if (key == null)
             return null;
-        key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + bankCell.getId(), false);                                          //set the key item params to make client display the key hint properly
-        key.setParam(Item.Params.made, String.format("%s%d_%d_%d",  key.getParamStr(Item.Params.made), getX(), getY(), getZ()), false);
-        key.setParam(Item.Params.dt, bankCell.getDt(), false);
-        key.setParam(Item.Params.hz, bankCell.getId(), false);
-        key.setParam(Item.Params.res, getTxt(), false);
-        key.setParam(Item.Params.user_id, user_id, false);                                                                                  //user id this key belongs to
-        key.setParam(Item.Params.section, 0, false);                                                                                        //user box sections this key will be placed to
+        key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + bankCell.getId());                                                 //set the key item params to make client display the key hint properly
+        key.setParam(Item.Params.made, String.format("%s%d_%d_%d",  key.getParamStr(Item.Params.made), getX(), getY(), getZ()));
+        key.setParam(Item.Params.dt, bankCell.getDt());
+        key.setParam(Item.Params.hz, bankCell.getId());
+        key.setParam(Item.Params.res, getTxt());
+        key.setParam(Item.Params.user_id, user_id);                                                                                         //user id this key belongs to
+        key.setParam(Item.Params.section, 0);                                                                                               //user box sections this key will be placed to
         return key;
     }
 
@@ -182,9 +181,8 @@ public class Bank extends Building {
         }
 
         if (sell >= 0 && d >= 0 && s >=0 && cell != null) {                                                                                 //move an item from user to cell
-            Set<Item.Params> resetParams = Set.of(Item.Params.user_id);                                                                     //reset param list
             Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId(), Item.Params.cell_id, sell, Item.Params.section, s);      //set param - values list
-            if (!user.getItemBox().joinMoveItem(d, c, false, user::getNewId, cell.getItemBox(), resetParams, setParams)) {
+            if (user.getItemBox().joinMoveItem(d, c, user::getNewId, cell.getItemBox(), setParams) == null) {
                 logger.error("can't put an item id %d to bank cell id %d", d, sell);
                 user.disconnect();
             }
@@ -221,16 +219,15 @@ public class Bank extends Building {
         }
 
         if (sell >= 0 && a >=0 && s >= 0 && cell != null) {                                                                                 //user takes an item from cell to his item box
-            Set<Item.Params> resetParams = Set.of(Item.Params.b_id, Item.Params.cell_id);
             Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s);                         //params that need to be set to an item before moving to user
-            if (!cell.getItemBox().moveItem(a, c, false, user::getNewId, user.getItemBox(), resetParams, setParams)) {
+            if (cell.getItemBox().moveItem(a, c, user::getNewId, false, user.getItemBox(), setParams) == null) {
                 logger.error("can't move an item id %d from bank cell to user %s", a, user.getLogin());
                 user.disconnect();
             }
             return;
         }
         if (sell >= 0 && f >= 0 && s >= 0 && cell != null) {                                                                                //item is being moving between sections within a cell
-            if (!cell.getItemBox().changeOne(f, Item.Params.section, s))
+            if (cell.getItemBox().changeOne(f, Item.Params.section, s) == null)
                 user.disconnect();
             return;
         }
@@ -290,9 +287,8 @@ public class Bank extends Building {
             ItemBox srcBox = cell.getItemBox();
             ItemBox dstBox = dstCell.getItemBox();
 
-            Set<Item.Params> resetParams = Set.of(Item.Params.cell_id, Item.Params.section);
             Map<Item.Params, Object> setParams = Map.of(Item.Params.cell_id, cell2, Item.Params.section, 0);
-            if (!srcBox.joinMoveItem(tr, c, true, user::getNewId, dstBox, resetParams, setParams)) {
+            if (srcBox.joinMoveItem(tr, c, Item::getNextGlobalId, dstBox, setParams) == null) {
                 logger.error("can't transfer item id %d from cell id %d to cell id %d", tr, cell, cell2);
                 user.disconnect();
                 return;

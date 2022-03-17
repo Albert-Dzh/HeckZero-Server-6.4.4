@@ -228,13 +228,14 @@ public class User {
     }
 
     public void com_DROP(long id, int count) {                                                                                              //user drops an item from its box
-        if (!getItemBox().delItem(id, count))
-            disconnect();
+        Item dropped = getItemBox().getSplitItem(id, count, false, this::getNewId);
+        if (dropped != null)
+            addHistory(HistoryCodes.LOG_DROP_ITEMS, dropped.getLogDescription(), "add location description");
         return;
     }
 
     public void com_TO_SECTION(long id, String section) {                                                                                   //change item section in user box
-        if (!getItemBox().changeOne(id, Item.Params.section, section))
+        if (getItemBox().changeOne(id, Item.Params.section, section) == null)
             disconnect();
         return;
     }
@@ -277,7 +278,7 @@ public class User {
         Predicate<Item> other = i -> i.getBaseType() == 802;                                                                                //other items we have to send in GETINFO
         Predicate<Item> getInfoItems = dressed.or(other);
 
-        ItemBox dressedItems = user.getItemBox().findItems(getInfoItems);                                                                   //get user items by the predicate getInfoItems
+        ItemBox dressedItems = user.getItemBox().findItems(getInfoItems, false);                                                            //get user items by the predicate getInfoItems
         sj.add(dressedItems.getXml());
         sendMsg(sj.toString());
         return;
@@ -379,7 +380,8 @@ public class User {
 
     public void com_AR(long a, long d, int s, int c) {                                                                                      //arsenal workflow
         Arsenal arsenal = currBld instanceof Arsenal ? (Arsenal)currBld : (Arsenal)(currBld = Arsenal.getArsenal(getBuilding().getId()));
-        arsenal.processCmd(a, d, s, c, this);
+        if (arsenal != null)
+            arsenal.processCmd(a, d, s, c, this);
         return;
     }
 
@@ -526,12 +528,12 @@ public class User {
     private boolean isBuildMaster(int x, int y, int z) {                                                                                    //check if user has a master key to the building with given coordinates
         String keyName = String.format("$key%d_%d_%d", x, y, z);                                                                            //key name is composed of building coordinates
         Predicate<Item> predicate = (i -> !i.isExpired() && i.isBldKey() && (i.getParamStr(Item.Params.made).equals(keyName) || i.getParamStr(Item.Params.made).equals("$key_all")));
-        return !getItemBox().findItems(predicate).isEmpty() || isGod();
+        return !getItemBox().findItems(predicate, false).isEmpty() || isGod();
     }
 
     public void addSendItems(ItemBox box) {box.forEach(this::addSendItem);}                                                                 //add and send all items from box to the user's Item Box
     public void addSendItem(Item item) {
-        if (!getItemBox().addItem(item))
+        if (getItemBox().addItem(item) == null)
             logger.error("can't add item %s", item);
         sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", item.getXml()));
         return;
@@ -562,19 +564,19 @@ public class User {
 
     public void com_CHECK() {
         logger.debug("checking for the expired items for user %s", getLogin());
-        ItemBox expired = getItemBox().findItems(Item::isExpired);                                                                          //all user expired items are here at a 1st level
+        ItemBox expired = getItemBox().findItems(Item::isExpired, true);                                                                    //all user expired items are here at a 1st level
         if (expired.size() > 0)
             logger.info("found %d expired items for user %s, %s", expired.size(), getLogin(), expired);
 
         expired.forEach(item -> {
             logger.info("deleting expired item %s for user %s", item, getLogin());
 
-            getItemBox().delItem(item.getId(), false);
+            getItemBox().delItem(item.getId());
             sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
 
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {
-//                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
+                logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
                 included.forEach(i -> i.resetParam(Item.Params.pid));
                 included.forEach(i -> i.setParam(Item.Params.user_id, id));
                 included.forEach(i -> i.setParam(Item.Params.section, 0));
