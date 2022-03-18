@@ -11,6 +11,7 @@ import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.user.UserManager;
+import ru.heckzero.server.utils.History;
 
 import javax.persistence.*;
 import java.time.Instant;
@@ -105,6 +106,11 @@ public class BankCell {
         key.setParam(Item.Params.user_id, user_id);                                                                                         //user id this key belongs to
         key.setParam(Item.Params.section, 0);                                                                                               //user box sections this key will be placed to
         return key;
+    }
+
+    public void addHistory(int code, String ... params) {                                                                                   //add a record to the cell history log
+        History.add(getId(), History.Subject.CELL, code, params);
+        return;
     }
 
     public String cellXml() {                                                                                                               //XML formatted cell data included item box

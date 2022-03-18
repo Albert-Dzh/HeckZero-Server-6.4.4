@@ -79,7 +79,7 @@ public class ServerMain {
     }
 
     public void startOperation() {                                                                                                          //mainly bootstrapping the netty stuff
-        logger.info("HeckZero server version %s copyright (C) 2021 by HeckZero team is starting...", VERSION);
+        logger.info("HeckZero server version %s copyright (C) 2021-2002 by HeckZero team is starting...", VERSION);
         if (!readServerConfig())                                                                                                            //can't read config file
             return;
         EventLoopGroup group = IS_UNIX ? new EpollEventLoopGroup() : new NioEventLoopGroup();                                               //an event loop group for server and client channels (netty)

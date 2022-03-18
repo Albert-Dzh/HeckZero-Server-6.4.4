@@ -176,7 +176,7 @@ public class User {
         return;
     }
 
-    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id));}              //return user itembox, init it if necessary
+    public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id));}                    //return user itembox, init it if necessary
     public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", getMaxLoad());}                               //get user weight tk - current, max - maximum, considering user profession influence
     public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
 
@@ -192,6 +192,8 @@ public class User {
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
         addHistory(HistoryCodes.LOG_LOGIN, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());
+        addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(getMoney().getCopper()), String.valueOf(getMoney().getSilver()));          //На счету %s медных монет и %s серебряных.
+
         chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him
         return;
     }
@@ -202,7 +204,8 @@ public class User {
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
         disconnectChat();                                                                                                                   //chat without a game channel is ridiculous, so shut the chat down
         chat.updateMyStatus();                                                                                                              //will remove user from room
-        addHistory(HistoryCodes.LOG_LOGOUT);
+        addHistory(HistoryCodes.LOG_LOGOUT);                                                                                                //Выход из игры
+        addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(getMoney().getCopper()), String.valueOf(getMoney().getSilver()));          //На счету %s медных монет и %s серебряных.
         sync();                                                                                                                             //update the user in database
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
         logger.info("user '%s' game channel logged out", getLogin());
@@ -402,7 +405,7 @@ public class User {
         Calendar cReq = Calendar.getInstance();
         cReq.set(2000 + Integer.parseInt(date.split("\\.")[2]), Integer.parseInt(date.split("\\.")[1]) - 1, Integer.parseInt(date.split("\\.")[0]), 0, 0, 0);
 
-        History.Subject subject = login == null ? History.Subject.USER : (NumberUtils.isDigits(login) ? History.Subject.CELL : (login.equals("$building") ? History.Subject.BUILDING : History.Subject.CLAN)); //what is this request for: User, building, cell, clan.
+        History.Subject subject = (login == null) ? History.Subject.USER : (NumberUtils.isDigits(login) ? History.Subject.CELL : (login.equals("$building") ? History.Subject.BUILDING : History.Subject.CLAN)); //what is this request for: User, building, cell, clan.
         int subjectId = switch (subject) {                                                                                                  //determine subject id based on subject
             case USER -> {User u = login == null ? this : UserManager.getUser(login); yield !u.isEmpty() ? u.getId() : -1;}                 //user id (self or requested)
             case BUILDING -> getBuilding().getId();                                                                                         //building id
@@ -520,8 +523,10 @@ public class User {
             sync();                                                                                                                         //sync the user with db
         if (Instant.now().getEpochSecond() - lastsynctime > DB_SYNC_INTERVAL * 2)                                                           //user items expiration check interval
             com_CHECK();                                                                                                                    //check and delete user's expired items
+
         return;
     }
+
 
     public boolean isBuildMaster() {return isBuildMaster(getBuilding());}
     public boolean isBuildMaster(Building bld) {return isBuildMaster(bld.getX(), bld.getY(), bld.getZ());}

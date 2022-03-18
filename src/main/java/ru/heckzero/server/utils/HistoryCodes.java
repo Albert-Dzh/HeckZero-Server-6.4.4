@@ -188,7 +188,7 @@ public class HistoryCodes {
 	public static final int LOG_GH_PLAYER_LEAVE_GIFT = 23202;																		//Персонаж '%s' оставил в подарок для '%s': {%s} 
 	public static final int LOG_GH_PLAYER_TAKE_GIFT = 23300;																		//Персонаж '%s' забрал подарок от '%s': {%s} 
 	
-														//*****Concentartion Factory log codes********
+														//*****Concentration Factory log codes********
 	public static final int LOG_RF_CHANGE_PARAMS = 24100;																			//Персонаж '%s' изменил настройки 
 	public static final int LOG_RF_REFINE_DONE = 24200;																				//Обогащены ресурсы %s, получено %s мнт. 
 	public static final int LOG_RF_OWNER_GET_MONEY = 24300;																			//Владелец здания '%s' забрал из кассы %s мнт. 

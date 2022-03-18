@@ -19,7 +19,11 @@ import javax.persistence.Entity;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
 import java.time.Instant;
-import java.util.*;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Entity(name = "PostOffice")
@@ -27,7 +31,7 @@ import java.util.stream.Collectors;
 @PrimaryKeyJoinColumn(name = "b_id")
 public class PostOffice extends Building {
     private static final Logger logger = LogManager.getFormatterLogger();
-    private static final int DELIVERY_TIME_MIN = 300, DELIVERY_TIME_MAX = 1800;                                                             //delivery time in seconds
+    private static final int DELIVERY_TIME_MIN_SEC = 300, DELIVERY_TIME_MAX_SEC = 1800;                                                     //delivery time in seconds
     private static final EnumSet<Params> postParams = EnumSet.of(Params.cash, Params.p1, Params.p2, Params.d1);
 
     public static PostOffice getPostOffice(int id) {                                                                                        //try to get a PostOffice instance by building id
@@ -67,6 +71,7 @@ public class PostOffice extends Building {
         if (get > 0 && user.isBuildMaster()) {                                                                                              //take money from post office's cash
             int cashTaken = decMoney(get);                                                                                                  //take money from building
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                  //add money from postOffice cash to the user
+            this.addHistory(HistoryCodes.LOG_POST_GET_MONEY, user.getLogin(), String.valueOf(cashTaken));                                   //Владелец почты '%s' забрал из кассы %s мнт.
             return;
         }
 
@@ -78,6 +83,7 @@ public class PostOffice extends Building {
                 user.disconnect();
                 return;
             }
+            this.addHistory(HistoryCodes.LOG_POST_CHANGE_PARAMS, user.getLogin());                                                          //Персонаж '%s' изменил настройки
         }
 
         if (login != null && wire != null) {                                                                                                //sending a wire to user login
@@ -87,8 +93,13 @@ public class PostOffice extends Building {
                 return;
             }
             wire = wire.replace("\"", "&quot;").replace("'", "&apos;").replace("\r", "&#xD;");                                              //replace quotes in a wire by the XML equivalent
-            rcptUser.sendIMS(HistoryCodes.LOG_WIRE, user.getLogin(), wire);                                                                 //send a wire as an IMS to the recipient
+
+            user.decMoney(this.p1);                                                                                                         //charge the user for the wire sending
+            this.addMoney(this.p1);                                                                                                         //add money to the post office cash
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.p1 + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_WIRE, String.valueOf(user.getMoney().getCopper()));
+            this.addHistory(HistoryCodes.LOG_POST_PAY_FOR_WIRE, user.getLogin(), String.valueOf(this.p1));                                  //Персонаж 'User' заплатил XX мнт. за отправку телеграммы
             user.sendMsg("<PT ok=\"1\"/>");
+            rcptUser.sendIMS(HistoryCodes.LOG_WIRE, user.getLogin(), wire);                                                                 //send a wire as an IMS to the recipient
         }
 
         if (parcel != null && itm != null) {                                                                                                //user sends a parcel, recipient is in parcel argument
@@ -98,10 +109,10 @@ public class PostOffice extends Building {
                 return;
             }
 
-            int deliveryTime = DELIVERY_TIME_MIN + (int)(Math.random() * ((DELIVERY_TIME_MAX - DELIVERY_TIME_MIN) + 1));                    //parcel delivery time - get random number of seconds between MIN and MAX delivery time
+            int deliveryTime = fast == 1 ? 1 : DELIVERY_TIME_MIN_SEC + (int)(Math.random() * ((DELIVERY_TIME_MAX_SEC - DELIVERY_TIME_MIN_SEC) + 1));    //parcel delivery time - get random number of seconds between MIN and MAX delivery time
             long rcpt_dt = Instant.now().getEpochSecond() + deliveryTime;                                                                   //the time (epoch) when parcel can be delivered
 
-            Map<Item.Params, Object> setParams = Map.of(Item.Params.rcpt_id, rcptUser.getId(), Item.Params.owner, user.getLogin(), Item.Params.rcpt_dt, fast == 1 ? Instant.now().getEpochSecond() : rcpt_dt);      //set param - value list
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.rcpt_id, rcptUser.getId(), Item.Params.owner, user.getLogin(), Item.Params.rcpt_dt, rcpt_dt);      //set param - value list
 
             ItemBox parcelBox = new ItemBox(true);                                                                                          //new synchronised Item Box to place parcel items into
             long[ ] itemsIdsCount = Arrays.stream(itm.split(",")).mapToLong(Long::parseLong).toArray();                                     //items ids along with their count that was placed in a parcel by player
@@ -114,17 +125,19 @@ public class PostOffice extends Building {
             }
             int parcelWeight = parcelBox.getMass();                                                                                         //parcel weight
             int parcelCost = (int)Math.ceil(parcelWeight * (fast == 1 ? this.d1 : this.p2) / 100.0);                                        //parcel delivery cost
-            user.sendMsg("<PT ok=\"2\"/>");                                                                                                 //send ok to the Post office
+
             user.decMoney(parcelCost);                                                                                                      //charge the user for the parcel sending
             this.addMoney(parcelCost);                                                                                                      //add money to the post office cash
             user.addHistory(HistoryCodes.LOG_SEND_ITEMS, parcelBox.getLogDescription(), rcptUser.getLogin());								//Переслал: {%s} персонажу \'%s\'
             user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + parcelCost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_PARCEL, String.valueOf(user.getMoney().getCopper()));
             this.addHistory(HistoryCodes.LOG_POST_PAY_FOR_PARCEL, user.getLogin(), String.valueOf(parcelCost));                             //Персонаж 'User' заплатил XX мнт. за отправку посылки
+
+            user.sendMsg("<PT ok=\"2\"/>");                                                                                                 //send ok to the Post office
+            user.getGameChannel().eventLoop().schedule(() -> rcptUser.sendIMS(HistoryCodes.LOG_PARCEL_ARRIVED, user.getLogin()), deliveryTime, TimeUnit.SECONDS);//send IMS notification to the recipient about the parcel in deliveryTime seconds
         }
 
         if (me == 1) {                                                                                                                      //check if there is a parcel ready for delivery for the user
             ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId());
-            logger.info("parcel box: %s", parcelBox);
             user.sendMsg(String.format("<PT me=\"1\">%s</PT>", parcelBox.getXml()));                                                        //send parcel ItemBox context to the user
             return;
         }
@@ -132,7 +145,6 @@ public class PostOffice extends Building {
         if (a != -1) {                                                                                                                      //user takes an item from a parcel
             ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId());
             String sender = parcelBox.findItem(a).getParamStr(Item.Params.owner);
-            logger.info("parcel box: %s", parcelBox);
             Item item = parcelBox.moveItem(a, c, user::getNewId, false, user.getItemBox(), Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s));
             if (item == null) {
                 logger.error("cannot get item id %d[%d] from parcel itembox for user id %d (%s)", a, c, user.getId(), user.getLogin());

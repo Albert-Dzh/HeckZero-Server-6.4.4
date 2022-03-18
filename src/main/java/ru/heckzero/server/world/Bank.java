@@ -15,6 +15,7 @@ import ru.heckzero.server.items.ItemTemplate;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
+import ru.heckzero.server.utils.HistoryCodes;
 import ru.heckzero.server.utils.ParamUtils;
 
 import javax.persistence.Entity;
@@ -95,7 +96,7 @@ public class Bank extends Building {
 
     public void processCmd(User user, int put, int get, int cost, int cost2, int buy, String p, String newpsw, String newemail, int go, int sell, long d, int s, int c, long f, long a, int newkey, int addsection, int extend, int check_sell, int tr, int cell2) {
         BankCell cell = null;
-        if (sell >= 0 && StringUtils.isNotBlank(p)) {                                                                                       //opening a cell
+        if (sell >= 0 && StringUtils.isNotBlank(p)) {                                                                                       //opening a cell p - cell password
             cell = BankCell.getBankCell(sell);                                                                                              //get cell data by id from database
             if (cell == null) {
                 user.disconnect();
@@ -180,15 +181,6 @@ public class Bank extends Building {
             return;
         }
 
-        if (sell >= 0 && d >= 0 && s >=0 && cell != null) {                                                                                 //move an item from user to cell
-            Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId(), Item.Params.cell_id, sell, Item.Params.section, s);      //set param - values list
-            if (user.getItemBox().joinMoveItem(d, c, user::getNewId, cell.getItemBox(), setParams) == null) {
-                logger.error("can't put an item id %d to bank cell id %d", d, sell);
-                user.disconnect();
-            }
-            return;
-        }
-
         if (cell != null && extend == 1) {                                                                                                  //increase cell capacity
             int currCapacity = cell.getCapacity();                                                                                          //get cell current capacity
             if (currCapacity == 500) {                                                                                                      //current cell capacity is already maximum
@@ -218,14 +210,32 @@ public class Bank extends Building {
             return;
         }
 
-        if (sell >= 0 && a >=0 && s >= 0 && cell != null) {                                                                                 //user takes an item from cell to his item box
-            Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s);                         //params that need to be set to an item before moving to user
-            if (cell.getItemBox().moveItem(a, c, user::getNewId, false, user.getItemBox(), setParams) == null) {
-                logger.error("can't move an item id %d from bank cell to user %s", a, user.getLogin());
+        if (sell >= 0 && d >= 0 && s >=0 && cell != null) {                                                                                 //move an item from user to cell
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId(), Item.Params.cell_id, sell, Item.Params.section, s);      //set param - values list
+            Item item = user.getItemBox().joinMoveItem(d, c, user::getNewId, cell.getItemBox(), setParams);
+            if (item == null) {
+                logger.error("can't put an item id %d to bank cell id %d", d, sell);
                 user.disconnect();
+                return;
             }
+            cell.addHistory(HistoryCodes.LOG_CELL_PUT_ITEMS, user.getLogin(), item.getLogDescription());                                    //Персонаж '%s' положил в ячейку предметы: {%s}
+            user.addHistory(HistoryCodes.LOG_CELL_PUT_ITEMS, user.getLogin(), item.getLogDescription());
             return;
         }
+
+        if (sell >= 0 && a >= 0 && s >= 0 && cell != null) {                                                                                //user takes an item from cell to his item box
+            Map<Item.Params, Object> setParams = Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s);                         //params that need to be set to an item before moving to user
+            Item item = cell.getItemBox().moveItem(a, c, user::getNewId, false, user.getItemBox(), setParams);
+            if (item == null) {
+                logger.error("can't move an item id %d from bank cell to user %s", a, user.getLogin());
+                user.disconnect();
+                return;
+            }
+            cell.addHistory(HistoryCodes.LOG_CELL_GET_ITEMS, user.getLogin(), item.getLogDescription());                                    //Персонаж '%s' забрал из ячейки предметы: {%s}
+            user.addHistory(HistoryCodes.LOG_CELL_GET_ITEMS, user.getLogin(), item.getLogDescription());
+            return;
+        }
+
         if (sell >= 0 && f >= 0 && s >= 0 && cell != null) {                                                                                //item is being moving between sections within a cell
             if (cell.getItemBox().changeOne(f, Item.Params.section, s) == null)
                 user.disconnect();
