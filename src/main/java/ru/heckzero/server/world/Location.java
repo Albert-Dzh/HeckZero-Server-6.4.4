@@ -100,6 +100,7 @@ public class Location {
     public int getY() {return getParamInt(Params.Y);}                                                                                       //get location Y coordinate (shortcut)
     public int getLocalX() {return normalLocToLocal(getParamInt(Params.X));}                                                                //get location local coordinates X,Y (for the client)
     public int getLocalY() {return normalLocToLocal(getParamInt(Params.Y));}
+    public String getName() {return getParamStr(Params.name);}
 
     public int getLocBtnNum(User user) {                                                                                                    //return the minimap button number this location is corresponding to
         int userX = user.getParamInt(User.Params.X);                                                                                        //current user coordinates
@@ -113,6 +114,7 @@ public class Location {
     public String getParamStr(Params param) {return ParamUtils.getParamStr(this, param.toString());}                                        //get user param value as different type
     public int getParamInt(Params param) {return ParamUtils.getParamInt(this, param.toString());}
     private String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString());}                                       //get param as XML attribute, will return an empty string if value is empty and appendEmpty == false
+    public String getLogDescription() {return String.format("%s[%d/%d]", getName(), getX(), getY());}
 
     public String getXml() {                                                                                                                //location XML representation
         StringJoiner sj = new StringJoiner("", "", "</L>");

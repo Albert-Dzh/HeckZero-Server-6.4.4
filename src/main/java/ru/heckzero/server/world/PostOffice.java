@@ -109,15 +109,17 @@ public class PostOffice extends Building {
                 if (user.getItemBox().moveItem(itemsIdsCount[i], (int)itemsIdsCount[i + 1], Item::getNextGlobalId, false, parcelBox, setParams) == null) { // new id will be set to the next global id if the item is going to be split, or leave the id unchanged otherwise
                     logger.error("can't put an item id %d to post office", itemsIdsCount[i]);
                     user.disconnect();
+                    return;
                 }
             }
             int parcelWeight = parcelBox.getMass();                                                                                         //parcel weight
             int parcelCost = (int)Math.ceil(parcelWeight * (fast == 1 ? this.d1 : this.p2) / 100.0);                                        //parcel delivery cost
             user.sendMsg("<PT ok=\"2\"/>");                                                                                                 //send ok to the Post office
             user.decMoney(parcelCost);                                                                                                      //charge the user for the parcel sending
-            addMoney(parcelCost);                                                                                                           //add money to the post office cash
+            this.addMoney(parcelCost);                                                                                                      //add money to the post office cash
+            user.addHistory(HistoryCodes.LOG_SEND_ITEMS, parcelBox.getLogDescription(), rcptUser.getLogin());								//Переслал: {%s} персонажу \'%s\'
             user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + parcelCost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_PARCEL, String.valueOf(user.getMoney().getCopper()));
-            addHistory(HistoryCodes.LOG_POST_PAY_FOR_PARCEL, user.getLogin(), String.valueOf(parcelCost));
+            this.addHistory(HistoryCodes.LOG_POST_PAY_FOR_PARCEL, user.getLogin(), String.valueOf(parcelCost));                             //Персонаж 'User' заплатил XX мнт. за отправку посылки
         }
 
         if (me == 1) {                                                                                                                      //check if there is a parcel ready for delivery for the user
@@ -129,25 +131,19 @@ public class PostOffice extends Building {
 
         if (a != -1) {                                                                                                                      //user takes an item from a parcel
             ItemBox parcelBox = ItemBox.init(ItemBox.BoxType.PARCEL, user.getId());
+            String sender = parcelBox.findItem(a).getParamStr(Item.Params.owner);
             logger.info("parcel box: %s", parcelBox);
-            Item item = parcelBox.getSplitItem(a, c, false, user::getNewId);                                                                //get an item form the parcel ItemBox
-            logger.info("got item %s from parcelBox", item);
-
+            Item item = parcelBox.moveItem(a, c, user::getNewId, false, user.getItemBox(), Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s));
             if (item == null) {
                 logger.error("cannot get item id %d[%d] from parcel itembox for user id %d (%s)", a, c, user.getId(), user.getLogin());
                 user.disconnect();
                 return;
             }
-            user.addHistory(HistoryCodes.LOG_RECEIVE_ITEMS, item.getLogDescription(), item.getParamStr(Item.Params.owner));                 //add to user log
-            item.resetParams(Set.of(Item.Params.rcpt_id, Item.Params.rcpt_dt, Item.Params.owner));                                          //reset params list
-            item.setParams(Map.of(Item.Params.user_id, user.getId(), Item.Params.section, s));                                              //set user_id and section before moving the item to the user
-            logger.info("adding item %s", item);
-            user.getItemBox().addItem(item);                                                                                                //place the item to the user ItemBox
+            user.addHistory(HistoryCodes.LOG_RECEIVE_ITEMS, item.getLogDescription(), sender);                                              //Почтой получены предметы: {%s} от персонажа \'%s\'
             return;
         }
 
         user.sendMsg(ptXml());
         return;
     }
-
 }

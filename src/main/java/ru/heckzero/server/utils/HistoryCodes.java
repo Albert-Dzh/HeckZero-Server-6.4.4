@@ -65,6 +65,8 @@ public class HistoryCodes {
 	public static final int LOG_GIVE_ITENS_TO_DEBT = 324;																			//Передал в долг: {%s} к '%s'
 	public static final int LOG_MONEY_TRANSFER_TO = 326;																			//Перевёл {%s[%s]} персонажу \'%s\'. Стоимость отправки %s мнт. Осталось %s мнт. %s"
 	public static final int LOG_CLAN_BUY_AND_BALANCE = 334;																			//Оплачено %s за приобретение клана %s. Сумма на счету %s. 
+	public static final int LOG_DROP_ITEMS_IN_LOCATION = 344;																		//Выброшено: {%s} в локации %s.
+
 	public static final int LOG_CLAN_JOINED = 402;																					//Вас приняли в клан '%s'
 	public static final int LOG_CLAN_LEFT = 403;																					//Вы покинули клан '%s'
 	public static final int LOG_CLAN_STATUS_CHANGE = 404;																			//Изменен статус в клане. Отдел: '%s'. Должность: '%s'. 

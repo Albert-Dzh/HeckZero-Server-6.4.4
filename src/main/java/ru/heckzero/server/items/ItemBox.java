@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class ItemBox implements Iterable<Item> {
     private static final Logger logger = LogManager.getFormatterLogger();
     public enum BoxType {USER, BUILDING, BANK_CELL, PARCEL}
-    private EnumSet<Item.Params> resetParams = EnumSet.of(Item.Params.user_id, Item.Params.section, Item.Params.slot, Item.Params.b_id, Item.Params.cell_id, Item.Params.rcpt_id, Item.Params.rcpt_dt);
+    private EnumSet<Item.Params> resetParams = EnumSet.of(Item.Params.user_id, Item.Params.section, Item.Params.slot, Item.Params.b_id, Item.Params.cell_id, Item.Params.rcpt_id, Item.Params.rcpt_dt, Item.Params.owner);
 
     private final CopyOnWriteArrayList<Item> items = new CopyOnWriteArrayList<>();
     private boolean needSync = false;
@@ -88,7 +88,7 @@ public class ItemBox implements Iterable<Item> {
                 logger.error("can't remove %s from the item box because it was not found in items collection", item);
                 return null;
             }
-        return (!needSync || item.delFromDB(true)) ? item : null;                                                                           //delete the item from database with its included
+        return (!needSync || item.delFromDB()) ? item : null;                                                                               //delete the item from database with its included
     }
 
     public Item moveItem(long id, int count, Supplier<Long> newId, boolean alwaysSetNewId, ItemBox dstBox, Map<Item.Params, Object> setParams) {  //move an item from this ItemBox to dstBox
@@ -160,6 +160,8 @@ public class ItemBox implements Iterable<Item> {
 
         return dstBox.addItem(item);
     }
+
+    public String getLogDescription() {return items.stream().map(Item::getLogDescription).collect(Collectors.joining(","));}
 
     @Override
     public Iterator<Item> iterator() {return items.iterator();}

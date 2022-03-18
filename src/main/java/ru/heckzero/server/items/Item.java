@@ -24,8 +24,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-//@org.hibernate.annotations.NamedQuery(name = "ItemBox_PARCEL", query = "select i from Item i where i.rcpt_id = :id and function('to_timestamp', i.rcpt_dt) <= function('now') order by i.id")
-
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithoutSub", query = "delete from Item i where i.id = :id")
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
 
@@ -150,7 +148,6 @@ public class Item implements Cloneable {
 
     public ItemBox getIncluded() {return included;}                                                                                         //return included items as item box
 
-
     public boolean setParam(Params paramName, Object paramValue) {                                                                          //set an item param to paramValue
         return  ParamUtils.setParam(this, paramName.toString(), paramValue);                                                                //delegate param setting to ParamUtils
     }
@@ -207,8 +204,9 @@ public class Item implements Cloneable {
     }
 
     public String getLogDescription() {
-        StringJoiner sj = new StringJoiner("");
-        sj.add(String.format("%s%s", getParamStr(Params.txt), getCount() > 0 ? "[" + count + "]" : ""));
+        StringJoiner sj = new StringJoiner("", String.format("%s%s", getParamStr(Params.txt), getCount() > 0 ? "[" + count + "]" : ""), "");
+        if (!included.isEmpty())
+            sj.add("(" + included.getLogDescription() + ")");
         return sj.toString();
     }
 
@@ -221,12 +219,12 @@ public class Item implements Cloneable {
         return included.sync();
     }
 
-    public boolean delFromDB(boolean withSub) {                                                                                             //delete item from database
-        logger.info("deleting item id %d with sub = %s", id, withSub);
+    public boolean delFromDB() {                                                                                             //delete item from database
+        logger.info("deleting item id %d", this.id);
         Transaction tx = null;
         try (Session session = ServerMain.sessionFactory.openSession()) {
             tx = session.beginTransaction();
-            session.createNamedQuery(withSub ? "Item_DeleteItemByIdWithSub" : "Item_DeleteItemByIdWithoutSub").setParameter("id", id).executeUpdate();
+            session.createNamedQuery("Item_DeleteItemByIdWithSub").setParameter("id", id).executeUpdate();
             tx.commit();
             return true;
         } catch (Exception e) {                                                                                                             //database problem occurred

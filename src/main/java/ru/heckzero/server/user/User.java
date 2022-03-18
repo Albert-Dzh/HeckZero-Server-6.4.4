@@ -230,7 +230,7 @@ public class User {
     public void com_DROP(long id, int count) {                                                                                              //user drops an item from its box
         Item dropped = getItemBox().getSplitItem(id, count, false, this::getNewId);
         if (dropped != null)
-            addHistory(HistoryCodes.LOG_DROP_ITEMS, dropped.getLogDescription(), "add location description");
+            addHistory(HistoryCodes.LOG_DROP_ITEMS_IN_LOCATION, dropped.getLogDescription(), getLocation().getLogDescription());
         return;
     }
 
