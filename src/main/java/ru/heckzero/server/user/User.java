@@ -278,7 +278,7 @@ public class User {
         Predicate<Item> other = i -> i.getBaseType() == 802;                                                                                //other items we have to send in GETINFO
         Predicate<Item> getInfoItems = dressed.or(other);
 
-        ItemBox dressedItems = user.getItemBox().findItems(getInfoItems, false);                                                            //get user items by the predicate getInfoItems
+        ItemBox dressedItems = user.getItemBox().findItems(getInfoItems);                                                                   //get user items by the predicate getInfoItems
         sj.add(dressedItems.getXml());
         sendMsg(sj.toString());
         return;
@@ -528,7 +528,7 @@ public class User {
     private boolean isBuildMaster(int x, int y, int z) {                                                                                    //check if user has a master key to the building with given coordinates
         String keyName = String.format("$key%d_%d_%d", x, y, z);                                                                            //key name is composed of building coordinates
         Predicate<Item> predicate = (i -> !i.isExpired() && i.isBldKey() && (i.getParamStr(Item.Params.made).equals(keyName) || i.getParamStr(Item.Params.made).equals("$key_all")));
-        return !getItemBox().findItems(predicate, false).isEmpty() || isGod();
+        return !getItemBox().findItems(predicate).isEmpty() || isGod();
     }
 
     public void addSendItems(ItemBox box) {box.forEach(this::addSendItem);}                                                                 //add and send all items from box to the user's Item Box
@@ -564,10 +564,11 @@ public class User {
 
     public void com_CHECK() {
         logger.debug("checking for the expired items for user %s", getLogin());
-        ItemBox expired = getItemBox().findItems(Item::isExpired, true);                                                                    //all user expired items are here at a 1st level
-        if (expired.size() > 0)
-            logger.info("found %d expired items for user %s, %s", expired.size(), getLogin(), expired);
+        ItemBox expired = getItemBox().findItems(Item::isExpired);                                                                          //all user expired items are here at a 1st level
+        if (expired.isEmpty())
+            return;
 
+        logger.info("found %d expired items for user %s, %s", expired.size(), getLogin(), expired);
         expired.forEach(item -> {
             logger.info("deleting expired item %s for user %s", item, getLogin());
 
@@ -578,8 +579,7 @@ public class User {
             if (!included.isEmpty()) {
                 logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
                 included.forEach(i -> i.resetParam(Item.Params.pid));
-                included.forEach(i -> i.setParam(Item.Params.user_id, id));
-                included.forEach(i -> i.setParam(Item.Params.section, 0));
+                included.forEach(i -> i.setParams(Map.of(Item.Params.user_id, id, Item.Params.section,0)));
                 addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
         });

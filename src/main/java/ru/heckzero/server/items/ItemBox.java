@@ -49,26 +49,18 @@ public class ItemBox implements Iterable<Item> {
 
     public int getMass()     {return items.stream().mapToInt(Item::getMass).sum();}                                                         //get the weight of all items in the itembox
     public String getXml()   {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                       //get XML list of items as a list of <O/> nodes with the included items
+    public ItemBox getAllItems() {return items.stream().map(Item::getAllItems).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}
 
-    public Item findItem(long id) {return items.stream().filter(i -> i.getId() == id).findFirst().orElse(null);}                            //find an item recursively inside the item box
-    public ItemBox findItems(Predicate<Item> predicate, boolean searchIncluded) {
-        ItemBox foundItems = items.stream().filter(predicate).collect(ItemBox::new, ItemBox::addItem, ItemBox::addAll);
-        if (searchIncluded)
-            foundItems.addAll(findItemsInIncluded(predicate));
-        return foundItems;
-    }
-    private ItemBox findItemsInIncluded(Predicate<Item> predicate) {return items.stream().map(Item::getIncluded).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll).findItems(predicate, false);}
-
-    public Item findItemByType(double type) {                                                                                               //find an Item by type
-        Predicate<Item> isTypeEquals = i -> i.getParamDouble(Item.Params.type) == type;
-        return items.stream().filter(isTypeEquals).findFirst().orElse(null);
-    }
+    private Item findFirst() {return items.stream().findFirst().orElse(null);}
+    public ItemBox findItems(Predicate<Item> predicate) {return getAllItems().items.stream().filter(predicate).collect(ItemBox::new, ItemBox::addItem, ItemBox::addAll);}
+    public Item findItem(long id) {return findItems(i -> i.getId() == id).findFirst();}                                                     //find an item recursively inside the item box
+    public Item findItemByType(double type) {return findItems(i -> i.getParamDouble(Item.Params.type) == type).findFirst(); }               //find an Item by type
     private Item findSameItem(Item sample) {                                                                                                //find a joinable item in the item box by a sample item
         Predicate<Item> isResEquals = i -> sample.isRes() && i.getParamInt(Item.Params.massa) == sample.getParamInt(Item.Params.massa);     //the sample is res and items weight is equals
         Predicate<Item> isDrugEquals = i -> sample.isDrug() && i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);
         Predicate<Item> isSameName = i -> i.getParamStr(Item.Params.name).equals(sample.getParamStr(Item.Params.name));                     //items have the same name parameter value
         Predicate<Item> isJoinable = isSameName.and(isResEquals.or(isDrugEquals));                                                          //can items be joined
-        return items.stream().filter(isJoinable).findFirst().orElse(null);                                                                  //iterate over the 1st level items
+        return findItems(isJoinable).findFirst();                                                                                           //iterate over the 1st level items
     }
 
     public Item addItem(Item item)   {this.items.add(item); return (!needSync || item.sync()) ? item : null;}                               //add one item to the ItemBox
@@ -81,18 +73,23 @@ public class ItemBox implements Iterable<Item> {
             return null;
         }
 
-        if (item.isNoTransfer() || !item.getIncluded().findItems(Item::isNoTransfer, false).isEmpty()) {                                    //deleting item is forbidden, item or one of its included has nt set to 1
+        if (item.isNoTransfer() || !item.getIncluded().findItems(Item::isNoTransfer).isEmpty()) {                                           //deleting item is forbidden, item or one of its included has nt set to 1
             logger.info("can't delete item id %d, because it or one of its included has no transfer flag set");
             return null;
         }
 
-        if (!items.removeIf(i -> i.getId() == item.getId())) {                                                                              //it's a 1st level item, remove it from this item box
-            logger.error("can't remove %s from the item box because it was not found in 1st level item list", item);
-            return null;
-        }
+        if (item.isIncluded()) {
+            if (!findItem(item.getPid()).getIncluded().items.removeIf(i -> i.getId() == item.getId())) {
+                logger.error("can't remove %s from the item box because it was not found in parent included collection", item);
+                return null;
+            }
+        } else
+            if (!items.removeIf(i -> i.getId() == item.getId())) {                                                                          //it's a 1st level item, remove it from this item box
+                logger.error("can't remove %s from the item box because it was not found in items collection", item);
+                return null;
+            }
         return (!needSync || item.delFromDB(true)) ? item : null;                                                                           //delete the item from database with its included
     }
-
 
     public Item moveItem(long id, int count, Supplier<Long> newId, boolean alwaysSetNewId, ItemBox dstBox, Map<Item.Params, Object> setParams) {  //move an item from this ItemBox to dstBox
         Item item = getSplitItem(id, count, alwaysSetNewId, newId);

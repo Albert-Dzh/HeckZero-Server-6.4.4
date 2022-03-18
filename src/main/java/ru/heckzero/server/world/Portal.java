@@ -13,6 +13,7 @@ import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
+import ru.heckzero.server.utils.HistoryCodes;
 
 import javax.persistence.*;
 import java.util.*;
@@ -202,10 +203,13 @@ public class Portal extends Building {
 
         if (d != -1) {                                                                                                                      //user puts resource-item to portal's warehouse
             Map<Item.Params, Object> setParams = Map.of(Item.Params.b_id, getId());
-            if (user.getItemBox().joinMoveItem(d, c, user::getNewId, this.getItemBox(), setParams) == null) {
+            Item givenItem = user.getItemBox().joinMoveItem(d, c, user::getNewId, this.getItemBox(), setParams);
+            if (givenItem == null) {
                 logger.error("can't put item id %d to portal warehouse", d);
                 user.disconnect();
+                return;
             }
+            user.addHistory(HistoryCodes.LOG_PUT_ITEMS_IN_HOUSE, givenItem.getLogDescription(), this.getLogDescription());
             return;
         }
 
@@ -216,20 +220,10 @@ public class Portal extends Building {
                 return;
             }
 
-            /*Item takenItem = this.getItemBox().getSplitItem(a, c, true, user::getNewId);
-            if (takenItem == null) {                                                                                                        //item doesn't exist on warehouse already
-                user.sendMsg("<PR a1=\"0\" a2=\"0\"/>");                                                                                    //let the client know if it failed with taking an item
-                return;
-            }
-
-            takenItem.resetParam(Item.Params.b_id);                                                                                         //set new params before transfer the item to user's item box
-            takenItem.setParam(Item.Params.user_id, user.getId());
-            takenItem.setParam(Item.Params.section, s);
-            user.getItemBox().addItem(takenItem);                                                                                           //add the item to user's item box
-            */
-
             Item item = this.getItemBox().findItem(a);                                                                                      //we have to check the remaining count of the source item
             int a2 = (item == null) ? 0 : item.getCount();                                                                                  //the item remaining quantity
+
+            user.addHistory(HistoryCodes.LOG_GET_ITEMS_IN_HOUSE, takenItem.getLogDescription(), this.getLogDescription());
             user.sendMsg(String.format("<PR a1=\"%d\" a2=\"%d\"/>", takenItem.getCount(), a2));                                             //a1 - how much was taken, a2 - the item remnant
             return;
         }

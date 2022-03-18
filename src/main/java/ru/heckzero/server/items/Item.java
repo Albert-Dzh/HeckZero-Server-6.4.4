@@ -173,6 +173,13 @@ public class Item implements Cloneable {
         return sj.toString();
     }
 
+    public ItemBox getAllItems() {
+        ItemBox allItems = new ItemBox();
+        allItems.addItem(this);
+        included.forEach(allItems::addItem);
+        return allItems;
+    }
+
     synchronized public Item split(int count, Supplier<Long> newId) {                                                                       //split an item and return a new one
         int itmCount = getCount();
         if (count < 1 || count >= itmCount) {
