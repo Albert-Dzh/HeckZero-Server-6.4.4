@@ -9,6 +9,7 @@ import org.hibernate.Transaction;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.query.Query;
+import org.hibernate.type.StringType;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
@@ -18,6 +19,7 @@ import java.util.Collections;
 import java.util.List;
 
 @org.hibernate.annotations.NamedNativeQueries({
+        @org.hibernate.annotations.NamedNativeQuery(name = "HistoryAccountAttack", query = "select param1, count(param1) from history where dt > (select lastlogout from users where id = :user_id) and code = 3 and sbj_type = 0 and sbj_id = :user_id group by param1 having count(param1) > 5"),
         @org.hibernate.annotations.NamedNativeQuery(name = "HistoryGivenDate", query = "select * from history h where h.sbj_id = :sbj_id and sbj_type = :sbj_type and h.dt >= :dt and h.dt < :dt + 86400 order by h.id"),
         @org.hibernate.annotations.NamedNativeQuery(name = "HistoryPrevDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(max(dt)))) as min_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt < :dt) select * from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= (select min_dt from tmp_table) and dt < (select min_dt + 86400 from tmp_table) order by id"),
         @org.hibernate.annotations.NamedNativeQuery(name = "HistoryNextDate", query = "with tmp_table as (select extract(epoch from date_trunc('day', to_timestamp(min(dt)))) as max_dt from history where sbj_id = :sbj_id and sbj_type = :sbj_type and dt >= :dt + 86400) select * from history where dt >= (select max_dt from tmp_table) and dt < (select max_dt + 86400 from tmp_table) order by id"),
@@ -77,6 +79,16 @@ public class History {
             return (List<History>) query.list();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't get history logs: %s", e.getMessage());
+        }
+        return Collections.emptyList();
+    }
+
+    public static List<String> checkAccountAttack(int user_id) {
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            NativeQuery query = session.getNamedNativeQuery("HistoryAccountAttack").setParameter("user_id", user_id).addScalar("param1", StringType.INSTANCE).setCacheable(false);
+            return (List<String>) query.list();
+        } catch (Exception e) {                                                                                                             //database problem occurred
+            logger.error("can't get history logs for account attacks: %s", e.getMessage());
         }
         return Collections.emptyList();
     }

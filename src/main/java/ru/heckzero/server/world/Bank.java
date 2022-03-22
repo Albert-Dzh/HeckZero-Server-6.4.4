@@ -124,8 +124,11 @@ public class Bank extends Building {
         }
 
         if (cost >= 0 && cost2 >= 0) {                                                                                                      //save the bank cost-related settings
-            if (!setCost(cost, cost2))
+            if (!setCost(cost, cost2)) {
                 user.disconnect();
+                return;
+            }
+            addHistory(HistoryCodes.LOG_BANK_CHANGE_PARAMS, user.getLogin());
             return;
         }
 
@@ -148,6 +151,8 @@ public class Bank extends Building {
                 user.disconnect();
                 return;
             }
+            addHistory(HistoryCodes.LOG_BANK_PROFIT_FOR_CELL, String.valueOf(this.cost));
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_BANK_CELL_PURCHASE, String.valueOf(user.getMoney().getCopper()));
             user.addSendItem(key);                                                                                                          //add the cell key to the user item box and send the key-item description to him
             user.sendMsg(bkXml());                                                                                                          //update bank information to the client
             return;
@@ -177,6 +182,12 @@ public class Bank extends Building {
         }
 
         if (go == 1 && cell != null) {                                                                                                      //opening a cell id 'sell'
+/*
+            if (cell.isExpired()) {
+                user.sendMsg("<BK code=\"2\"/>");
+                return;
+            }
+*/
             user.sendMsg(cell.cellXml());
             return;
         }

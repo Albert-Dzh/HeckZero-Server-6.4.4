@@ -193,7 +193,7 @@ public class UserManager {                                                      
             logger.info("wrong password for user '%s'", user.getLogin());
             String errMsg = String.format("<ERROR code=\"%d\"/>", ErrCodes.WRONG_PASSWORD.ordinal());
             ch.writeAndFlush(errMsg).addListener(ChannelFutureListener.CLOSE);
-            History.addIms(user.getId(), HistoryCodes.LOG_WRONG_PASSWORD, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());          //add a history record about failure login
+            History.addIms(user.getId(), HistoryCodes.LOG_WRONG_PASSWORD, ((String)ch.attr(AttributeKey.valueOf("sockStr")).get()).split(":")[0]);          //Был введен неверный пароль с IP=%s
             return;
         }
         logger.info("phase 3 checking if user '%s' if blocked", user.getLogin());

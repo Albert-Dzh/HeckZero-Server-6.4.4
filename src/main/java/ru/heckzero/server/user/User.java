@@ -191,7 +191,9 @@ public class User {
         setParam(Params.loc_time, Math.min(Instant.now().getEpochSecond() + 12, getParamLong(Params.loc_time) != 0L ? getParamLong(Params.loc_time) + getParamLong(Params.lastlogin) - getParamLong(Params.lastlogout) : getParamLong(Params.reg_time))); //compute client loc_time - time when user is allowed to leave his current location
         String resultMsg = String.format("<OK l=\"%s\" ses=\"%s\"/>", getLogin(), ch.attr(AttributeKey.valueOf("encKey")).get());           //<OK/> message with a chat auth key in ses attribute (using already existing key)
         sendMsg(resultMsg);                                                                                                                 //send login <OK/> message to the user
-        addHistory(HistoryCodes.LOG_LOGIN, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());
+        addHistory(HistoryCodes.LOG_LOGIN, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());                                         //Вход в игру с IP=%s
+        List<String> failedLoginsIP = History.checkAccountAttack(this.id);
+        failedLoginsIP.forEach(ip -> History.addIms(this.id, HistoryCodes.LOG_WRONG_MANY_TIMES, ip));                                       //C IP адреса {%s} был более 5 раз введен неправильный пароль к вашему персонажу
         addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(getMoney().getCopper()), String.valueOf(getMoney().getSilver()));          //На счету %s медных монет и %s серебряных.
 
         chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him

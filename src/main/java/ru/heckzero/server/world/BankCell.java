@@ -61,12 +61,14 @@ public class BankCell {
         return;
     }
 
-    public boolean isBlocked() {return block == 1;}                                                                                         //is the cell blocked
-    public int getId()  {return id;}
-    public long getDt() {return dt;}
+    public boolean isBlocked() {return this.block == 1;}                                                                                    //is the cell blocked
+    public boolean isExpired() {return this.dt > (Instant.now().getEpochSecond() - ServerMain.ONE_MES * 3);}                                //is the cell expired
+
+    public int getId()  {return this.id;}
+    public long getDt() {return this.dt;}
     public boolean checkPass(String key, String ecnryptedPass) {return ecnryptedPass.equals(UserManager.encrypt(key, password));}           //validate cell's password
 
-    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id)) : itemBox;}         //get the building itembox, initialize if needed
+    public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BANK_CELL, id)) : itemBox;}               //get the building itembox, initialize if needed
     public int getBookmark_add() {return bookmark_add;}
     public int getCapacity() {return capacity;}
     public int getUser_id() {return user_id;}

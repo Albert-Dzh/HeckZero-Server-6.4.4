@@ -59,7 +59,7 @@ public class HistoryCodes {
 	public static final int LOG_SEND_ITEMS = 312;																					//Переслал: {%s} персонажу \'%s\'
 	public static final int LOG_USE_FOR_SUBWAY = 316;																				//Использовал {%s} для прохода в разрушенное метро 
 	public static final int LOG_PAY_AND_BALANCE = 318;																				//Оплатил {%s} в \'%s\' %s. В рюкзаке осталось %s мнт.
-	public static final int LOG_PUT_IEMS_AND_BALANCE = 320;																			//Отданы предметы: {%s} в здании '%s'. В рюкзаке осталось %s мнт.
+	public static final int LOG_PUT_ITEMS_AND_BALANCE = 320;																		//Отданы предметы: {%s} в здании '%s'. В рюкзаке осталось %s мнт.
 	public static final int LOG_USE_BY_MODULE = 321;																				//Использовано {%s} модулем {%s} 
 	public static final int LOG_USE_FOR_MANUFACTURE = 322;																			//Использовано {%s} для изготовления {%s} 
 	public static final int LOG_GIVE_ITENS_TO_DEBT = 324;																			//Передал в долг: {%s} к '%s'
