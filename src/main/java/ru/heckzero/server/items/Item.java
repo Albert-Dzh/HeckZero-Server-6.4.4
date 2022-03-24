@@ -27,7 +27,9 @@ import java.util.stream.LongStream;
 @org.hibernate.annotations.NamedQuery(name = "Item_DeleteItemByIdWithSub", query = "delete from Item i where i.id = :id or i.pid = :id")
 
 @org.hibernate.annotations.NamedNativeQueries({
-    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_USER", query = "with main_items as (select * from items_inventory where user_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
+
+    @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_USER", query = "WITH items_aux AS (SELECT * FROM items_inventory WHERE user_id = :id) SELECT * FROM items_aux UNION SELECT b.* FROM items_aux AS a INNER JOIN items_inventory AS b ON b.pid = a.id ORDER BY id"),
+//  replaced by DZ's query above  @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_USER", query = "with main_items as (select * from items_inventory where user_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
     @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BUILDING", query = "with main_items as (select * from items_inventory where b_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
     @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_BANK_CELL", query = "with main_items as (select * from items_inventory where cell_id = :id) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id"),
     @org.hibernate.annotations.NamedNativeQuery(name = "ItemBox_PARCEL", query = "with main_items as (select * from items_inventory where rcpt_id = :id and to_timestamp(rcpt_dt) <= now()) select * from main_items union select * from items_inventory where pid in (select id from main_items) order by id")
