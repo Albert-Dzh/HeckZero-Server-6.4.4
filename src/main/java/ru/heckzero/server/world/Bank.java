@@ -71,10 +71,12 @@ public class Bank extends Building {
     @Override
     protected String getParamXml(Params param) {return ParamUtils.getParamXml(this, param.toString()).transform(s -> s.startsWith("cash") ? s.replace("cash", "cash1") : s);}
 
-    public Item createCell(int user_id, String password) {                                                                                  //create a bank cell and return a key item for that cell
-        BankCell bankCell = new BankCell(this.getId(), user_id, password);                                                                  //create a new bank cell
+    public Item createCell(User user, String password) {                                                                                    //create a bank cell and return a key item for that cell
+        BankCell bankCell = new BankCell(this.getId(), user.getId(), password);                                                             //create a new bank cell
         if (!bankCell.sync())
             return null;
+        bankCell.addHistory(HistoryCodes.LOG_CELL_WAS_BOUGHT_BY, user.getLogin());                                                          //Персонаж '%s' купил эту ячейку
+
         Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);                                                                     //generate a bank cell key item
         if (key == null)
             return null;
@@ -83,7 +85,7 @@ public class Bank extends Building {
         key.setParam(Item.Params.dt, bankCell.getDt());
         key.setParam(Item.Params.hz, bankCell.getId());
         key.setParam(Item.Params.res, getTxt());
-        key.setParam(Item.Params.user_id, user_id);                                                                                         //user id this key belongs to
+        key.setParam(Item.Params.user_id, user.getId());                                                                                    //user id this key belongs to
         key.setParam(Item.Params.section, 0);                                                                                               //user box sections this key will be placed to
         return key;
     }
@@ -111,6 +113,8 @@ public class Bank extends Building {
         if (get > 0) {                                                                                                                      //take money from bank's cash
             int cashTaken = decMoney(get);                                                                                                  //take money from building
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                  //add money  from bank cash to the user
+            addHistory(HistoryCodes.LOG_BANK_GET_MONEY_FROM_CASH, user.getLogin(), String.valueOf(get));                                    //Владелец банка '%s' забрал из кассы %s мнт.
+            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoney().getCopper()));
             user.sendMsg("<BK code=\"0\"/>");
             return;
         }
@@ -119,6 +123,8 @@ public class Bank extends Building {
             user.decMoney(put);                                                                                                             //get money from user
             if (!user.getBuilding().addMoney(put))                                                                                          //add money to building
                 user.disconnect();
+            addHistory(HistoryCodes.LOG_BANK_PUT_MONEY_TO_CASH, user.getLogin(), String.valueOf(put));							            //Владелец банка '%s' положил в кассу %s мнт.
+            user.addHistory(HistoryCodes.LOG_PUT_MONEY_TO_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(put), getLogDescription(), String.valueOf(user.getMoney().getCopper()));
             user.sendMsg("<BK code=\"0\"/>");
             return;
         }
@@ -146,14 +152,16 @@ public class Bank extends Building {
                 user.disconnect();
                 return;
             }
-            Item key = createCell(user.getId(), p);                                                                                         //create a cell and a new key item for that cell
+            Item key = createCell(user, p);                                                                                                 //create a cell and a new key item for that cell
             if (key == null) {
                 user.disconnect();
                 return;
             }
-            addHistory(HistoryCodes.LOG_BANK_PROFIT_FOR_CELL, String.valueOf(this.cost));
-            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_BANK_CELL_PURCHASE, String.valueOf(user.getMoney().getCopper()));
+
+            addHistory(HistoryCodes.LOG_BANK_PROFIT_FOR_CELL, String.valueOf(this.cost));                                                   //Доход банка %s мнт. за продажу ячейки
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", getLogDescription(), HistoryCodes.ULOG_FOR_BANK_CELL_PURCHASE, String.valueOf(user.getMoney().getCopper()));
             user.addSendItem(key);                                                                                                          //add the cell key to the user item box and send the key-item description to him
+            user.sendMsg("<BK code=\"0\"/>");
             user.sendMsg(bkXml());                                                                                                          //update bank information to the client
             return;
         }
@@ -182,12 +190,6 @@ public class Bank extends Building {
         }
 
         if (go == 1 && cell != null) {                                                                                                      //opening a cell id 'sell'
-/*
-            if (cell.isExpired()) {
-                user.sendMsg("<BK code=\"2\"/>");
-                return;
-            }
-*/
             user.sendMsg(cell.cellXml());
             return;
         }
@@ -253,9 +255,10 @@ public class Bank extends Building {
             return;
         }
 
-        if (newpsw != null && newpsw.length() >= 6 && cell != null) {                                                                       //change cell's psw
+        if (newpsw != null && newpsw.length() >= 6 && cell != null) {                                                                       //change cell's password
             if (!cell.setPassword(newpsw))
                 user.disconnect();
+            cell.addHistory(HistoryCodes.LOG_CELL_PSWD_CHANGE, user.getLogin());                                                            //Персонаж '%s' сменил пароль от ячейки
             user.sendMsg("<BK code=\"0\"/>");
             return;
         }
@@ -268,7 +271,7 @@ public class Bank extends Building {
         }
 
         if (newkey >= 0 && cell != null) {                                                                                                  //cell key duplicate request
-            if (user.getMoney().getCopper() < getCost3()) {
+            if (user.getMoney().getCopper() < getCost3()) {                                                                                 //user hasn't got enough money to make a key
                 user.sendMsg("<BK code=\"4\"/>");
                 return;
             }
@@ -282,13 +285,16 @@ public class Bank extends Building {
                 user.disconnect();
                 return;
             }
+            cell.addHistory(HistoryCodes.LOG_CELL_KEY_DUBLICATE, user.getLogin());                                                          //Персонаж '%s' изготовил дубликат ключа от ячейки
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_CELL_KEY_DUBLICATE, String.valueOf(user.getMoney().getCopper()));
+
             user.addSendItem(keyCopy);                                                                                                      //send a key item to the client
             user.sendMsg("<BK code=\"0\"/>");
             user.sendMsg(bkXml());                                                                                                          //update bank information to the client
             return;
         }
 
-        if (check_sell >= 0) {                                                                                                              //check the cell id  and return the owner login  or an empty string
+        if (check_sell >= 0) {                                                                                                              //check the cell by id and return the cell's owner login or an empty string
             BankCell checkCell = BankCell.getBankCell(check_sell);
             if (checkCell == null) {
                 user.sendMsg("<BK login_cell=\"\"/>");                                                                                      //cell's owner was not found
@@ -298,7 +304,7 @@ public class Bank extends Building {
             return;
         }
 
-        if (tr > 0 && cell2 > 0 && c > 0 ) {                                                                                                //transfer sources between cells
+        if (tr > 0 && cell2 > 0 && c > 0) {                                                                                                 //transfer sources between cells
             BankCell dstCell = BankCell.getBankCell(cell2);
             if (cell == null || dstCell == null) {
                 logger.error("can't transfer resources from cell id %d to cell id %d, one of the cells is null", cell, cell2);
@@ -309,11 +315,15 @@ public class Bank extends Building {
             ItemBox dstBox = dstCell.getItemBox();
 
             Map<Item.Params, Object> setParams = Map.of(Item.Params.cell_id, cell2, Item.Params.section, 0);
-            if (srcBox.joinMoveItem(tr, c, Item::getNextGlobalId, dstBox, setParams) == null) {
+            Item trItem = srcBox.joinMoveItem(tr, c, Item::getNextGlobalId, dstBox, setParams);                                             //tr - item it to transfer
+            if (trItem == null) {
                 logger.error("can't transfer item id %d from cell id %d to cell id %d", tr, cell, cell2);
                 user.disconnect();
                 return;
             }
+            trItem.setParam(Item.Params.count, c);
+            cell.addHistory(HistoryCodes.LOG_CELL_RES_TRANSFERED_TO, user.getLogin(), String.valueOf(cell2), trItem.getLogDescription());   //Персонаж '%s' перевёл на счет {%s} ресурсы: {%s}
+            dstCell.addHistory(HistoryCodes.LOG_CELL_RES_TRANSFERED_FROM, user.getLogin(), String.valueOf(cell.getId()), trItem.getLogDescription());//Персонаж '%s' перевёл со счёта {%s} ресурсы: {%s}
             user.sendMsg("<BK code=\"0\"/>");                                                                                               //sources have been transferred successfully
             return;
         }

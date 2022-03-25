@@ -147,7 +147,7 @@ public class ItemBox implements Iterable<Item> {
             if (count > 0 && count < item.getCount())                                                                                       //check if we should decrease or delete the source item from user's item box
                 return changeOne(id, Item.Params.count, item.getCount() - count);
             else
-                return delItem(id);                                                                                                         //item will be deleted from user item box and db, which invalidates L2 cache
+                return delItem(id);                                                                                                         //item will be deleted from the item box and db, which invalidates L2 cache
         }
 
         logger.info("can't find an item to join our item with, will split the item id %d by count %d", id, count);
