@@ -10,6 +10,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
+import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.user.UserManager;
@@ -117,9 +118,10 @@ public class Portal extends Building {
         return sj.toString();
     }
 
-    public boolean consumeRes(int userWeight) {                                                                                             //consume portal resources for the teleportation
+    public ItemBox consumeRes(int userWeight) {                                                                                             //consume portal resources for the teleportation
         String [] res = p1.split(",");                                                                                                      //p1 - resources needed to teleport 1000 weight units
         Map<Item, Integer> itemsToConsume = new HashMap<>();                                                                                //found items to consume with consume
+        ItemBox box = new ItemBox(false);
 
         for (int i = 0; i < res.length; i++) {
             if (res[i].isEmpty())                                                                                                           //res doesn't contain resource of number i
@@ -127,20 +129,22 @@ public class Portal extends Building {
             Item item = getItemBox().findItemByType(Double.parseDouble(String.format("0.19%d", i + 1)));                                    //find needed resource on portal warehouse
             int requiredRes = NumberUtils.toInt(res[i]) * userWeight / 1000;                                                                //compute resource amount required for teleportation
             if (item == null || item.getCount() < requiredRes) {
-                logger.warn("portal id %d %s has got not enough resources of type %d, (needed %d, has got %d)", getId(), getTxt(), i + 1, requiredRes, item == null ? 0 : item.getCount());
-                return false;
+                logger.warn("portal id %d %s doesn't got enough resources of type %d, (needed %d, has got %d)", getId(), getTxt(), i + 1, requiredRes, item == null ? 0 : item.getCount());
+                return null;
             }
             itemsToConsume.put(item, requiredRes);                                                                                          //item to consume and a count to decrease
         }
-        itemsToConsume.forEach((k, v) -> logger.debug("consuming resource %s of count %d in portal %d %s", k.getParamStr(Item.Params.txt), v, getId(), getTxt()));
-        itemsToConsume.forEach((k, v) -> getItemBox().getSplitItem(k.getId(), v, false, Item::getNextGlobalId));
-        return true;
+        itemsToConsume.forEach((k, v) -> box.addItem(getItemBox().getSplitItem(k.getId(), v, false, Item::getNextGlobalId)));
+        logger.debug("portal %d consumed resources for teleportation: %s", getId(), box.getLogDescription());
+        return box;
     }
 
     public void processCmd(int comein, int id, double new_cost, int to, long d, long a, int s, int c, int get, int ds, User user) {
         if (get != -1) {                                                                                                                    //withdraw money from portal cash
             int cashTaken = this.decMoney(get);
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);
+            addHistory(HistoryCodes.LOG_PORTAL_GET_MONEY, user.getLogin(), String.valueOf(get));
+            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoney().getCopper()));
             return;
         }
 
@@ -149,6 +153,7 @@ public class Portal extends Building {
                 user.disconnect();
                 return;
             }
+            addHistory(HistoryCodes.LOG_PORTALS_CHANGE_PARAMS, user.getLogin());                                                            //Персонаж '%s' изменил настройки
             user.sendMsg(String.format("<PR ds=\"%d\" city=\"%s\" p2=\"%s\"/>", getDs(), getCity(), getP2()));                              //update portal information
             return;
         }
@@ -162,6 +167,7 @@ public class Portal extends Building {
             PortalRoute route = PortalRoute.getRoute(id);                                                                                   //get the route to change cost for
             if (route == null || !route.setCost(new_cost))
                 user.disconnect();
+            addHistory(HistoryCodes.LOG_PORTALS_CHANGE_PARAMS, user.getLogin());                                                            //Персонаж '%s' изменил настройки
             return;
         }
 
@@ -174,12 +180,17 @@ public class Portal extends Building {
 
             int mass = user.getMass().get("tk");                                                                                            //current user mass
             Item passport = user.getPassport();
-            int cost = route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));             //get the flight cost
-            if (!user.isGod() && cost > user.getMoney().getCopper()) {                                                                      //user is out of money
+
+            int cost = user.isGod() ? 0 : route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));             //get the flight cost
+            this.p1 = user.isGod() ? "" : this.p1;
+
+            if (cost > user.getMoney().getCopper()) {                                                                                       //user is out of money
                 user.sendMsg("<PR err=\"1\"/>");
                 return;
             }
-            if (!consumeRes(mass)) {                                                                                                        //portal is out of resources to commit the flight
+
+            ItemBox box = consumeRes(mass);
+            if (box == null) {                                                                                                              //portal is out of resources to commit the flight
                 user.sendMsg("<PR err=\"5\"/>");
                 return;
             }
@@ -196,6 +207,12 @@ public class Portal extends Building {
                 user.disconnect(UserManager.ErrCodes.SRV_FAIL);
                 return;
             }
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + cost + "]", getLogDescription(), HistoryCodes.ULOG_FOR_TELEPORT, String.valueOf(user.getMoney().getCopper()));
+            if (user.isGod())
+                addHistory(HistoryCodes.LOG_PORTAL_PAY_FOR_FLIGHT, user.getLogin(), String.valueOf(cost));
+            else
+                addHistory(HistoryCodes.LOG_PORTAL_PAY_FOR_FLIGHT_AND_RES_USED, user.getLogin(), String.valueOf(cost), box.getLogDescription()); //Персонаж '%s' заплатил %s мнт. за телепортацию, израсходованы ресурсы: %s
+
             user.setRoom(X, Y, Z, hz, ROOM);
             user.sendMsg(String.format("<MYPARAM kupol=\"%d\"/><PR X=\"%d\" Y=\"%d\" Z=\"%d\" hz=\"%d\" ROOM=\"%d\"/>", user.getParamInt(User.Params.kupol), X, Y, Z, hz, ROOM));
             return;

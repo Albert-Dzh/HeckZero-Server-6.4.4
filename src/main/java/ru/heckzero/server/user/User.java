@@ -597,6 +597,8 @@ public class User {
     public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                                            //decrease user money
     public void addMoney(double amount) { addMoney(ItemsDct.MONEY_COPP, amount);}
     synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
+        if (amount == 0)
+            return;
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
             default -> Params.cup_0;
             case ItemsDct.MONEY_SILV -> Params.silv;
