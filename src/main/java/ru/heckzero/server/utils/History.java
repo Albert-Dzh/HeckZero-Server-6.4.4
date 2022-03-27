@@ -108,6 +108,7 @@ public class History {
     protected String param3 = StringUtils.EMPTY;
     protected String param4 = StringUtils.EMPTY;
     protected String param5 = StringUtils.EMPTY;
+    protected String param6 = StringUtils.EMPTY;
 
     protected History() { }
 
@@ -137,6 +138,7 @@ public class History {
     public String getParam3() {return param3;}
     public String getParam4() {return param4;}
     public String getParam5() {return param5;}
+    public String getParam6() {return param6;}
 
     private void sync() {ServerMain.sync(this);}
 }

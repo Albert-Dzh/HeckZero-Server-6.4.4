@@ -430,7 +430,7 @@ public class User {
             cReq.setTimeInMillis(historyLogs.get(0).getDt() * 1000);                                                                        //setting the returning date to the date of the first history record
 
         StringJoiner sj = new StringJoiner("\n", String.format("<HISTORY date=\"%s\">", dateFormat.format(cReq.getTime())), "</HISTORY>");
-        historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
+        historyLogs.forEach(hl -> sj.add(String.format("%s %s\t%d\t%s\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5(), hl.getParam6())));
         sendMsg(sj.toString());
         return;
     }
@@ -532,10 +532,10 @@ public class User {
             return;
         }
         decMoney(withdrawSum);                                                                                                              //decrease money from sender
-        addHistory(HistoryCodes.LOG_MONEY_TRANSFER_TO, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(c), receiver.getLogin(), String.valueOf(tax), String.valueOf(getMoneyCop()));       //Перевёл {%s[%s]} персонажу '%s'. Стоимость отправки %s мнт. Осталось %s мнт. %s
+        addHistory(HistoryCodes.LOG_MONEY_TRANSFER_TO, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(c), receiver.getLogin(), String.valueOf(tax), String.valueOf(getMoneyCop()), msg);       //Перевёл {%s[%s]} персонажу '%s'. Стоимость отправки %s мнт. Осталось %s мнт. %s
 
         receiver.addMoney(c);                                                                                                               //add money to receiver
-        receiver.addHistory(HistoryCodes.LOG_MONEY_TRANSFER_FROM, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(c), getLogin(), String.valueOf(receiver.getMoneyCop()));//Получено {%s[%s]} от персонажа \'%s\'. Всего на счету: %s мнт. %s",
+        receiver.addHistory(HistoryCodes.LOG_MONEY_TRANSFER_FROM, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(c), getLogin(), String.valueOf(receiver.getMoneyCop()), msg);//Получено {%s[%s]} от персонажа \'%s\'. Всего на счету: %s мнт. %s",
         sendMsg("<TRANSFER />");
         return;
     }
@@ -698,7 +698,7 @@ public class User {
             return;
 
         StringJoiner sj = new StringJoiner("\n", "<IMS m=\"", "\" />");
-        historyLogs.forEach(hl -> sj.add(String.format(" &#13;%s %s\t%d\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5())));
+        historyLogs.forEach(hl -> sj.add(String.format(" &#13;%s %s\t%d\t%s\t%s\t%s\t%s\t%s\t%s", dateFormat.format(new Date(hl.getDt() * 1000)), timeFormat.format(new Date(hl.getDt() * 1000)), hl.getCode(), hl.getParam1(), hl.getParam2(), hl.getParam3(), hl.getParam4(), hl.getParam5(), hl.getParam6())));
         sendMsg(sj.toString());
         return;
     }
