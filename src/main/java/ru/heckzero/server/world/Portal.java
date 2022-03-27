@@ -144,7 +144,7 @@ public class Portal extends Building {
             int cashTaken = this.decMoney(get);
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);
             addHistory(HistoryCodes.LOG_PORTAL_GET_MONEY, user.getLogin(), String.valueOf(get));
-            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoneyCop()));
             return;
         }
 
@@ -184,7 +184,7 @@ public class Portal extends Building {
             int cost = user.isGod() ? 0 : route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));             //get the flight cost
             this.p1 = user.isGod() ? "" : this.p1;
 
-            if (cost > user.getMoney().getCopper()) {                                                                                       //user is out of money
+            if (cost > user.getMoneyCop()) {                                                                                                //user is out of money
                 user.sendMsg("<PR err=\"1\"/>");
                 return;
             }
@@ -207,7 +207,7 @@ public class Portal extends Building {
                 user.disconnect(UserManager.ErrCodes.SRV_FAIL);
                 return;
             }
-            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + cost + "]", getLogDescription(), HistoryCodes.ULOG_FOR_TELEPORT, String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + cost + "]", getLogDescription(), HistoryCodes.ULOG_FOR_TELEPORT, String.valueOf(user.getMoneyCop()));
             if (user.isGod())
                 addHistory(HistoryCodes.LOG_PORTAL_PAY_FOR_FLIGHT, user.getLogin(), String.valueOf(cost));
             else

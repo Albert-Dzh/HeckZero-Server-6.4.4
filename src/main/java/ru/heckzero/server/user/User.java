@@ -45,8 +45,10 @@ public class User {
     private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
     private static final EnumSet<Params> getinfoParams = EnumSet.of(Params.login, Params.serverid, Params.nochat, Params.battleid, Params.confattack, Params.ft, Params.pro, Params.propwr, Params.clan, Params.clan_img, Params.rank_points, Params.img, Params.man, Params.HP, Params.psy, Params.str, Params.dex, Params.intu, Params.pow, Params.acc, Params.intel, Params.siluet, Params.name, Params.city, Params.about, Params.brokenslots, Params.poisoning, Params.virus, Params.ill, Params.dismiss, Params.chatblock, Params.forumblock, Params.maxHP, Params.maxPsy, Params.kupol, Params.level);
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
+    private static final int TRANSFER_RATE = 5;                                                                                             //transfer rate percentage
 
-    public class UserMoney {
+    /*class UserMoney {
+        private final int transferTax = 5;                                                                                                  //transfer tax percentage
         private final int copper;
         private final double silver;
         private final double gold;
@@ -56,10 +58,17 @@ public class User {
            this.silver = getParamDouble(Params.silv);
            this.gold = getParamDouble(Params.gold);
         }
-        public int getCopper()    {return copper;}
-        public double getSilver() {return silver;}
-        public double getGold()   {return gold;}
-    }
+
+        public int getTransferTax() {return transferTax;}
+        public int getCopper()      {return copper;}
+        public double getSilver()   {return silver;}
+        public double getGold()     {return gold;}
+    }*/
+
+    public int getMoneyCop() {return getParamInt(Params.cup_0);}
+    public double getMoneySilv() {return getParamDouble(Params.silv);}
+    public double getMoneyGold() {return getParamDouble(Params.gold);}
+    public int getMoneyErgon() {return 0;}
 
     private static long getId2() {                                                                                                          //compute next id2 value for the user
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -99,6 +108,7 @@ public class User {
     public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
     public boolean isGod() {return getParamInt(Params.god) == 1;}                                                                           //this is a privileged user (admin)
     public boolean isCop() {return getParamStr(Params.clan).equals("police");}                                                              //user is a cop (is a member of police clan)
+    public boolean isInVault() {return false;}
 
     public Integer getId() {return id;}
     public Channel getGameChannel() {return this.gameChannel;}
@@ -143,7 +153,7 @@ public class User {
     public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
-    public UserMoney getMoney() {return new UserMoney();}
+//    public UserMoney getMoney() {return new UserMoney();}
 
     public long getNewId() {                                                                                                                //get a new id for an item
         long id1 = getParamLong(Params.id1);                                                                                                //get current user id1, id2, i1
@@ -194,9 +204,8 @@ public class User {
         addHistory(HistoryCodes.LOG_LOGIN, (String)ch.attr(AttributeKey.valueOf("sockStr")).get());                                         //Вход в игру с IP=%s
         List<String> failedLoginsIP = History.checkAccountAttack(this.id);
         failedLoginsIP.forEach(ip -> History.addIms(this.id, HistoryCodes.LOG_WRONG_MANY_TIMES, ip));                                       //C IP адреса {%s} был более 5 раз введен неправильный пароль к вашему персонажу
-        addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(getMoney().getCopper()), String.valueOf(getMoney().getSilver()));          //На счету %s медных монет и %s серебряных.
-
-        chat.updateMyStatus();                                                                                                              //will add user to his current room, so others will be able to see him
+        addHistory(HistoryCodes.LOG_BALANCE_INFO_2, String.valueOf(getMoneyCop()), String.valueOf(getMoneySilv()), String.valueOf(getMoneyGold()), String.valueOf(getMoneyErgon()));     // "На счету %s медных монет, %s серебряных, %s золотых и %s эргона.",
+        chat.updateMyStatus();                                                                                                              //add user to his current room, so others will be able to see him
         return;
     }
 
@@ -207,7 +216,7 @@ public class User {
         disconnectChat();                                                                                                                   //chat without a game channel is ridiculous, so shut the chat down
         chat.updateMyStatus();                                                                                                              //will remove user from room
         addHistory(HistoryCodes.LOG_LOGOUT);                                                                                                //Выход из игры
-        addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(getMoney().getCopper()), String.valueOf(getMoney().getSilver()));          //На счету %s медных монет и %s серебряных.
+        addHistory(HistoryCodes.LOG_BALANCE_INFO_2, String.valueOf(getMoneyCop()), String.valueOf(getMoneySilv()), String.valueOf(getMoneyGold()), String.valueOf(getMoneyErgon()));     // "На счету %s медных монет, %s серебряных, %s золотых и %s эргона.",
         sync();                                                                                                                             //update the user in database
         notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
         logger.info("user '%s' game channel logged out", getLogin());
@@ -488,6 +497,50 @@ public class User {
         return;
     }
 
+    public void com_TRANSFER(String login, String msg, int t, int c) {                                                                      //transfer money between users
+        if (login.isEmpty() || msg.isEmpty() || t == -1 || c == -1) {                                                                       //if first time opened
+            sendMsg(String.format("<TRANSFER p=\"%d\"/>", TRANSFER_RATE));
+            return;
+        }
+
+        User receiver = UserManager.getUser(login);
+        if (receiver == null || receiver.isEmpty()) {                                                                                       //if target user not found
+            sendMsg("<TRANSFER err=\"3\"/>");                                                                                               //Такого персонажа не существует
+            return;
+        }
+        if (receiver.getLogin().equals(getLogin())) {                                                                                       //if sending money to myself
+            sendMsg("<TRANSFER err=\"2\"/>");                                                                                               //Операция недоступна
+            return;
+        }
+        if (receiver.isInVault()) {                                                                                                         //if receiver is in Vault city
+            sendMsg("<TRANSFER err=\"4\"/>");                                                                                               //Переводы персонажам в закрытых городах запрещены",
+            return;
+        }
+                                                                                                                                            //TODO implement dedicated method for calculating distance between two players
+        int dstX = getParamInt(Params.X) - receiver.getParamInt(Params.X);                                                                  //distance between sender and receiver X-axis
+        int dstY = getParamInt(Params.Y) - receiver.getParamInt(Params.Y);                                                                  //distance between sender and receiver Y-axis
+        if (dstX * dstX > 225 || dstY * dstY > 225) {                                                                                       //if sender is 15-cells far from receiver
+            sendMsg("<TRANSFER err=\"5\"/>");                                                                                               //Персонаж находится слишком далеко
+            return;
+        }
+
+        int tax = (int) (Math.ceil(c * (TRANSFER_RATE / 100f)));                                                                            //transfer tax
+        int withdrawSum = c + tax;                                                                                                          //transfer amount with taxes
+
+        if (getMoneyCop() < withdrawSum) {                                                                                                  //if sender is money-cheating
+            sendMsg("<TRANSFER err=\"1\"/>");                                                                                               //Недостаточно денег
+            return;
+        }
+        decMoney(withdrawSum);                                                                                                              //decrease money from sender
+        addHistory(HistoryCodes.LOG_MONEY_TRANSFER_TO, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(c), receiver.getLogin(), String.valueOf(tax), String.valueOf(getMoneyCop()));       //Перевёл {%s[%s]} персонажу '%s'. Стоимость отправки %s мнт. Осталось %s мнт. %s
+
+        receiver.addMoney(c);                                                                                                               //add money to receiver
+        receiver.addHistory(HistoryCodes.LOG_MONEY_TRANSFER_FROM, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(c), getLogin(), String.valueOf(receiver.getMoneyCop()));//Получено {%s[%s]} от персонажа \'%s\'. Всего на счету: %s мнт. %s",
+        sendMsg("<TRANSFER />");
+        return;
+    }
+
+
     public void com_SILUET(String slt, String set) {                                                                                        //set user body type
         logger.debug("processing <SILUET/> from %s", getLogin());
         setParam(Params.siluet, set);
@@ -595,9 +648,9 @@ public class User {
 
     public void decMoney(double amount) {decMoney(ItemsDct.MONEY_COPP, amount);}
     public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                                            //decrease user money
-    public void addMoney(double amount) { addMoney(ItemsDct.MONEY_COPP, amount);}
+    public void addMoney(int amount) {addMoney(ItemsDct.MONEY_COPP, amount);}
     synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
-        if (amount == 0)
+        if (amount == 0)                                                                                                                    //nothing to do
             return;
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
             default -> Params.cup_0;

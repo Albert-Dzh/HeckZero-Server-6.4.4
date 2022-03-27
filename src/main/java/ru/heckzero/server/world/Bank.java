@@ -114,7 +114,7 @@ public class Bank extends Building {
             int cashTaken = decMoney(get);                                                                                                  //take money from building
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);                                                                                  //add money  from bank cash to the user
             addHistory(HistoryCodes.LOG_BANK_GET_MONEY_FROM_CASH, user.getLogin(), String.valueOf(get));                                    //Владелец банка '%s' забрал из кассы %s мнт.
-            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoneyCop()));
             user.sendMsg("<BK code=\"0\"/>");
             return;
         }
@@ -124,7 +124,7 @@ public class Bank extends Building {
             if (!user.getBuilding().addMoney(put))                                                                                          //add money to building
                 user.disconnect();
             addHistory(HistoryCodes.LOG_BANK_PUT_MONEY_TO_CASH, user.getLogin(), String.valueOf(put));							            //Владелец банка '%s' положил в кассу %s мнт.
-            user.addHistory(HistoryCodes.LOG_PUT_MONEY_TO_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(put), getLogDescription(), String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_PUT_MONEY_TO_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(put), getLogDescription(), String.valueOf(user.getMoneyCop()));
             user.sendMsg("<BK code=\"0\"/>");
             return;
         }
@@ -139,7 +139,7 @@ public class Bank extends Building {
         }
 
         if (buy == 1 && StringUtils.isNotBlank(p)) {                                                                                        //user buys a new cell
-            if (user.getMoney().getCopper() < getCost()) {
+            if (user.getMoneyCop() < getCost()) {
                 user.sendMsg("<BK code=\"4\"/>");
                 return;
             }
@@ -159,7 +159,7 @@ public class Bank extends Building {
             }
 
             addHistory(HistoryCodes.LOG_BANK_PROFIT_FOR_CELL, String.valueOf(this.cost));                                                   //Доход банка %s мнт. за продажу ячейки
-            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", getLogDescription(), HistoryCodes.ULOG_FOR_BANK_CELL_PURCHASE, String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", getLogDescription(), HistoryCodes.ULOG_FOR_BANK_CELL_PURCHASE, String.valueOf(user.getMoneyCop()));
             user.addSendItem(key);                                                                                                          //add the cell key to the user item box and send the key-item description to him
             user.sendMsg("<BK code=\"0\"/>");
             user.sendMsg(bkXml());                                                                                                          //update bank information to the client
@@ -175,7 +175,7 @@ public class Bank extends Building {
                 user.sendMsg("<BK code=\"9\"/>");
                 return;
             }
-            if (user.getMoney().getCopper() < getCost3()) {
+            if (user.getMoneyCop() < getCost3()) {
                 user.sendMsg("<BK code=\"4\"/>");
                 return;
             }
@@ -209,7 +209,7 @@ public class Bank extends Building {
                 user.sendMsg("<BK code=\"9\"/>");
                 return;
             }
-            if (user.getMoney().getCopper() < nextCapacityCost) {                                                                           //user doesn't have enough money
+            if (user.getMoneyCop() < nextCapacityCost) {                                                                                    //user doesn't have enough money
                 user.sendMsg("<BK code=\"4\"/>");
                 return;
             }
@@ -271,7 +271,7 @@ public class Bank extends Building {
         }
 
         if (newkey >= 0 && cell != null) {                                                                                                  //cell key duplicate request
-            if (user.getMoney().getCopper() < getCost3()) {                                                                                 //user hasn't got enough money to make a key
+            if (user.getMoneyCop() < getCost3()) {                                                                                          //user hasn't got enough money to make a key
                 user.sendMsg("<BK code=\"4\"/>");
                 return;
             }
@@ -286,7 +286,7 @@ public class Bank extends Building {
                 return;
             }
             cell.addHistory(HistoryCodes.LOG_CELL_KEY_DUBLICATE, user.getLogin());                                                          //Персонаж '%s' изготовил дубликат ключа от ячейки
-            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_CELL_KEY_DUBLICATE, String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.cost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_CELL_KEY_DUBLICATE, String.valueOf(user.getMoneyCop()));
 
             user.addSendItem(keyCopy);                                                                                                      //send a key item to the client
             user.sendMsg("<BK code=\"0\"/>");

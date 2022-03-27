@@ -96,7 +96,7 @@ public class PostOffice extends Building {
 
             user.decMoney(this.p1);                                                                                                         //charge the user for the wire sending
             this.addMoney(this.p1);                                                                                                         //add money to the post office cash
-            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.p1 + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_WIRE, String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.p1 + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_WIRE, String.valueOf(user.getMoneyCop()));
             this.addHistory(HistoryCodes.LOG_POST_PAY_FOR_WIRE, user.getLogin(), String.valueOf(this.p1));                                  //Персонаж 'User' заплатил XX мнт. за отправку телеграммы
             user.sendMsg("<PT ok=\"1\"/>");
             rcptUser.sendIMS(HistoryCodes.LOG_WIRE, user.getLogin(), wire);                                                                 //send a wire as an IMS to the recipient
@@ -129,7 +129,7 @@ public class PostOffice extends Building {
             user.decMoney(parcelCost);                                                                                                      //charge the user for the parcel sending
             this.addMoney(parcelCost);                                                                                                      //add money to the post office cash
             user.addHistory(HistoryCodes.LOG_SEND_ITEMS, parcelBox.getLogDescription(), rcptUser.getLogin());								//Переслал: {%s} персонажу \'%s\'
-            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + parcelCost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_PARCEL, String.valueOf(user.getMoney().getCopper()));
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + parcelCost + "]", String.format("%s,%s,%s,%s", getTxt(), getLocalX(), getLocalY(), getZ()), HistoryCodes.ULOG_FOR_PARCEL, String.valueOf(user.getMoneyCop()));
             this.addHistory(HistoryCodes.LOG_POST_PAY_FOR_PARCEL, user.getLogin(), String.valueOf(parcelCost));                             //Персонаж 'User' заплатил XX мнт. за отправку посылки
 
             user.sendMsg("<PT ok=\"2\"/>");                                                                                                 //send ok to the Post office

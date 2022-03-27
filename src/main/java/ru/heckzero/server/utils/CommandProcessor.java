@@ -68,6 +68,16 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_TRANSFER(Attributes attrs) {                                                                                      //transfer money between users
+        logger.debug("processing <TRANSFER/> command from user %s", user.getLogin());
+        String login = StringUtils.defaultString(attrs.getValue("l"));                                                                      //money receiver login
+        String r = StringUtils.defaultString(attrs.getValue("r"));                                                                          //transfer description
+        int t = NumberUtils.toInt(attrs.getValue("t"), -1);                                                                                 //type of coins
+        int c = NumberUtils.toInt(attrs.getValue("c"), -1);                                                                                 //count of copper coins
+        user.com_TRANSFER(login, r, t, c);
+        return;
+    }
+
     private void com_GAME_GETINFO(Attributes attrs) {                                                                                       //user information query
         logger.debug("processing <GETINFO/> command from user %s", user.getLogin());
         String login = attrs.getValue("login");                                                                                             //login attribute

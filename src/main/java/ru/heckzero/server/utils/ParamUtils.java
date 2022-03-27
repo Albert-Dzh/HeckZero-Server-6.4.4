@@ -49,6 +49,7 @@ public class ParamUtils {
         } catch (SecurityException | IllegalAccessException e) {
             logger.error("error setting param %s to value %s for class %s: %s:%s", paramName, paramValue, obj.getClass().getSimpleName(), e.getClass().getSimpleName(), e.getMessage());
         }
+
         return false;
     }
 

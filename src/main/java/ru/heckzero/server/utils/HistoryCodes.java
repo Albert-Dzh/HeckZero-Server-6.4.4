@@ -12,7 +12,8 @@ public class HistoryCodes {
 	public static final int LOG_UNAVAILABLE = 9;																					//В данный момент логи недоступны, повторите запрос позднее
 	public static final int LOG_BALANCE_INFO = 10;																					//На счету %s медных монет и %s серебряных.
 	public static final int LOG_WRONG_MANY_TIMES = 11;																				//C IP адреса {%s} был более 5 раз введен неправильный пароль к вашему персонажу
-	
+	public static final int LOG_BALANCE_INFO_2 = 12;																				//"На счету %s медных монет, %s серебряных, %s золотых и %s эргона."
+
 	public static final int LOG_WIRE = 100;																							//Сообщение от \'%s\': {%s}"
 	public static final int LOG_COP_BLOCKED_CHAT= 105;																				//Полицейский '%s' запретил вам общение в чате на %s мин 
 	public static final int LOG_COP_BLOCKED_FORUM = 106;																			//Полицейский '%s' запретил вам общение на форуме на %s мин 
