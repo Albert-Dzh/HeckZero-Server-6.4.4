@@ -656,9 +656,9 @@ public class User {
     }
 
     public boolean decMoney(double amount) {return decMoney(ItemsDct.MONEY_COPP, amount);}
-    public boolean decMoney(int type, double amount) {return addMoney(type, amount * -1);}                                                            //decrease user money
+    public boolean decMoney(int type, double amount) {return addMoney(type, amount * -1);}                                                  //decrease user money
     public boolean addMoney(int amount) {return addMoney(ItemsDct.MONEY_COPP, amount);}
-    synchronized public boolean addMoney(int type, double amount) {                                                                            //add money to user
+    synchronized public boolean addMoney(int type, double amount) {                                                                         //add money to user
         if (amount == 0)                                                                                                                    //nothing to do
             return true;
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
