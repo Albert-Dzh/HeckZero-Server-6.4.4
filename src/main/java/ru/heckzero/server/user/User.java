@@ -47,23 +47,6 @@ public class User {
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
     private static final int TRANSFER_RATE = 5;                                                                                             //transfer rate percentage
 
-    /*class UserMoney {
-        private final int transferTax = 5;                                                                                                  //transfer tax percentage
-        private final int copper;
-        private final double silver;
-        private final double gold;
-
-        public UserMoney() {
-           this.copper = getParamInt(Params.cup_0);
-           this.silver = getParamDouble(Params.silv);
-           this.gold = getParamDouble(Params.gold);
-        }
-
-        public int getTransferTax() {return transferTax;}
-        public int getCopper()      {return copper;}
-        public double getSilver()   {return silver;}
-        public double getGold()     {return gold;}
-    }*/
 
     public int getMoneyCop() {return getParamInt(Params.cup_0);}
     public double getMoneySilv() {return getParamDouble(Params.silv);}
@@ -153,7 +136,16 @@ public class User {
     public Location getLocation() {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y));}                              //get the location the user is now at
     public Location getLocation(int btnNum) {return Location.getLocation(getParamInt(Params.X), getParamInt(Params.Y), btnNum);}            //get the location for minimap button number
     public Building getBuilding() {return getLocation().getBuilding(getParamInt(Params.Z));}                                                //get the building the user is now in
-//    public UserMoney getMoney() {return new UserMoney();}
+
+    public int getDistanceToUser(User user2) {                                                                                              //compute distance between this user and user2
+        int myLocX = getLocation().getLocalX();
+        int myLocY = getLocation().getLocalY();
+
+        int user2LocX = user2.getLocation().getLocalX();
+        int user2LocY = user2.getLocation().getLocalY();
+
+        return (int) Math.sqrt(Math.pow(myLocX - user2LocX, 2) +  Math.pow(myLocY - user2LocY, 2));
+    }
 
     public long getNewId() {                                                                                                                //get a new id for an item
         long id1 = getParamLong(Params.id1);                                                                                                //get current user id1, id2, i1
@@ -497,8 +489,27 @@ public class User {
         return;
     }
 
+    public void com_EX(int fromType, int toType, double count) {                                                                            //exchange silver to copper or gold to silver
+        if (fromType == -1 || toType == -1 || count == 0) {                                                                                 //if first time opened
+            sendMsg(String.format("<EX silv=\"%.2f\" gold=\"%.2f\" gold_tho=\"5\"/>", ServerMain.CURR_RATE_SILV_TO_COP, ServerMain.CURR_RATE_GOLD_TO_SILV));
+            return;
+        }
+        if (!decMoney(fromType, count)) {
+            sendMsg("<EX err=\"1\"/>");                                                                                                     //send error message and GTFO
+            return;
+        }
+
+        double rate = fromType == ItemsDct.MONEY_GOLD ? ServerMain.CURR_RATE_GOLD_TO_SILV : ServerMain.CURR_RATE_SILV_TO_COP;               //select an exchange rate
+        int exResult = (int)(count * rate);                                                                                                 //exchange result
+        addMoney(toType, exResult);
+
+        addHistory(HistoryCodes.LOG_CURRENCY_EXCHANGE, String.valueOf(fromType), String.valueOf(count), String.valueOf(toType), String.valueOf(exResult));
+        sendMsg("<EX />");                                                                                                                  //send notify that all went correct
+        return;
+    }
+
     public void com_TRANSFER(String login, String msg, int t, int c) {                                                                      //transfer money between users
-        if (login.isEmpty() || msg.isEmpty() || t == -1 || c == -1) {                                                                       //if first time opened
+        if (login.isEmpty() || t == -1 || c == -1) {                                                                                        //if first time opened
             sendMsg(String.format("<TRANSFER p=\"%d\"/>", TRANSFER_RATE));
             return;
         }
@@ -516,10 +527,8 @@ public class User {
             sendMsg("<TRANSFER err=\"4\"/>");                                                                                               //Переводы персонажам в закрытых городах запрещены",
             return;
         }
-                                                                                                                                            //TODO implement dedicated method for calculating distance between two players
-        int dstX = getParamInt(Params.X) - receiver.getParamInt(Params.X);                                                                  //distance between sender and receiver X-axis
-        int dstY = getParamInt(Params.Y) - receiver.getParamInt(Params.Y);                                                                  //distance between sender and receiver Y-axis
-        if (dstX * dstX > 225 || dstY * dstY > 225) {                                                                                       //if sender is 15-cells far from receiver
+
+        if (getDistanceToUser(receiver) > 15) {                                                                                             //distance between sender and receiver is too long
             sendMsg("<TRANSFER err=\"5\"/>");                                                                                               //Персонаж находится слишком далеко
             return;
         }
@@ -646,12 +655,12 @@ public class User {
         return;
     }
 
-    public void decMoney(double amount) {decMoney(ItemsDct.MONEY_COPP, amount);}
-    public void decMoney(int type, double amount) {addMoney(type, amount * -1);}                                                            //decrease user money
-    public void addMoney(int amount) {addMoney(ItemsDct.MONEY_COPP, amount);}
-    synchronized public void addMoney(int type, double amount) {                                                                            //add money to user
+    public boolean decMoney(double amount) {return decMoney(ItemsDct.MONEY_COPP, amount);}
+    public boolean decMoney(int type, double amount) {return addMoney(type, amount * -1);}                                                            //decrease user money
+    public boolean addMoney(int amount) {return addMoney(ItemsDct.MONEY_COPP, amount);}
+    synchronized public boolean addMoney(int type, double amount) {                                                                            //add money to user
         if (amount == 0)                                                                                                                    //nothing to do
-            return;
+            return true;
         Params moneyParam = switch (type) {                                                                                                 //money type copper, silver, gold
             default -> Params.cup_0;
             case ItemsDct.MONEY_SILV -> Params.silv;
@@ -661,14 +670,14 @@ public class User {
         money += amount;                                                                                                                    //new money value
         if (money < 0) {
             logger.warn("can't adjust user %s money by %f, because it become negative", getLogin(), amount);
-            return;
+            return false;
         }
         setParam(moneyParam, money);                                                                                                        //set new money value
         if (amount < 0)
             sendMsg(String.format("<DM c=\"%.2f\" m=\"%d\" />", amount * -1, type));
         else
-            sendMsg(String.format("<MYPARAM %s=\"%s\"/>", moneyParam.name(), getParamStr(moneyParam)));
-        return;
+            sendMsg(String.format("<MYPARAM cup_0=\"%d\" silv=\"%.2f\" gold=\"%.2f\"/>", getMoneyCop(), getMoneySilv(), getMoneyGold()));
+        return true;
     }
 
     public void sync() {sync(false);}

@@ -55,6 +55,8 @@ public class ServerMain {
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
     public static final Integer DEF_USER_CACHE_TIMEOUT = 600;                                                                               //users cache timout after which it will be purged
     public static final int ONE_MES = 2678400;                                                                                              //seconds in 1 month (by timezero)
+    public static final double CURR_RATE_SILV_TO_COP = 100.0;                                                                               //silver to copper exchange rate
+    public static final double CURR_RATE_GOLD_TO_SILV = 10.0;                                                                               //gold to silver exchange rate
 
     private final static File log4jCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "log4j2.xml");
     private final static File hbnateCfg = new File(System.getProperty("user.dir") + File.separatorChar + CONF_DIR + File.separatorChar + "hibernate.cfg.xml");

@@ -78,6 +78,15 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_EX(Attributes attrs) {                                                                                            //exchange silver/gold to copper
+        logger.debug("processing <EX/> command from user %s", user.getLogin());
+        int t1 = NumberUtils.toInt(attrs.getValue("t1"), -1);                                                                               //from type (1 - copper, 2 - silver, 3 - gold)
+        int t2 = NumberUtils.toInt(attrs.getValue("t2"), -1);                                                                               //to type (1 - copper, 2 - silver, 3 - gold)
+        double c = NumberUtils.toFloat(attrs.getValue("c"), 0);                                                                             //amount of money to exchange
+        user.com_EX(t1, t2, c);
+        return;
+    }
+
     private void com_GAME_GETINFO(Attributes attrs) {                                                                                       //user information query
         logger.debug("processing <GETINFO/> command from user %s", user.getLogin());
         String login = attrs.getValue("login");                                                                                             //login attribute
