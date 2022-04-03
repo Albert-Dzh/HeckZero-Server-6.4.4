@@ -19,7 +19,7 @@ pipelines:
               variables:
                 SSH_USER: 'root'
                 SERVER: 'heckzero.adlernet.ru'
-                COMMAND: '/root/work/heckzero/server/heckzero-server-6.2.4/redeploy.sh'
+                COMMAND: '/root/work/heckzero/server/heckzero-server-6.4.4/redeploy.sh'
                 MODE: 'command'
                 PORT: '22'
 
