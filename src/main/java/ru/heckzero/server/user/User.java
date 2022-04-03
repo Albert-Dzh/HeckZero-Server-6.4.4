@@ -674,7 +674,7 @@ public class User {
         }
         setParam(moneyParam, money);                                                                                                        //set new money value
         if (amount < 0)
-            sendMsg(String.format("<DM c=\"%.2f\" m=\"%d\" />", amount * -1, type));
+            sendMsg(String.format("<DM c=\"%.2f\" m=\"%d\"/>", amount * -1, type));
         else
             sendMsg(String.format("<MYPARAM cup_0=\"%d\" silv=\"%.2f\" gold=\"%.2f\"/>", getMoneyCop(), getMoneySilv(), getMoneyGold()));
         return true;
