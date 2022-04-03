@@ -669,7 +669,7 @@ public class User {
         double money = getParamDouble(moneyParam);                                                                                          //current user money
         money += amount;                                                                                                                    //new money value
         if (money < 0) {
-            logger.warn("can't adjust user %s money by %f, because it become negative", getLogin(), amount);
+            logger.warn("can't adjust user %s money by %f, because it become negative: %.2f", getLogin(), amount, money);
             return false;
         }
         setParam(moneyParam, money);                                                                                                        //set new money value
