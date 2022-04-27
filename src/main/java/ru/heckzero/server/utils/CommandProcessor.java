@@ -78,6 +78,24 @@ public class CommandProcessor extends DefaultHandler {
         return;
     }
 
+    private void com_GAME_MR(Attributes attrs) {                                                                                            //city hall workflow
+        logger.debug("processing <MR/> command from user %s", user.getLogin());
+        int p1 = NumberUtils.toInt(attrs.getValue("p1"), -1);                                                                               //passport cost
+        int p2 = NumberUtils.toInt(attrs.getValue("p2"), -1);                                                                               //citizenship monthly fee
+        int d1 = NumberUtils.toInt(attrs.getValue("d1"), -1);                                                                               //holiday outfit rent
+        int ds = NumberUtils.toInt(attrs.getValue("ds"), -1);                                                                               //license discount for citizens
+        int o  = NumberUtils.toInt(attrs.getValue("o"), -1);                                                                                //flag to sell license only to citizens of this city
+        int vip  = NumberUtils.toInt(attrs.getValue("vip"), -1);                                                                            //user buys VIP status
+
+        String m1 = StringUtils.defaultString(attrs.getValue("m1"));                                                                        //name of new mayor and his assistant
+
+        int mod = NumberUtils.toInt(attrs.getValue("mod"), -1);                                                                             //item id to be modified
+        int paint = NumberUtils.toInt(attrs.getValue("paint"), -1);                                                                         //id of item that user want to paint
+        String color = StringUtils.defaultString(attrs.getValue("color"));                                                                  //new color of recolored item
+        user.com_MR(p1, p2, d1, ds, m1, o, vip, mod, paint, color);
+        return;
+    }
+
     private void com_GAME_EX(Attributes attrs) {                                                                                            //exchange silver/gold to copper
         logger.debug("processing <EX/> command from user %s", user.getLogin());
         int t1 = NumberUtils.toInt(attrs.getValue("t1"), -1);                                                                               //from type (1 - copper, 2 - silver, 3 - gold)

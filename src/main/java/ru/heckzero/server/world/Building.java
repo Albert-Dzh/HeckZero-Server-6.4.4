@@ -25,7 +25,7 @@ public class Building {
     private static final StringConverter strConv = new StringConverter(StringUtils.EMPTY);                                                  //type converters used in getParam***() methods
     private static final IntegerConverter intConv = new IntegerConverter(0);
 
-    public enum Params {X, Y, Z, cash, txt, maxHP, HP, name, upg, maxl, repair, clan,   d1,   ds, city, p1, p2, clon, bigmap_city, bigmap_shown,   cost, cost2, cost3, cost_to200, cost_to300, cost_to400, cost_to500, free, tkey, key}
+    public enum Params {X, Y, Z, cash, txt, maxHP, HP, name, upg, maxl, repair, clan,   d1,   ds, city, p1, p2, clon, bigmap_city, bigmap_shown,   cost, cost2, cost3, cost_to200, cost_to300, cost_to400, cost_to500, free, tkey, key, m1, o, vip}
     private static final EnumSet<Params> bldParams = EnumSet.of(Params.X, Params.Y, Params.Z, Params.txt, Params.maxHP, Params.HP, Params.name, Params.upg, Params.maxl, Params.repair, Params.clan);
 
     @Transient protected ItemBox itemBox = null;                                                                                              //building Item box
@@ -75,11 +75,10 @@ public class Building {
 
     public ItemBox getItemBox() {return itemBox == null ? (itemBox = ItemBox.init(ItemBox.BoxType.BUILDING, id)) : itemBox;}          //get the building itembox, initialize if needed
 
-    synchronized public int decMoney(int amount) {
+    public int decMoney(int amount) {
         amount = Math.min(amount, cash);
         logger.info("decreasing building id %d '%s' cash by %d", getId(), getTxt(), amount);
-        cash -= amount;
-        sync();
+        addMoney(amount * -1);
         return amount;
     }
     synchronized public boolean addMoney(int amount) {
