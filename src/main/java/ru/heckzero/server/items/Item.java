@@ -150,7 +150,7 @@ public class Item implements Cloneable {
     public ItemBox getIncluded() {return included;}                                                                                         //return included items as item box
 
     public boolean setParam(Params paramName, Object paramValue) {                                                                          //set an item param to paramValue
-        return  ParamUtils.setParam(this, paramName.toString(), paramValue);                                                                //delegate param setting to ParamUtils
+        return ParamUtils.setParam(this, paramName.toString(), paramValue);                                                                 //delegate param setting to ParamUtils
     }
     public void setParams(Map<Params, Object> params) {params.forEach(this::setParam);}
     public void resetParam(Params paramName) {setParam(paramName, null);}

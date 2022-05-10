@@ -20,6 +20,7 @@ public class ItemTemplate {
 
     public static final int BANK_KEY = 403;
     public static final int BANK_KEY_COPY = 670;
+    public static final int PASSPORT = 671;
 
     public static Item getTemplateItem(int templateId) {
         try (Session session = ServerMain.sessionFactory.openSession()) {
