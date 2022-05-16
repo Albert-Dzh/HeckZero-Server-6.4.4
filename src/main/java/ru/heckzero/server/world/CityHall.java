@@ -57,7 +57,7 @@ public class CityHall extends Building {
 
     public String chXml() {                                                                                                                 //XML formatted city hall data
         StringJoiner sj = new StringJoiner("", "", "</MR>");
-        sj.add(cityHallParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<MR ", ">")));   //add XML bank params
+        sj.add(cityHallParams.stream().map(this::getParamXml).filter(StringUtils::isNotBlank).collect(Collectors.joining(" ", "<MR ", ">")));//add XML bank params
         return sj.toString();
     }
 
@@ -70,10 +70,13 @@ public class CityHall extends Building {
             Item passport = ItemTemplate.getTemplateItem(ItemTemplate.PASSPORT);                                                            //generate a new passport item based on template
             if (passport == null)
                 return;
+
+            passport.setParam(Item.Params.user_id,  user.getId());                                                                          //user id
             passport.setParam(Item.Params.txt, String.format("%s %s", passport.getParamStr(Item.Params.txt), this.sv));                     //add city name to passport(item) name
             passport.setParam(Item.Params.res,  this.sv);                                                                                   //city name
-            passport.setParam(Item.Params.dt, Instant.now().getEpochSecond() + ServerMain.ONE_MES);
+            passport.setParam(Item.Params.dt, Instant.now().getEpochSecond() + ServerMain.ONE_MES);                                         //set passport expiration date to one month
             user.addSendItem(passport);
+
             if (img != -1) {                                                                                                                //set the user image if defined
                 String imgName = String.format("%s%d", user.getParamInt(User.Params.man) == 1 ? "man" : "girl", img);
                 user.setParam(User.Params.img, imgName);

@@ -51,7 +51,7 @@ public class ItemBox implements Iterable<Item> {
     public String getXml()   {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                       //get XML list of items as a list of <O/> nodes with the included items
     public ItemBox getAllItems() {return items.stream().map(Item::getAllItems).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}
 
-    private Item findFirst() {return items.stream().findFirst().orElse(null);}
+    public Item findFirst() {return items.stream().findFirst().orElse(null);}
     public ItemBox findItems(Predicate<Item> predicate) {return getAllItems().items.stream().filter(predicate).collect(ItemBox::new, ItemBox::addItem, ItemBox::addAll);}
     public Item findItem(long id) {return findItems(i -> i.getId() == id).findFirst();}                                                     //find an item recursively inside the item box
     public Item findItemByType(double type) {return findItems(i -> i.getParamDouble(Item.Params.type) == type).findFirst(); }               //find an Item by type
@@ -74,7 +74,7 @@ public class ItemBox implements Iterable<Item> {
         }
 
         if (item.isNoTransfer() || !item.getIncluded().findItems(Item::isNoTransfer).isEmpty()) {                                           //deleting item is forbidden, item or one of its included has nt set to 1
-            logger.info("can't delete item id %d, because it or one of its included has no transfer flag set");
+            logger.info("can't delete item id %d, because it or one of its included has no transfer flag set", id);
             return null;
         }
 

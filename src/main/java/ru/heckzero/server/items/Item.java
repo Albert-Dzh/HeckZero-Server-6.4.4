@@ -137,6 +137,8 @@ public class Item implements Cloneable {
     public boolean isNoTransfer() {return getParamInt(Params.nt) == 1;}                                                                     //check if the item has nt = 1 - no transfer param set
     public boolean isRes()        {return getParamStr(Params.name).split("-")[1].charAt(0) == 's' && getCount() > 0;}                       //item is a resource, may be enriched
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
+    public boolean isPassport()   {return getBaseType() == 778;}                                                                            //item is a passport
+
     public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                     //item is an owner's building key
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getCount() || (getCount() > 0 && getParamDouble(Params.calibre) > 0.0);} //shall we create a new id when messing around with this item
