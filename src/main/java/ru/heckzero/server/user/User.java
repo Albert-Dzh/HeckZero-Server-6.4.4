@@ -243,8 +243,8 @@ public class User {
         if (dropped == null)
             return;
 
-        if (dropped.isPassport()) {
-            this.setParam(Params.img, StringUtils.EMPTY);
+        if (dropped.isPassport()) {                                                                                                         //dropped item is a passport
+            this.setParam(Params.img, StringUtils.EMPTY);                                                                                   //reset user avatar
             sendMsg("<MYPARAM img=\"\"/>");
         }
 

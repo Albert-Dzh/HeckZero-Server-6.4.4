@@ -66,6 +66,7 @@ public class ItemBox implements Iterable<Item> {
     public Item addItem(Item item)   {this.items.add(item); return (!needSync || item.sync()) ? item : null;}                               //add one item to the ItemBox
     public boolean addAll(ItemBox box)  {this.items.addAll(box.items); return !needSync || sync();}                                         //add all items from itembox
 
+
     public Item delItem(long id) {
         Item item = findItem(id);
         if (item == null) {
@@ -73,7 +74,7 @@ public class ItemBox implements Iterable<Item> {
             return null;
         }
 
-        if (item.isNoTransfer() || !item.getIncluded().findItems(Item::isNoTransfer).isEmpty()) {                                           //deleting item is forbidden, item or one of its included has nt set to 1
+        if (!item.isExpired() && (item.isNoTransfer() || !item.getIncluded().findItems(Item::isNoTransfer).isEmpty())) {                    //deleting item is forbidden, item or one of its included has nt set to 1
             logger.info("can't delete item id %d, because it or one of its included has no transfer flag set", id);
             return null;
         }
