@@ -7,14 +7,13 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.util.AttributeKey;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.heckzero.server.ServerMain;
 
 import java.nio.charset.Charset;
 
 @Sharable
 public class NetOutHandler extends MessageToByteEncoder<String> {                                                                           //the outbound handler has the two primary purposes
     private static final Logger logger = LogManager.getFormatterLogger();                                                                   //1)log out the outbound message
-                                                                                                                                            //2)add 0x00 byte the the end of the outbound message to conform flash XML socket requests
+                                                                                                                                            //2)add 0x00 byte the end of the outbound message to conform flash XML socket requests
     @Override
     protected void encode(ChannelHandlerContext ctx, String msg, ByteBuf out) throws Exception {
         String chStr = (String) ctx.channel().attr(AttributeKey.valueOf("chStr")).get();                                                    //User login or socket address if a User is unknown
