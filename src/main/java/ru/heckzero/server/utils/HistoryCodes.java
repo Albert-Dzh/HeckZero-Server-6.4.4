@@ -34,7 +34,7 @@ public class HistoryCodes {
 	public static final int LOG_COP_BLOCKED_ACCOUNT = 144;																			//Полицейский '%s' заблокировал ваш счёт. Причина: %s 
 	public static final int LOG_COP_UNBLOCKED_ACCOUNT = 145;																		//Полицейский '%s' разблокировал ваш счёт. Причина: %s 
 	public static final int LOG_STORE_OWNER_SHIFTED_YOUR_ITEM = 156;																//Владелец магазина '%s' переложил ваш товар {%s} на склад 
-	public static final int LOG_CITIZEN_CANCELED_BY_MAYOR = 159;																	//Мэр %s лишил вас граждантсва %s
+	public static final int LOG_CITIZEN_CANCELED_BY_MAYOR = 159;																	//Мэр %s лишил вас гражданства %s
 	public static final int LOG_CLAN_POLL_CREATED = 165;																			//Создано голосование за кандидата %s. 
 	public static final int LOG_CLAN_CHANGE_LEADER = 166;																			//Передано главенство клана персонажу %s
 	public static final int LOG_CLAN_JOIN_REQ = 167;																				//Подана заявка на вступление в клан %s 

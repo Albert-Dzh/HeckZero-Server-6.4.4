@@ -47,11 +47,10 @@ public class User {
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
     private static final int TRANSFER_RATE = 5;                                                                                             //transfer rate percentage
 
-
-    public int getMoneyCop() {return getParamInt(Params.cup_0);}
+    public int getMoneyCop()     {return getParamInt(Params.cup_0);}
     public double getMoneySilv() {return getParamDouble(Params.silv);}
     public double getMoneyGold() {return getParamDouble(Params.gold);}
-    public int getMoneyErgon() {return 0;}
+    public int getMoneyErgon()   {return 0;}
 
     private static long getId2() {                                                                                                          //compute next id2 value for the user
         try (Session session = ServerMain.sessionFactory.openSession()) {
@@ -415,9 +414,9 @@ public class User {
         return;
     }
 
-    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int mod, int paint, String color) {              //MR - City Hall workflow
-        CityHall cityHall = currBld instanceof CityHall ? (CityHall) currBld : (CityHall) (currBld = CityHall.getCityHall(getBuilding().getId()));
-        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, mod, paint, color);
+    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color) {              //MR - City Hall workflow
+        CityHall cityHall = currBld instanceof CityHall ? (CityHall) currBld : (CityHall) (currBld = CityHall.getCityHall(getBuilding().getId()));  //TODO govnoy vonyaet
+        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color);
         return;
     }
 
