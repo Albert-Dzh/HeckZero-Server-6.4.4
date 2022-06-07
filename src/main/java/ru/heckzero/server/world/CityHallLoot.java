@@ -22,15 +22,10 @@ public class CityHallLoot {
     private Integer id;
 
     int template_loot_id;
-    int cost;
-    String res;
-    int count;
-    int ch_id;
-/*
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ch_id")
-    private CityHall cityHall;                                                                                                              //City hall
-*/
+    int cost;                                                                                                                               //license cost
+    String res;                                                                                                                             //license supplementary data
+    int count;                                                                                                                              //num of available license
+    int ch_id;                                                                                                                              //city hall id
 
     protected CityHallLoot() { }
     public boolean sync() {return ServerMain.sync(this);}
