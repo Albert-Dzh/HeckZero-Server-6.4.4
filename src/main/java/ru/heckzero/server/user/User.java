@@ -108,15 +108,19 @@ public class User {
     private int getParam_maxPsy() {return UserLevelData.getMaxPsy(this);}
     private int getParam_nochat() {return isOnlineGame() && !isOnlineChat() ? 1 : 0;}                                                       //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
-    private String getParam_citizen() {                                                                                                     //user citizenship is determined from his passport
-        Item passport = getItemBox().findItems(Item::isPassport).findFirst();
+
+    public String getParam_citizen() {                                                                                                     //user citizenship is determined from his passport
+        Item passport = getPassport();
         return passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res);
     }
+
     private int getParam_owner() {return getParamInt(Params.Z) == 0 ? 0 : BooleanUtils.toInteger(isBuildMaster(getBuilding()));}            //is a user under the kupol - his current location doesn't allow battling
     private int getParam_confattack() {return isOnlineGame() && !isInBattle() ? 1 : 0; }                                                    //if user is available for duel
     private int getParam_freechallenge() {return isOnlineGame() && getBuilding().getParamInt(Building.Params.name) == 1 ? 1 : 0; }          //if user is available for arena battle // challenge_t=10       -- таймаут арены (сек) // challenge_m=10       -- ставка (если бой на деньги) медных монет // challenge_a='В?[0-3]' -- типа сражения: B-кровавый бой, 0-на ножах, 1-легкое оружие, 2-среднее, 3-тяжёлое
     private int getParam_boxp() {return (int)((double)getMass().get("tk") * 100 / getMass().get("max"));}                                   //get user box load (percentage)
     private int getParam_freeexchange() {return 1; }                                                                                        //if user is available for items exchanging
+
+    public Item getPassport() {return getItemBox().findItems(Item::isPassport).findFirst();}                                                //get user passport item
 
     private int getMaxLoad() {                                                                                                              //user max load capacity
         int str = getParamInt(Params.str);
@@ -183,7 +187,7 @@ public class User {
 
     public ItemBox getItemBox() {return itemBox != null ? itemBox : (itemBox = ItemBox.init(ItemBox.BoxType.USER, id));}                    //return user itembox, init it if necessary
     public Map<String, Integer> getMass() {return Map.of("tk", getItemBox().getMass(), "max", getMaxLoad());}                               //get user weight tk - current, max - maximum, considering user profession influence
-    public Item getPassport() {return getItemBox().findItemByType(ItemsDct.BASE_TYPE_PASS); }
+
 
     synchronized void onlineGame(Channel ch) {                                                                                              //the user game channel connected
         logger.debug("setting user '%s' game channel online", getLogin());
@@ -414,9 +418,9 @@ public class User {
         return;
     }
 
-    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color) {              //MR - City Hall workflow
+    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax) {              //MR - City Hall workflow
         CityHall cityHall = currBld instanceof CityHall ? (CityHall) currBld : (CityHall) (currBld = CityHall.getCityHall(getBuilding().getId()));  //TODO govnoy vonyaet
-        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color);
+        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax);
         return;
     }
 

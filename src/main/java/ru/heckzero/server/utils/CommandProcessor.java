@@ -94,8 +94,9 @@ public class CommandProcessor extends DefaultHandler {
         String m1 = StringUtils.defaultString(attrs.getValue("m1"));                                                                        //name of new mayor and his assistant
         int mod = NumberUtils.toInt(attrs.getValue("mod"), -1);                                                                             //item id to be modified
         int paint = NumberUtils.toInt(attrs.getValue("paint"), -1);                                                                         //id of item that user want to paint
+        int tax = NumberUtils.toInt(attrs.getValue("tax"), -1);                                                                             //tax for citizenship
         String color = StringUtils.defaultString(attrs.getValue("color"));                                                                  //new color of recolored item
-        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color);
+        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax);
         return;
     }
 

@@ -179,9 +179,9 @@ public class Portal extends Building {
             }
 
             int mass = user.getMass().get("tk");                                                                                            //current user mass
-            Item passport = user.getPassport();
+            String citizenship = user.getParam_citizen();
 
-            int cost = user.isGod() ? 0 : route.getFlightCost(mass, passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res));             //get the flight cost
+            int cost = user.isGod() ? 0 : route.getFlightCost(mass, citizenship);                                                           //get the flight cost
             this.p1 = user.isGod() ? "" : this.p1;
 
             if (cost > user.getMoneyCop()) {                                                                                                //user is out of money

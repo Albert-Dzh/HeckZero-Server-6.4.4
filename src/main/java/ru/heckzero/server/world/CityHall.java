@@ -122,7 +122,7 @@ public class CityHall extends Building {
         return;
     }
 
-    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color) {
+    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax) {
         if (p1 != -1 && p2 != -1) {                                                                                                         //set the CityHall options
             setCityHallParams(p1, p2, d1, ds, m1, o);                                                                                       //set and save new CityHall params
             addHistory(HistoryCodes.LOG_CITY_HALL_CHANGE_PARAMS, user.getLogin());
@@ -135,6 +135,7 @@ public class CityHall extends Building {
                 user.sendMsg("<MR code=\"1\"/>");
                 return;
             }
+            addMoney(this.p1);                                                                                                              //add money to city hall cash
             Item passport = ItemTemplate.getTemplateItem(ItemTemplate.PASSPORT);                                                            //generate a new passport item based on template
             if (passport == null)
                 return;
@@ -157,12 +158,31 @@ public class CityHall extends Building {
 
             return;
         }
+        if (tax != -1) {                                                                                                                    //passport renewal
+            Item passport = user.getPassport();
+            if (passport == null) {
+                logger.warn("can't find passport item of user %s", user.getLogin());
+                user.sendMsg("<MR code=\"19\"/>");                                                                                          //Системная ошибка
+                return;
+            }
+            if (!user.decMoney(this.p2)) {                                                                                                  //try to charge a user for a passport renewal
+                user.sendMsg("<MR code=\"1\"/>");                                                                                           //Недостаточно монет
+                return;
+            }
+            addMoney(this.p2);                                                                                                              //add money to the city hall cash
+
+            user.getItemBox().changeOne(passport.getId(), Item.Params.dt, passport.getParamLong(Item.Params.dt) + ServerMain.ONE_MES);
+            user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.p2 + "]", getLogDescription(), HistoryCodes.ULOG_FOR_CITIZEN_TAX, String.valueOf(user.getMoneyCop()));//Оплатил {%s} в \'%s\' %s. В рюкзаке осталось %s мнт.
+            addHistory(HistoryCodes.LOG_CITY_HALL_PAY_TAX, user.getLogin(), String.valueOf(this.p2));                                       //Персонаж '%s' заплатил налоги: %s мнт."
+            user.sendMsg("<MR code=\"0\"/>");
+            return;
+        }
 
         if (buy != -1 && count > 0) {                                                                                                       //buying licences
             Thread buyingThread = new Thread(() -> this.buyLicsense(buy, count, user));                                                     //run in a separate thread for the sake of synchronization and avoid blocking of netty threads
             buyingThread.start();
             try {
-                buyingThread.join(10000);                                                                                                    //wait for the buying thread to finish to prevent any further client's commands processing by the netty thread
+                buyingThread.join(10000);                                                                                                   //wait for the buying thread to finish to prevent any further client's commands processing by the netty thread
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
