@@ -418,9 +418,9 @@ public class User {
         return;
     }
 
-    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax) {              //MR - City Hall workflow
+    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax, int ch, int cost) {              //MR - City Hall workflow
         CityHall cityHall = currBld instanceof CityHall ? (CityHall) currBld : (CityHall) (currBld = CityHall.getCityHall(getBuilding().getId()));  //TODO govnoy vonyaet
-        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax);
+        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost);
         return;
     }
 

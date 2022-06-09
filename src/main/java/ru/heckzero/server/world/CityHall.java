@@ -48,7 +48,7 @@ public class CityHall extends Building {
 
     private List<CityHallLoot> getLicences() {                                                                                              //get available licenses for the city hall
         try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<CityHallLoot> query = session.createQuery("select ch_loot from CityHallLoot ch_loot where ch_loot.ch_id = :id", CityHallLoot.class).setParameter("id", this.id).setCacheable(true);
+            Query<CityHallLoot> query = session.createQuery("select ch_loot from CityHallLoot ch_loot where ch_loot.ch_id = :id order by ch_loot.id", CityHallLoot.class).setParameter("id", this.id).setCacheable(true);
             return query.list();
         } catch (Exception e) {                                                                                                             //database problem occurred
             logger.error("can't load cityHall licences with ch id %d from database: %s", this.id, e.getMessage());
@@ -122,7 +122,7 @@ public class CityHall extends Building {
         return;
     }
 
-    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax) {
+    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax, int ch, int cost) {
         if (p1 != -1 && p2 != -1) {                                                                                                         //set the CityHall options
             setCityHallParams(p1, p2, d1, ds, m1, o);                                                                                       //set and save new CityHall params
             addHistory(HistoryCodes.LOG_CITY_HALL_CHANGE_PARAMS, user.getLogin());
@@ -190,6 +190,9 @@ public class CityHall extends Building {
 
         if (lic != -1) {                                                                                                                    //show available licenses
             List<CityHallLoot> chLoot = getLicences();
+            if (!user.isBuildMaster())
+                chLoot = chLoot.stream().filter(i -> i.getCost() != 0).toList();
+
             StringJoiner sj = new StringJoiner("", "<MR lic=\"1\">", "</MR>");
             for (CityHallLoot loot : chLoot) {
                 Item lootItem = ItemTemplate.getTemplateItem(loot.getTemplate_loot_id());
@@ -200,6 +203,23 @@ public class CityHall extends Building {
                 sj.add(lootItem.getXml());
             }
             user.sendMsg(sj.toString());
+            return;
+        }
+
+        if (ch != -1 && cost != -1) {                                                                                                       //license cost changing
+            List<CityHallLoot> chLoot = getLicences();
+            CityHallLoot licLoot = chLoot.stream().filter(i -> i.getId() == ch).findFirst().orElse(null);                                   //find the given license by id
+            if (licLoot == null) {                                                                                                          //can't found the license
+                logger.warn("lic (loot) id %d is not found in the CityHall id %d", ch, getId());
+                user.sendMsg("<MR code=\"19\"/>");                                                                                          //Системная ошибка
+                return;
+            }
+            Item licItem = ItemTemplate.getTemplateItem(licLoot.getTemplate_loot_id());                                                     //a license item from a loot
+            int minCost = licItem.getParamInt(Item.Params.cost2);                                                                           //minimum license cost
+            if (cost < minCost && cost != 0)                                                                                                //can't set cost which is less than a minimum
+                logger.warn("cant set new license cost to %d because it's less than minimum cost (%d < %d)", cost, minCost);
+            licLoot.setCost(cost);
+            licLoot.sync();
             return;
         }
 

@@ -96,7 +96,10 @@ public class CommandProcessor extends DefaultHandler {
         int paint = NumberUtils.toInt(attrs.getValue("paint"), -1);                                                                         //id of item that user want to paint
         int tax = NumberUtils.toInt(attrs.getValue("tax"), -1);                                                                             //tax for citizenship
         String color = StringUtils.defaultString(attrs.getValue("color"));                                                                  //new color of recolored item
-        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax);
+        int ch = NumberUtils.toInt(attrs.getValue("ch"), -1);                                                                               //license cost changing (license id)
+        int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);                                                                           //license cost changing (a new cost)
+
+        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost);
         return;
     }
 
