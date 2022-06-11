@@ -166,7 +166,7 @@ public class UserManager {                                                      
             return;
         }
         if (!isValidLogin(login) || !isValidPassword(userCryptedPass)) {                                                                    //login or password attributes are invalid
-            logger.warn("login or password don't conform the requirement, closing connection with %s", ch.attr(AttributeKey.valueOf("chStr")).get());
+            logger.warn("login or password don't conform the requirements, closing connection with %s", ch.attr(AttributeKey.valueOf("chStr")).get());
             ch.close();
             return;
         }

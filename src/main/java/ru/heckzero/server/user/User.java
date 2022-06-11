@@ -212,7 +212,7 @@ public class User {
         logger.debug("setting user '%s' game channel offline", getLogin());
         setParam(Params.lastlogout, Instant.now().getEpochSecond());                                                                        //set lastlogout to now
         this.gameChannel = null;                                                                                                            //a marker that user is offline now
-        disconnectChat();                                                                                                                   //chat without a game channel is ridiculous, so shut the chat down
+        disconnectChat();                                                                                                                   //having a chat channel without a game channel is ridiculous, so disconnecting the chat
         chat.updateMyStatus();                                                                                                              //will remove user from room
         addHistory(HistoryCodes.LOG_LOGOUT);                                                                                                //Выход из игры
         addHistory(HistoryCodes.LOG_BALANCE_INFO_2, String.valueOf(getMoneyCop()), String.valueOf(getMoneySilv()), String.valueOf(getMoneyGold()), String.valueOf(getMoneyErgon()));     // "На счету %s медных монет, %s серебряных, %s золотых и %s эргона.",

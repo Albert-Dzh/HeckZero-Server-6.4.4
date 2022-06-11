@@ -80,7 +80,7 @@ public class NetInHandlerMain extends ChannelInboundHandlerAdapter {
                 logger.error("Houston, we've had a problem");
                 if (cause instanceof SAXException) {                                                                                        //malformed XML was received from a client
                     logger.error("XML stinks like shit from %s \uD83E\uDD2E %s", chStr, cause.getMessage());                                //XML govnoy vonyaet
-                } else {                                                                                                                    //all other exceptions
+                } else {                                                                                                                    //all others exceptions
                     logger.error("an exception while processing a command from %s: %s", chStr, cause.getMessage());
 //                    cause.printStackTrace();
                 }
