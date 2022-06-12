@@ -18,7 +18,6 @@ import ru.heckzero.server.utils.HistoryCodes;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -261,7 +260,12 @@ public class UserManager {                                                      
 
     private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. the user must not be in a battle and must be offline for a defined amount of time
         logger.debug("purging rotten users from the cached users list");
-        Predicate<User> isRotten = (u) -> !u.isInGame() && u.getParamInt(User.Params.lastatime) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
+        long cacheTimeout = ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
+
+        Predicate<User> inGame = User::isInGame;
+        Predicate<User> timeoutLogout = u -> u.getParamInt(User.Params.lastlogout) > cacheTimeout;
+        Predicate<User> timeoutAccess = u -> u.getParamInt(User.Params.lastatime) > cacheTimeout;
+        Predicate<User> isRotten = inGame.negate().and(timeoutAccess).and(timeoutLogout);
         cachedUsers.removeIf(isRotten);                                                                                                     //remove rotten users from cashedUsers
         return;
     }
