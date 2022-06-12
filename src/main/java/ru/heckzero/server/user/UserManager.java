@@ -8,6 +8,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
@@ -33,7 +34,7 @@ public class UserManager {                                                      
     private static final CopyOnWriteArrayList<User> cachedUsers = new CopyOnWriteArrayList<>();
 
     private static boolean isValidPassword(String pasword) {return isValidSHA1(pasword);}                                                   //check if a user provided password conforms the requirements
-    private static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F0-9]{40}$");}                                                   //validate a string has a valid SHA1 hash format
+    private static boolean isValidSHA1(String s) {return s.matches("^[a-fA-F\\d]{40}$");}                                                   //validate a string has a valid SHA1 hash format
 
     static {
         ServerMain.userTasksScheduledExecutor.scheduleWithFixedDelay(UserManager::purgeCachedUsers, 60L, 60L , TimeUnit.SECONDS);           //purging offline users from the cachedUsers
@@ -91,23 +92,32 @@ public class UserManager {                                                      
     }
 
     public static User getUser(int id) {                                                                                                    //search from all cached users by id
-        return cachedUsers.stream().filter(u -> u.getId().equals(id)).findFirst().orElseGet(() -> getDbUser("UserById", id));
+        User user = cachedUsers.stream().filter(u -> u.getId().equals(id)).findFirst().orElse(null);
+        if (user != null)
+            return user;
+
+        user = getDbUser("UserById", id);
+        if (user == null)
+            return null;
+        return cachedUsers.addIfAbsent(user) ? user : getUser(id);
     }
 
     public static User getUser(String login) {                                                                                              //search from all cached users by login
-        return cachedUsers.stream().filter(u -> u.getLogin().equalsIgnoreCase(login)).findFirst().orElseGet(() -> getDbUser("UserByLogin", login));
+        User user = cachedUsers.stream().filter(u -> u.getLogin().equalsIgnoreCase(login)).findFirst().orElse(null);
+
+        if (user != null)
+            return user;
+
+        user = getDbUser("UserByLogin", login);
+        if (user == null)
+            return null;
+        return cachedUsers.addIfAbsent(user) ? user : getUser(login);
     }
 
-    private static User getDbUser(String namedQueryName, Object paramValue) {                                                               //instantiate a User from a database
+    private static User getDbUser(String namedQueryName, Object paramValue) throws HibernateException {                                     //instantiate a User from a database
         Session session = ServerMain.sessionFactory.openSession();
         Query<User> query = session.createNamedQuery(namedQueryName, User.class).setParameter(1, paramValue).setCacheable(false);           //param might be a login or id
-        try (session) {
-            User user = query.uniqueResult();
-            return (user == null) ? new User() : user;                                                                                      //return a user or an empty user if none found
-        } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't load user %s from database: %s", paramValue, e.getMessage());
-        }
-        return null;                                                                                                                        //in case of database error
+        return query.uniqueResult();
     }
 
     public static void loginUserChat(Channel ch, String ses, String login) {
@@ -223,7 +233,6 @@ public class UserManager {                                                      
                 }
             }
             user.onlineGame(ch);                                                                                                            //perform initial procedures to set the user game channel online
-            cachedUsers.addIfAbsent(user);                                                                                                  //add a user to cached user list
             logger.info("phase 5 All done! User '%s' game channel has been set online with address %s", user.getLogin(), ch.attr(AttributeKey.valueOf("sockStr")).get());
         }
         return;
@@ -252,7 +261,7 @@ public class UserManager {                                                      
 
     private static void purgeCachedUsers() {                                                                                                //remove offline users from the cache. the user must not be in a battle and must be offline for a defined amount of time
         logger.debug("purging rotten users from the cached users list");
-        Predicate<User> isRotten = (u) -> !u.isInGame() && u.getParamInt(User.Params.lastlogout) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
+        Predicate<User> isRotten = (u) -> !u.isInGame() && u.getParamInt(User.Params.lastatime) - Instant.now().getEpochSecond() > ServerMain.hzConfiguration.getLong("ServerSetup.UsersCachePurgeTime", ServerMain.DEF_USER_CACHE_TIMEOUT);
         cachedUsers.removeIf(isRotten);                                                                                                     //remove rotten users from cashedUsers
         return;
     }
@@ -273,7 +282,7 @@ public class UserManager {                                                      
         long numRus = login.chars().filter((ch) -> ru_c.indexOf(ch) != -1).distinct().count();												//number of unique russian chars in login
         if (numEng > 0 && numRus > 0)																						                //В имени разрешено использовать только буквы одного алфавита русского или английского. Нельзя смешивать.
             return false;
-        if (numEng < 2 && numRus < 2)  																					                	//login must contains at least 2 unique English or Russian characters В имени обязательно должны содержаться хотя бы две разные буквы",
+        if (numEng < 2 && numRus < 2)  																					                	//login must contain at least 2 unique English or Russian characters В имени обязательно должны содержаться хотя бы две разные буквы",
             return false;
         return true;
     }

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.Transient;
+import java.time.Instant;
 
 @Embeddable
 public class UserParams {
@@ -15,8 +16,9 @@ public class UserParams {
 
     @Transient int stamina = 100;                                                                                                           //stamina initial value 100, it makes sense only in a battle and is not persistent
     @Transient int battle_id ;                                                                                                              //user battle id
-    @Transient int ft;                                                                                                                      //user has made it's turn in a battle
-    @Transient int serverid = 1 ;                                                                                                           //user server id
+    @Transient int ft;                                                                                                                      //user has made its turn in a battle
+    @Transient final int serverid = 1 ;                                                                                                     //user server id
+    @Transient final long lastatime = Instant.now().getEpochSecond();                                                                       //last access time (selecting from database)
 
     private String login, password, email;                                                                                                  //ask the Captain Obvious about that params
     private long reg_time;                                                                                                                  //user registration time (epoch)

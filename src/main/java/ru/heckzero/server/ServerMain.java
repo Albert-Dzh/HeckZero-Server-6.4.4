@@ -53,7 +53,7 @@ public class ServerMain {
     private static final Integer DEF_MAX_SOCKET_IDLE_TIME = 5;                                                                              //default socket(non an authorized user) idle timeout (sec)
     public static final Integer DEF_MAX_USER_IDLE_TIME = 32;                                                                                //Max user timeout
     public static final Integer DEF_ENCRYPTION_KEY_SIZE = 32;                                                                               //encryption key length
-    public static final Integer DEF_USER_CACHE_TIMEOUT = 600;                                                                               //users cache timout after which it will be purged
+    public static final Integer DEF_USER_CACHE_TIMEOUT = 600;                                                                               //users cache timout (sec) after which it will be purged from UserManager cache
     public static final int ONE_MES = 2678400;                                                                                              //seconds in 1 month (by timezero)
     public static final double CURR_RATE_SILV_TO_COP = 100.0;                                                                               //silver to copper exchange rate
     public static final double CURR_RATE_GOLD_TO_SILV = 10.0;                                                                               //gold to silver exchange rate

@@ -41,7 +41,7 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, which is set on login by onlineGame() and onlineChat() methods
-    public enum Params {login, password, serverid, confattack, freeexchange, crypt_pass, email, reg_time, lastlogin, boxp, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, alliance, clr, img, man, HP, psy, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, brokenslots, poisoning, virus, ill, illtime, sp_head, sp_left, sp_right, sp_foot, df_eff, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock, dl, time, tdt, citizen, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, ft, group, stamina}  //all possible params that can be accessed via get/setParam()
+    public enum Params {login, password, serverid, confattack, freeexchange, crypt_pass, email, reg_time, lastatime, lastlogin, boxp, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, alliance, clr, img, man, HP, psy, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, brokenslots, poisoning, virus, ill, illtime, sp_head, sp_left, sp_right, sp_foot, df_eff, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock, dl, time, tdt, citizen, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, ft, group, stamina}  //all possible params that can be accessed via get/setParam()
     private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.citizen, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
     private static final EnumSet<Params> getinfoParams = EnumSet.of(Params.login, Params.serverid, Params.nochat, Params.citizen, Params.battleid, Params.confattack, Params.ft, Params.pro, Params.propwr, Params.clan, Params.clan_img, Params.rank_points, Params.img, Params.man, Params.HP, Params.psy, Params.str, Params.dex, Params.intu, Params.pow, Params.acc, Params.intel, Params.siluet, Params.name, Params.city, Params.about, Params.brokenslots, Params.poisoning, Params.virus, Params.ill, Params.dismiss, Params.chatblock, Params.forumblock, Params.maxHP, Params.maxPsy, Params.kupol, Params.level);
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
@@ -68,7 +68,6 @@ public class User {
     @Transient private long lastsynctime;
     @Transient private long lastSentId2 = -1;                                                                                               //last id2 value sent to user by com_MYPARAM() or com_NEWID()
     @Transient private ItemBox itemBox = null;                                                                                              //users item box will be initialized upon a first access
-
     @Transient private Building currBld = null;                                                                                             //current user building
 
     @Id
@@ -79,18 +78,18 @@ public class User {
     @Embedded
     private final UserParams params = new UserParams();                                                                                     //user params that can be set (read-write) are placed there
 
-    public User() { }
+    protected User() { }
 
-    public boolean isEmpty() {return id == null;}                                                                                           //user is a stub with empty params
+    public boolean isEmpty()      {return id == null;}                                                                                      //user is a stub with empty params
     public boolean isOnlineGame() {return gameChannel != null;}                                                                             //this user has a game channel assigned
     public boolean isOnlineChat() {return chatChannel != null;}                                                                             //this user has a chat channel assigned
     public boolean isInBattle()   {return getParamInt(Params.battleid) > 0;}                                                                //is user in a battle
-    public boolean isInGame()  {return isOnlineGame() || isInBattle();}                                                                     //user is treated as in game when he is online or is in a battle
-    public boolean isInClaim() {return false;}                                                                                              //user is in battle (arena) claim (waiting for a battle to begin)
-    public boolean isBot() {return !getParamStr(Params.bot).isEmpty();}                                                                     //user is a bot (not a human)
-    public boolean isGod() {return getParamInt(Params.god) == 1;}                                                                           //this is a privileged user (admin)
-    public boolean isCop() {return getParamStr(Params.clan).equals("police");}                                                              //user is a cop (is a member of police clan)
-    public boolean isInVault() {return false;}
+    public boolean isInGame()     {return isOnlineGame() || isInBattle();}                                                                  //user is treated as in game when he is online or is in a battle
+    public boolean isInClaim()    {return false;}                                                                                           //user is in battle (arena) claim (waiting for a battle to begin)
+    public boolean isBot()        {return !getParamStr(Params.bot).isEmpty();}                                                              //user is a bot (not a human)
+    public boolean isGod()        {return getParamInt(Params.god) == 1;}                                                                    //this is a privileged user (admin)
+    public boolean isCop()        {return getParamStr(Params.clan).equals("police");}                                                       //user is a cop (is a member of police clan)
+    public boolean isInVault()    {return false;}
 
     public Integer getId() {return id;}
     public Channel getGameChannel() {return this.gameChannel;}
@@ -217,7 +216,7 @@ public class User {
         addHistory(HistoryCodes.LOG_LOGOUT);                                                                                                //Выход из игры
         addHistory(HistoryCodes.LOG_BALANCE_INFO_2, String.valueOf(getMoneyCop()), String.valueOf(getMoneySilv()), String.valueOf(getMoneyGold()), String.valueOf(getMoneyErgon()));     // "На счету %s медных монет, %s серебряных, %s золотых и %s эргона.",
         sync();                                                                                                                             //update the user in database
-        notifyAll();                                                                                                                        //awake all threads waiting for the user to get offline
+        notify();                                                                                                                           //awake a next thread waiting for the user to get offline
         logger.info("user '%s' game channel logged out", getLogin());
         return;
     }
@@ -235,7 +234,7 @@ public class User {
         logger.debug("turning user '%s' chat off", getLogin());
         this.chatChannel = null;
         chat.updateMyStatus();
-        notifyAll();
+        notify();
         logger.info("user '%s' chat channel logged out", getLogin());
         return;
     }
@@ -764,5 +763,19 @@ public class User {
             return;
         ch.close();
         return;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        User user = (User) o;
+        return Objects.equals(id, user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
     }
 }
