@@ -2,6 +2,7 @@ package ru.heckzero.server.items;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Immutable;
@@ -9,6 +10,9 @@ import org.hibernate.query.Query;
 import ru.heckzero.server.ServerMain;
 
 import javax.persistence.*;
+
+@org.hibernate.annotations.NamedQuery(name = "TemplateById", query = "select it from ItemTemplate it where id = ?1")
+@org.hibernate.annotations.NamedQuery(name = "TemplateByName", query = "select it from ItemTemplate it where lower(it.name) = lower(?1)")
 
 @Immutable
 @Entity(name = "ItemTemplate")
@@ -22,17 +26,21 @@ public class ItemTemplate {
     public static final int BANK_KEY_COPY = 670;
     public static final int PASSPORT = 671;
 
-    public static Item getTemplateItem(int templateId) {
-        try (Session session = ServerMain.sessionFactory.openSession()) {
-            Query<ItemTemplate> query = session.createQuery("select it from ItemTemplate it where id = :id", ItemTemplate.class).setParameter("id", templateId).setCacheable(true);
-            ItemTemplate itemTemplate = query.getSingleResult();
-            Item newItem = new Item(itemTemplate);
-            newItem.setNextGlobalId();
-            return newItem;
-        } catch (Exception e) {                                                                                                             //database problem occurred
-            logger.error("can't clone template item with id %d: %s", templateId, e.getMessage());
-        }
-        return null;
+    private static Item getDbTemplate(String namedQueryName, Object paramValue) throws HibernateException {                                 //instantiate a template item from a database
+        Session session = ServerMain.sessionFactory.openSession();
+        Query<ItemTemplate> query = session.createNamedQuery(namedQueryName, ItemTemplate.class).setParameter(1, paramValue).setCacheable(false); //param might be a name or id
+        ItemTemplate itemTemplate = query.getSingleResult();
+        Item item = new Item(itemTemplate);
+        item.setNextGlobalId();
+        return item;
+    }
+
+    public static Item getTemplateItem(int templateId) {                                                                                    //get template item by id
+        return getDbTemplate("TemplateById", templateId);
+    }
+
+    public static Item getTemplateItem(String templateName) {                                                                               //get template item by name (ActionScript clip name)
+      return getDbTemplate("TemplateByName", templateName);
     }
 
     @Id

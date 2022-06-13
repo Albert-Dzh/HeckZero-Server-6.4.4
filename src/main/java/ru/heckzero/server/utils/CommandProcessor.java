@@ -88,8 +88,8 @@ public class CommandProcessor extends DefaultHandler {
         int vip = NumberUtils.toInt(attrs.getValue("vip"), -1);                                                                             //user buys VIP status
         int img = NumberUtils.toInt(attrs.getValue("img"), -1);                                                                             //passport selected image
         int lic = NumberUtils.toInt(attrs.getValue("lic"), -1);                                                                             //buying licenses
-        int buy = NumberUtils.toInt(attrs.getValue("buy"), -1);
-        int count = NumberUtils.toInt(attrs.getValue("count"), -1);
+        int buy = NumberUtils.toInt(attrs.getValue("buy"), -1);                                                                             //license id to buy
+        int count = NumberUtils.toInt(attrs.getValue("count"), -1);                                                                         //license count to buy
         int citizenship = NumberUtils.toInt(attrs.getValue("citizenship"), -1);                                                             //citizenship required
         String m1 = StringUtils.defaultString(attrs.getValue("m1"));                                                                        //name of new mayor and his assistant
         int mod = NumberUtils.toInt(attrs.getValue("mod"), -1);                                                                             //item id to be modified
@@ -98,8 +98,9 @@ public class CommandProcessor extends DefaultHandler {
         String color = StringUtils.defaultString(attrs.getValue("color"));                                                                  //new color of recolored item
         int ch = NumberUtils.toInt(attrs.getValue("ch"), -1);                                                                               //license cost changing (license id)
         int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);                                                                           //license cost changing (a new cost)
+        int w = NumberUtils.toInt(attrs.getValue("w"), -1);                                                                                 //wedding dress rent
 
-        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost);
+        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost, w);
         return;
     }
 

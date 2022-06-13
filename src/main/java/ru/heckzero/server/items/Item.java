@@ -2,6 +2,7 @@ package ru.heckzero.server.items;
 
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +14,7 @@ import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.LongType;
 import ru.heckzero.server.ServerMain;
+import ru.heckzero.server.user.User;
 import ru.heckzero.server.utils.ParamUtils;
 
 import javax.persistence.*;
@@ -20,6 +22,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
@@ -120,6 +123,8 @@ public class Item implements Cloneable {
     protected Item() { }
 
     public Item(ItemTemplate itmpl) {                                                                                                      //create (clone) an Item from ItemTemplate
+        if (itmpl == null)
+            return;
         Field[ ] tmplFields = ItemTemplate.class.getDeclaredFields();
         Arrays.stream(tmplFields).filter(f -> !Modifier.isStatic(f.getModifiers())).forEach(f -> {
             try {
@@ -197,6 +202,23 @@ public class Item implements Cloneable {
         splitted.setParam(Params.count, count);                                                                                             //set the count of the new item
         splitted.setParam(Params.id, newId.get());                                                                                          //set a new id for the new item
         return splitted;                                                                                                                    //return a new item
+    }
+
+    public boolean checkMinRequirement(User u) {												        									//check if user is allowed to use an item
+        String [ ] itemMin = getParamStr(Params.min).split(",");
+        for (String s : itemMin) {
+            if (s.indexOf('!') > 0) {
+                String[ ] test = s.split("!", 2);
+                if (u.getParamInt(User.Params.valueOf(test[0])) != NumberUtils.toInt(test[1]))
+                    return false;
+            } else {
+                String[ ] test = s.split("=", 2);
+                if (u.getParamInt(User.Params.valueOf(test[0])) < NumberUtils.toInt(test[1]))
+                    return false;
+            }
+        }
+        Predicate<Item> test = item -> item.checkMinRequirement(u);
+        return included.findItems(test.negate()).isEmpty();                                                                                 //return true if there are no included items which doesn't meet the minimums
     }
 
     @Override

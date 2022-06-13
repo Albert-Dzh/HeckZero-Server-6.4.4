@@ -108,9 +108,9 @@ public class User {
     private int getParam_nochat() {return isOnlineGame() && !isOnlineChat() ? 1 : 0;}                                                       //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
 
-    public String getParam_citizen() {                                                                                                     //user citizenship is determined from his passport
+    public String getParam_citizen() {                                                                                                      //user citizenship is determined from his passport
         Item passport = getPassport();
-        return passport == null ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res);
+        return passport == null || passport.isExpired() ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res);
     }
 
     private int getParam_owner() {return getParamInt(Params.Z) == 0 ? 0 : BooleanUtils.toInteger(isBuildMaster(getBuilding()));}            //is a user under the kupol - his current location doesn't allow battling
@@ -417,9 +417,9 @@ public class User {
         return;
     }
 
-    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax, int ch, int cost) {              //MR - City Hall workflow
+    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax, int ch, int cost, int w) {            //MR - City Hall workflow
         CityHall cityHall = currBld instanceof CityHall ? (CityHall) currBld : (CityHall) (currBld = CityHall.getCityHall(getBuilding().getId()));  //TODO govnoy vonyaet
-        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost);
+        cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost, w);
         return;
     }
 
@@ -668,7 +668,7 @@ public class User {
             if (!included.isEmpty()) {
                 logger.info("item %d contains %d included items: %s, unloading and adding them to user %s", item.getId(), included.size(), included.itemsIds(), getLogin());
                 included.forEach(i -> i.resetParam(Item.Params.pid));
-                included.forEach(i -> i.setParams(Map.of(Item.Params.user_id, id, Item.Params.section,0)));
+                included.forEach(i -> i.setParams(Map.of(Item.Params.user_id, id, Item.Params.section, 0)));
                 addSendItems(included);                                                                                                     //add all included items to the user as a 1st level items
             }
         });
