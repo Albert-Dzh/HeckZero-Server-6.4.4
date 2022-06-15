@@ -21,7 +21,7 @@ public class CityHallLoot {
     @SequenceGenerator(name = "city_hall_loot_gen", sequenceName = "city_hall_loot_id_seq", allocationSize = 1)
     private Integer id;
 
-    int template_loot_id;
+    double template_type;                                                                                                                   //item template type
     int cost;                                                                                                                               //license cost
     String res;                                                                                                                             //license supplementary data
     int count;                                                                                                                              //num of available license

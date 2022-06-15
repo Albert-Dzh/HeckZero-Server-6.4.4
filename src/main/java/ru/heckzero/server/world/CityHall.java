@@ -60,14 +60,12 @@ public class CityHall extends Building {
     private int d1;                                                                                                                         //wedding dress rent cost
     private int ds;                                                                                                                         //license discount for the citizens
     private int t;                                                                                                                          //trademark cost
-    private int o;                                                                                                                          //if CH sells licenses only to citizens
+    private int o;                                                                                                                          //if the CityHall sells licenses only to citizens
     private String sv;                                                                                                                      //city name
     @Column(name = "mayor")
     private String m1;                                                                                                                      //mayor and mayor deputy names (coma separated)
     private int mod;
     private int vip;                                                                                                                        //vip card price (silver coins)
-//    int paint;
-//    String color;
 
     protected CityHall() { }
 
@@ -106,7 +104,7 @@ public class CityHall extends Building {
         licLoot.sync();
         semBuyLic.release();                                                                                                                //release the semaphore
 
-        Item licItem = ItemTemplate.getTemplateItem(licLoot.getTemplate_loot_id());                                                         //form a license item from loot
+        Item licItem = ItemTemplate.getTemplateItem(licLoot.getTemplate_type());                                                            //form a license item from loot
         licItem.setParam(Item.Params.res, licLoot.getRes());
         licItem.setParam(Item.Params.count, numLic);
         user.addSendItem(licItem);
@@ -136,10 +134,7 @@ public class CityHall extends Building {
             }
             addMoney(this.p1);                                                                                                              //add money to city hall cash
             Item passport = ItemTemplate.getTemplateItem(ItemsDct.TYPE_PASSPORT);                                                           //generate a new passport item based on template
-            if (passport == null)
-                return;
 
-//            passport.setParam(Item.Params.user_id,  user.getId());                                                                        //user id
             passport.setParam(Item.Params.txt, String.format("%s %s", passport.getParamStr(Item.Params.txt), this.sv));                     //add city name to passport(item) name
             passport.setParam(Item.Params.res,  this.sv);                                                                                   //city name
             passport.setParam(Item.Params.dt, Instant.now().getEpochSecond() + ServerMain.ONE_MES);                                         //set passport expiration date to one month
@@ -209,7 +204,7 @@ public class CityHall extends Building {
 
             StringJoiner sj = new StringJoiner("", "<MR lic=\"1\">", "</MR>");
             for (CityHallLoot loot : chLoot) {
-                Item lootItem = ItemTemplate.getTemplateItem(loot.getTemplate_loot_id());
+                Item lootItem = ItemTemplate.getTemplateItem(loot.getTemplate_type());
                 lootItem.setParam(Item.Params.id, loot.getId());
                 lootItem.setParam(Item.Params.res, loot.getRes());
                 lootItem.setParam(Item.Params.cost, loot.getCost());
@@ -228,7 +223,7 @@ public class CityHall extends Building {
                 user.sendMsg("<MR code=\"19\"/>");                                                                                          //Системная ошибка
                 return;
             }
-            Item licItem = ItemTemplate.getTemplateItem(licLoot.getTemplate_loot_id());                                                     //a license item from a loot
+            Item licItem = ItemTemplate.getTemplateItem(licLoot.getTemplate_type());                                                     //a license item from a loot
             int minCost = licItem.getParamInt(Item.Params.cost2);                                                                           //minimum license cost
             if (cost < minCost && cost != 0)                                                                                                //can't set cost which is less than a minimum
                 logger.warn("cant set new license cost to %d because it's less than minimum cost (%d < %d)", cost, minCost);
