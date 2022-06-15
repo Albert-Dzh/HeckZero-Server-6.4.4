@@ -13,6 +13,7 @@ import javax.persistence.*;
 
 @org.hibernate.annotations.NamedQuery(name = "TemplateById", query = "select it from ItemTemplate it where id = ?1")
 @org.hibernate.annotations.NamedQuery(name = "TemplateByName", query = "select it from ItemTemplate it where lower(it.name) = lower(?1)")
+@org.hibernate.annotations.NamedQuery(name = "TemplateByType", query = "select it from ItemTemplate it where type = ?1")
 
 @Immutable
 @Entity(name = "ItemTemplate")
@@ -21,10 +22,6 @@ import javax.persistence.*;
 @org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_ONLY, region = "ItemTemplate_Region")
 public class ItemTemplate {
     private static final Logger logger = LogManager.getFormatterLogger();
-
-    public static final int BANK_KEY = 403;
-    public static final int BANK_KEY_COPY = 670;
-    public static final int PASSPORT = 671;
 
     private static Item getDbTemplate(String namedQueryName, Object paramValue) throws HibernateException {                                 //instantiate a template item from a database
         Session session = ServerMain.sessionFactory.openSession();
@@ -35,12 +32,15 @@ public class ItemTemplate {
         return item;
     }
 
-    public static Item getTemplateItem(int templateId) {                                                                                    //get template item by id
+    /*public static Item getTemplateItem(int templateId) {                                                                                    //get template item by id
         return getDbTemplate("TemplateById", templateId);
     }
-
+*/
     public static Item getTemplateItem(String templateName) {                                                                               //get template item by name (ActionScript clip name)
       return getDbTemplate("TemplateByName", templateName);
+    }
+    public static Item getTemplateItem(double itemType) {                                                                                   //get template item by name (ActionScript clip name)
+        return getDbTemplate("TemplateByType", itemType);
     }
 
     @Id

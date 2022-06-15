@@ -10,6 +10,7 @@ import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemTemplate;
+import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.UserManager;
 import ru.heckzero.server.utils.History;
 
@@ -96,7 +97,7 @@ public class BankCell {
     }
 
     public Item makeKeyCopy() {
-        Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY_COPY);                                                                //generate a bank cell key item
+        Item key = ItemTemplate.getTemplateItem(ItemsDct.TYPE_BANK_KEY_COPY);                                                               //generate a bank cell key item
         if (key == null)
             return null;
         Bank bank = Bank.getBank(bank_id);

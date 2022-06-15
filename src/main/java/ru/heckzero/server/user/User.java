@@ -41,9 +41,9 @@ public class User {
     private static final Logger logger = LogManager.getFormatterLogger();
 
     public enum ChannelType {NOUSER, GAME, CHAT}                                                                                            //user channel type, which is set on login by onlineGame() and onlineChat() methods
-    public enum Params {login, password, serverid, confattack, freeexchange, crypt_pass, email, reg_time, lastatime, lastlogin, boxp, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, alliance, clr, img, man, HP, psy, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, brokenslots, poisoning, virus, ill, illtime, sp_head, sp_left, sp_right, sp_foot, df_eff, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock, dl, time, tdt, citizen, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, ft, group, stamina}  //all possible params that can be accessed via get/setParam()
+    public enum Params {login, password, serverid, confattack, freeexchange, crypt_pass, email, reg_time, lastatime, lastlogin, boxp, lastlogout, lastclantime, loc_time, cure_time, god, hint, exp, pro, propwr, rank_points, clan, clan_img, alliance, clr, img, man, HP, psy, str, dex, intu, pow, acc, intel, sk0, sk1, sk2, sk3, sk4, sk5, sk6, sk7, sk8, sk9, sk10, sk11, sk12, X, Y, Z, hz, ROOM, id1, id2, i1, ne, ne2, cup_0, cup_1, cup_2, silv, gold, p78money, acc_flags, siluet, bot, name, city, about, note, list, plist, ODratio, brokenslots, poisoning, virus, ill, illtime, sp_head, sp_left, sp_right, sp_foot, df_eff, eff1, eff2, eff3, eff4, eff5, eff6, eff7, eff8, eff9, eff10, rd, rd1, t1, t2, dismiss, chatblock, forumblock, dl, time, tdt, citizen, owner, level, predlevel, nextlevel, maxHP, maxPsy, nochat, kupol, battleid, ft, group, stamina, vip}  //all possible params that can be accessed via get/setParam()
     private static final EnumSet<Params> getmeParams = EnumSet.of(Params.time, Params.tdt, Params.citizen, Params.owner, Params.level, Params.predlevel, Params.nextlevel, Params.maxHP, Params.maxPsy, Params.kupol, Params.login, Params.email, Params.loc_time, Params.god, Params.hint, Params.exp, Params.pro, Params.propwr, Params.rank_points, Params.clan, Params.clan_img, Params.clr, Params.img, Params.alliance, Params.man, Params.HP, Params.psy, Params.stamina, Params.str, Params.dex, Params.intu, Params.pow,  Params.acc, Params.intel, Params.sk0, Params.sk1, Params.sk2, Params.sk3, Params.sk4, Params.sk5, Params.sk6, Params.sk7, Params.sk8, Params.sk9, Params.sk10, Params.sk11, Params.sk12, Params.X, Params.Y, Params.Z, Params.hz, Params.ROOM, Params.id1, Params.id2, Params.i1, Params.ne, Params.ne2, Params.cup_0, Params.cup_1, Params.cup_2, Params.silv, Params.gold, Params.p78money, Params.acc_flags, Params.siluet, Params.bot, Params.name, Params.city, Params.about, Params.note, Params.list, Params.plist, Params.ODratio, Params.virus, Params.brokenslots, Params.poisoning, Params.ill, Params.illtime, Params.sp_head, Params.sp_left, Params.sp_right, Params.sp_foot, Params.eff1, Params.eff2, Params.eff3, Params.eff4, Params.eff5, Params.eff6, Params.eff7, Params.eff8, Params.eff9, Params.eff10, Params.rd, Params.rd1, Params.t1, Params.t2, Params.dismiss, Params.chatblock, Params.forumblock);   //params sent in <MYPARAM/>
-    private static final EnumSet<Params> getinfoParams = EnumSet.of(Params.login, Params.serverid, Params.nochat, Params.citizen, Params.battleid, Params.confattack, Params.ft, Params.pro, Params.propwr, Params.clan, Params.clan_img, Params.rank_points, Params.img, Params.man, Params.HP, Params.psy, Params.str, Params.dex, Params.intu, Params.pow, Params.acc, Params.intel, Params.siluet, Params.name, Params.city, Params.about, Params.brokenslots, Params.poisoning, Params.virus, Params.ill, Params.dismiss, Params.chatblock, Params.forumblock, Params.maxHP, Params.maxPsy, Params.kupol, Params.level);
+    private static final EnumSet<Params> getinfoParams = EnumSet.of(Params.login, Params.serverid, Params.nochat, Params.citizen, Params.battleid, Params.confattack, Params.ft, Params.pro, Params.propwr, Params.clan, Params.clan_img, Params.rank_points, Params.img, Params.man, Params.HP, Params.psy, Params.str, Params.dex, Params.intu, Params.pow, Params.acc, Params.intel, Params.siluet, Params.name, Params.city, Params.about, Params.brokenslots, Params.poisoning, Params.virus, Params.ill, Params.dismiss, Params.chatblock, Params.forumblock, Params.maxHP, Params.maxPsy, Params.kupol, Params.level, Params.vip);
     private static final int DB_SYNC_INTERVAL = 180;                                                                                        //user database sync interval in seconds
     private static final int TRANSFER_RATE = 5;                                                                                             //transfer rate percentage
 
@@ -107,6 +107,10 @@ public class User {
     private int getParam_maxPsy() {return UserLevelData.getMaxPsy(this);}
     private int getParam_nochat() {return isOnlineGame() && !isOnlineChat() ? 1 : 0;}                                                       //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
+    private int getParam_vip() {                                                                                                            //user has a valid VIP card
+        Item vipCard = getItemBox().findItems(Item::isVIPCard).findFirst();
+        return vipCard != null && vipCard.getParamInt(Item.Params.hz) == 1 ? 1 : 0;
+    }
 
     public String getParam_citizen() {                                                                                                      //user citizenship is determined from his passport
         Item passport = getPassport();
@@ -151,6 +155,11 @@ public class User {
         int user2LocY = user2.getLocation().getLocalY();
 
         return (int) Math.sqrt(Math.pow(myLocX - user2LocX, 2) +  Math.pow(myLocY - user2LocY, 2));
+    }
+
+    public boolean checkVip() {
+        Item vipCard = getItemBox().findItems(Item::isVIPCard).findFirst();
+        return vipCard == null || vipCard.isExpired();
     }
 
     public long getNewId() {                                                                                                                //get a new id for an item
@@ -282,7 +291,8 @@ public class User {
         }
 
         StringJoiner sj = new StringJoiner(" ", "<USERPARAM ", "</USERPARAM>");
-        if (details != -1) sj.add("details=\"1\"");
+//        if (details != -1)
+        sj.add("details=\"1\"");
         sj.add(user.getParamsXml(getinfoParams, false));                                                                                    //send a list of getinfo params
 
         if (user.isOnlineGame()) {                                                                                                          //user is online
@@ -569,6 +579,15 @@ public class User {
         return;
     }
 
+    public void com_USE(long vip, int set) {                                                                                                //do something with an Item
+        if (vip != -1 && set != -1) {                                                                                                       //change VIP card visibility
+            if (itemBox.changeOne(vip, Item.Params.hz, set) != null)
+                logger.info("set VIP card id %d visibility to %d from user %s", vip, set, getLogin());
+            else
+                logger.error("can't set VIP card id %d visibility to %d from user %s", vip, set, getLogin());
+        }
+        return;
+    }
 
     public void com_SILUET(String slt, String set) {                                                                                        //set user body type
         logger.debug("processing <SILUET/> from %s", getLogin());
@@ -622,7 +641,8 @@ public class User {
 
     public void addSendItems(ItemBox box) {box.forEach(this::addSendItem);}                                                                 //add and send all items from box to the user's Item Box
     public void addSendItem(Item item) {
-        if (getItemBox().addItem(item) == null)
+        Map<Item.Params, Object> userItemParams = Map.of(Item.Params.user_id, getId());
+        if (getItemBox().addItem(item, userItemParams) == null)
             logger.error("can't add item %s", item);
         sendMsg(String.format("<ADD_ONE>%s</ADD_ONE>", item.getXml()));
         return;

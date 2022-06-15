@@ -11,6 +11,7 @@ import ru.heckzero.server.ServerMain;
 import ru.heckzero.server.items.Item;
 import ru.heckzero.server.items.ItemBox;
 import ru.heckzero.server.items.ItemTemplate;
+import ru.heckzero.server.items.ItemsDct;
 import ru.heckzero.server.user.User;
 import ru.heckzero.server.utils.HistoryCodes;
 
@@ -64,7 +65,7 @@ public class CityHall extends Building {
     @Column(name = "mayor")
     private String m1;                                                                                                                      //mayor and mayor deputy names (coma separated)
     private int mod;
-    private int vip;
+    private int vip;                                                                                                                        //vip card price (silver coins)
 //    int paint;
 //    String color;
 
@@ -134,11 +135,11 @@ public class CityHall extends Building {
                 return;
             }
             addMoney(this.p1);                                                                                                              //add money to city hall cash
-            Item passport = ItemTemplate.getTemplateItem(ItemTemplate.PASSPORT);                                                            //generate a new passport item based on template
+            Item passport = ItemTemplate.getTemplateItem(ItemsDct.TYPE_PASSPORT);                                                           //generate a new passport item based on template
             if (passport == null)
                 return;
 
-            passport.setParam(Item.Params.user_id,  user.getId());                                                                          //user id
+//            passport.setParam(Item.Params.user_id,  user.getId());                                                                        //user id
             passport.setParam(Item.Params.txt, String.format("%s %s", passport.getParamStr(Item.Params.txt), this.sv));                     //add city name to passport(item) name
             passport.setParam(Item.Params.res,  this.sv);                                                                                   //city name
             passport.setParam(Item.Params.dt, Instant.now().getEpochSecond() + ServerMain.ONE_MES);                                         //set passport expiration date to one month
@@ -178,6 +179,11 @@ public class CityHall extends Building {
 
         if (w != -1) {                                                                                                                      //wedding dress rent
             doWeddingRent(user);
+            return;
+        }
+
+        if (vip != -1) {                                                                                                                    //buy a vip card
+            doVIP(user);
             return;
         }
 
@@ -262,4 +268,24 @@ public class CityHall extends Building {
         return;
     }
 
+    public void doVIP(User user) {                                                                                                          //buy a VIP card
+        if (!user.decMoney(ItemsDct.MONEY_SILV, this.vip)) {                                                                                //try to charge a user for a VIP card
+            user.sendMsg("<MR code=\"1\"/>");
+            return;
+        }
+
+        Item vip = ItemTemplate.getTemplateItem(ItemsDct.TYPE_VIP_CARD);                                                                    //generate a new VIP card item based on template
+        vip.setParam(Item.Params.dt,  Instant.now().getEpochSecond() + ServerMain.ONE_MES);                                                 //vip card validity date
+
+        user.addHistory(HistoryCodes.LOG_PAY, "Silver[" + this.vip + "]", getLogDescription(), HistoryCodes.ULOG_FOR_ALPHA_CODE);           //Оплатил {%s} в \'%s\' %s
+        user.addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(user.getMoneyCop()), String.valueOf(user.getMoneySilv()));            //На счету %s медных монет и %s серебряных.
+        user.addHistory(HistoryCodes.LOG_GET_ITEMS_IN_HOUSE, vip.getLogDescription(), this.getLogDescription());                            //Получены предметы: {%s} в здании \'%s\'
+        addHistory(HistoryCodes.LOG_CITY_HALL_BUY_VIP_CARD, user.getLogin(), String.valueOf(this.vip));                                     //here must be a proper CityHall log message for the wedding rent, but it's absent in the LANG file
+        user.addSendItem(vip);
+        user.sendMsg("<MR code=\"0\"/>");
+
+//        user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Silver[" + this.vip + "]", getLogDescription(), HistoryCodes.ULOG_FOR_ALPHA_CODE, String.valueOf(user.getMoneySilv()));//Оплатил {%s} в \'%s\' %s. В рюкзаке осталось %s мнт.
+
+        return;
+    }
 }

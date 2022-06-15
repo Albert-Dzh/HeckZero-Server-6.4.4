@@ -144,7 +144,8 @@ public class Item implements Cloneable {
     public boolean isDrug()       {return (getBaseType() == 796 || getBaseType() == 797) && getCount() > 0;}                                //item is a drug or inject pistol
     public boolean isPassport()   {return getBaseType() == 778;}                                                                            //item is a passport
 
-    public boolean isBldKey()     {return getBaseType() == ItemsDct.BASE_TYPE_BLD_KEY;}                                                     //item is an owner's building key
+    public boolean isBldKey()     {return getBaseType() == ItemsDct.TYPE_BLD_KEY;}                                                          //item is an owner's building key
+    public boolean isVIPCard()    {return getBaseType() == ItemsDct.TYPE_VIP_CARD;}                                                         //item is a VIP card
 
     public boolean needCreateNewId(int count) {return count > 0 && count < getCount() || (getCount() > 0 && getParamDouble(Params.calibre) > 0.0);} //shall we create a new id when messing around with this item
 

@@ -64,6 +64,12 @@ public class ItemBox implements Iterable<Item> {
     }
 
     public Item addItem(Item item)   {this.items.add(item); return (!needSync || item.sync()) ? item : null;}                               //add one item to the ItemBox
+    public Item addItem(Item item, Map<Item.Params, Object> setParams) {
+        if (setParams != null)
+            item.setParams(setParams);
+        return addItem(item);
+    }
+
     public boolean addAll(ItemBox box)  {this.items.addAll(box.items); return !needSync || sync();}                                         //add all items from itembox
 
 

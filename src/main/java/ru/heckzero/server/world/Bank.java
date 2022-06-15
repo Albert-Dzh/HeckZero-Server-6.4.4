@@ -77,7 +77,7 @@ public class Bank extends Building {
             return null;
         bankCell.addHistory(HistoryCodes.LOG_CELL_WAS_BOUGHT_BY, user.getLogin());                                                          //Персонаж '%s' купил эту ячейку
 
-        Item key = ItemTemplate.getTemplateItem(ItemTemplate.BANK_KEY);                                                                     //generate a bank cell key item
+        Item key = ItemTemplate.getTemplateItem(ItemsDct.TYPE_BANK_KEY);                                                                   //generate a bank cell key item
         if (key == null)
             return null;
         key.setParam(Item.Params.txt, key.getParamStr(Item.Params.txt) + bankCell.getId());                                                 //set the key item params to make client display the key hint properly

@@ -85,7 +85,7 @@ public class CommandProcessor extends DefaultHandler {
         int d1 = NumberUtils.toInt(attrs.getValue("d1"), -1);                                                                               //holiday outfit rent
         int ds = NumberUtils.toInt(attrs.getValue("ds"), -1);                                                                               //license discount for citizens
         int o  = NumberUtils.toInt(attrs.getValue("o"), -1);                                                                                //flag to sell license only to citizens of this city
-        int vip = NumberUtils.toInt(attrs.getValue("vip"), -1);                                                                             //user buys VIP status
+        int vip = NumberUtils.toInt(attrs.getValue("vip"), -1);                                                                             //user buys a VIP status
         int img = NumberUtils.toInt(attrs.getValue("img"), -1);                                                                             //passport selected image
         int lic = NumberUtils.toInt(attrs.getValue("lic"), -1);                                                                             //buying licenses
         int buy = NumberUtils.toInt(attrs.getValue("buy"), -1);                                                                             //license id to buy
@@ -100,7 +100,15 @@ public class CommandProcessor extends DefaultHandler {
         int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);                                                                           //license cost changing (a new cost)
         int w = NumberUtils.toInt(attrs.getValue("w"), -1);                                                                                 //wedding dress rent
 
+
         user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost, w);
+        return;
+    }
+
+    private void com_GAME_USE(Attributes attrs) {                                                                                           //do something with an Item
+        long vip = NumberUtils.toLong(attrs.getValue("vip"), -1);                                                                           //VIP card id
+        int set = NumberUtils.toInt(attrs.getValue("set"), -1);                                                                             //set VIP card visibility
+        user.com_USE(vip, set);
         return;
     }
 
@@ -116,7 +124,7 @@ public class CommandProcessor extends DefaultHandler {
     private void com_GAME_GETINFO(Attributes attrs) {                                                                                       //user information query
         logger.debug("processing <GETINFO/> command from user %s", user.getLogin());
         String login = attrs.getValue("login");                                                                                             //login attribute
-        int details = NumberUtils.toInt(attrs.getValue("details"));                                                                         //extended user info request
+        int details = NumberUtils.toInt(attrs.getValue("details"), -1);                                                                     //extended user info request
         user.com_GETINFO(login, details);
         return;
     }
