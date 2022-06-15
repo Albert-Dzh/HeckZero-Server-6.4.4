@@ -108,15 +108,13 @@ public class User {
     private int getParam_nochat() {return isOnlineGame() && !isOnlineChat() ? 1 : 0;}                                                       //user chat status, whether he has his chat channel off (null)
     private int getParam_kupol() {return getLocation().getParamInt(Location.Params.b) ^ 1;}                                                 //is a user under the kupol - his current location doesn't allow battling
     private int getParam_vip() {                                                                                                            //user has a valid VIP card
-        Item vipCard = getItemBox().findItems(Item::isVIPCard).findFirst();
-        return vipCard != null && vipCard.getParamInt(Item.Params.hz) == 1 ? 1 : 0;
+        Item vipCard = getItemBox().findItems(Item::isVIPCard).findFirst();                                                                 //try to find a VIP card item
+        return vipCard != null && vipCard.getParamInt(Item.Params.hz) == 1 ? 1 : 0;                                                         //check if VIP card item has hz param set to 1 - that means we should send the "vip" param in <GETINFO/>
     }
-
     public String getParam_citizen() {                                                                                                      //user citizenship is determined from his passport
         Item passport = getPassport();
         return passport == null || passport.isExpired() ? StringUtils.EMPTY : passport.getParamStr(Item.Params.res);
     }
-
     private int getParam_owner() {return getParamInt(Params.Z) == 0 ? 0 : BooleanUtils.toInteger(isBuildMaster(getBuilding()));}            //is a user under the kupol - his current location doesn't allow battling
     private int getParam_confattack() {return isOnlineGame() && !isInBattle() ? 1 : 0; }                                                    //if user is available for duel
     private int getParam_freechallenge() {return isOnlineGame() && getBuilding().getParamInt(Building.Params.name) == 1 ? 1 : 0; }          //if user is available for arena battle // challenge_t=10       -- таймаут арены (сек) // challenge_m=10       -- ставка (если бой на деньги) медных монет // challenge_a='В?[0-3]' -- типа сражения: B-кровавый бой, 0-на ножах, 1-легкое оружие, 2-среднее, 3-тяжёлое
@@ -427,7 +425,7 @@ public class User {
         return;
     }
 
-    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax, int ch, int cost, int w) {            //MR - City Hall workflow
+    public void com_MR(int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, String paint, String color, int tax, int ch, int cost, int w) {            //MR - City Hall workflow
         CityHall cityHall = currBld instanceof CityHall ? (CityHall) currBld : (CityHall) (currBld = CityHall.getCityHall(getBuilding().getId()));  //TODO govnoy vonyaet
         cityHall.processCmd(this, p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost, w);
         return;

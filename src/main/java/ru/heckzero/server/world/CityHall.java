@@ -121,7 +121,7 @@ public class CityHall extends Building {
         return;
     }
 
-    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, int paint, String color, int tax, int ch, int cost, int w) {
+    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, String paint, String color, int tax, int ch, int cost, int w) {
         if (p1 != -1 && p2 != -1) {                                                                                                         //set the CityHall options
             setCityHallParams(p1, p2, d1, ds, m1, o);                                                                                       //set and save new CityHall params
             addHistory(HistoryCodes.LOG_CITY_HALL_CHANGE_PARAMS, user.getLogin());
@@ -177,13 +177,18 @@ public class CityHall extends Building {
             return;
         }
 
-        if (w != -1) {                                                                                                                      //wedding dress rent
+        if (w != -1) {                                                                                                                      //wedding dress loan
             doWeddingRent(user);
             return;
         }
 
         if (vip != -1) {                                                                                                                    //buy a vip card
             doVIP(user);
+            return;
+        }
+
+        if (!paint.isEmpty() && !color.isEmpty()) {                                                                                         //paint items
+            doPaint(user, paint, color);
             return;
         }
 
@@ -268,7 +273,7 @@ public class CityHall extends Building {
         return;
     }
 
-    public void doVIP(User user) {                                                                                                          //buy a VIP card
+    private void doVIP(User user) {                                                                                                          //buy a VIP card
         if (!user.decMoney(ItemsDct.MONEY_SILV, this.vip)) {                                                                                //try to charge a user for a VIP card
             user.sendMsg("<MR code=\"1\"/>");
             return;
@@ -283,9 +288,30 @@ public class CityHall extends Building {
         addHistory(HistoryCodes.LOG_CITY_HALL_BUY_VIP_CARD, user.getLogin(), String.valueOf(this.vip));                                     //here must be a proper CityHall log message for the wedding rent, but it's absent in the LANG file
         user.addSendItem(vip);
         user.sendMsg("<MR code=\"0\"/>");
-
-//        user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Silver[" + this.vip + "]", getLogDescription(), HistoryCodes.ULOG_FOR_ALPHA_CODE, String.valueOf(user.getMoneySilv()));//Оплатил {%s} в \'%s\' %s. В рюкзаке осталось %s мнт.
-
         return;
     }
+
+    private void doPaint(User user, String paint, String color) {                                                                           //paint items
+        long[ ] itemIds = Arrays.stream(paint.split(",")).mapToLong(Long::valueOf).toArray();                                               //items ids that need to be painted
+        ItemBox paintBox = user.getItemBox().findItems(itemIds);                                                                            //item box containing items to be painted
+
+        if (paintBox.size() != itemIds.length) {                                                                                            //something went wrong
+            logger.error("can't find some items to be painted (%s) from user %s", itemIds, user.getLogin());
+            user.sendMsg("<MR code=\"19\"/>");                                                                                              //Системная ошибка
+            return;
+        }
+
+        if (!user.decMoney(ItemsDct.MONEY_SILV, paintBox.size())) {                                                                         //try to charge a user for painting
+            user.sendMsg("<MR code=\"1\"/>");
+            return;
+        }
+
+        paintBox.forEach(i -> user.getItemBox().changeOne(i.getId(), Item.Params.s1, color));                                               //paint the items - set s1 param of each item to color
+        user.addHistory(HistoryCodes.LOG_PAY, "Silver[" + paintBox.size() + "]", getLogDescription(), HistoryCodes.ULOG_FOR_ITEMS_PAINT);   //Оплатил {%s} в \'%s\' %s
+        user.addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(user.getMoneyCop()), String.valueOf(user.getMoneySilv()));            //На счету %s медных монет и %s серебряных.
+
+        user.sendMsg("<MR code=\"0\"/>");
+        return;
+    }
+
 }

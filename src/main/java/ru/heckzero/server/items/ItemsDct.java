@@ -10,9 +10,8 @@ public class ItemsDct {
     public static final double TYPE_BLD_KEY = 782;                                                                                          //building key-card base type
     public static final double TYPE_BLD_KEY_COPY = 782.1;                                                                                   //building key-card copy
 
-
-    public static final double TYPE_BANK_KEY = 786;
-    public static final double TYPE_BANK_KEY_COPY = 786.2;
+    public static final double TYPE_BANK_KEY = 786;                                                                                         //bank cell key
+    public static final double TYPE_BANK_KEY_COPY = 786.2;                                                                                  //bank cell key copy
 
     public static final double TYPE_PASSPORT = 778;                                                                                         //Passport
     public static final double TYPE_VIP_CARD = 856;                                                                                         //VIP CARD

@@ -1,5 +1,6 @@
 package ru.heckzero.server.items;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
@@ -53,8 +54,10 @@ public class ItemBox implements Iterable<Item> {
 
     public Item findFirst() {return items.stream().findFirst().orElse(null);}
     public ItemBox findItems(Predicate<Item> predicate) {return getAllItems().items.stream().filter(predicate).collect(ItemBox::new, ItemBox::addItem, ItemBox::addAll);}
+    public ItemBox findItems(long[] ids) {return findItems(i-> ArrayUtils.contains(ids, i.getId()));}                                       //find items by the set of ids
     public Item findItem(long id) {return findItems(i -> i.getId() == id).findFirst();}                                                     //find an item recursively inside the item box
-    public Item findItemByType(double type) {return findItems(i -> i.getParamDouble(Item.Params.type) == type).findFirst(); }               //find an Item by type
+
+    public Item findItemByType(double type) {return findItems(i -> i.getParamDouble(Item.Params.type) == type).findFirst();}                //find an Item by type
     private Item findSameItem(Item sample) {                                                                                                //find a joinable item in the item box by a sample item
         Predicate<Item> isResEquals = i -> sample.isRes() && i.getParamInt(Item.Params.massa) == sample.getParamInt(Item.Params.massa);     //the sample is res and items weight is equals
         Predicate<Item> isDrugEquals = i -> sample.isDrug() && i.getParamDouble(Item.Params.type) == sample.getParamInt(Item.Params.type);

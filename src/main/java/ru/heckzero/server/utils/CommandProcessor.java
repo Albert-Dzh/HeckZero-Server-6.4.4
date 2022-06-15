@@ -93,9 +93,9 @@ public class CommandProcessor extends DefaultHandler {
         int citizenship = NumberUtils.toInt(attrs.getValue("citizenship"), -1);                                                             //citizenship required
         String m1 = StringUtils.defaultString(attrs.getValue("m1"));                                                                        //name of new mayor and his assistant
         int mod = NumberUtils.toInt(attrs.getValue("mod"), -1);                                                                             //item id to be modified
-        int paint = NumberUtils.toInt(attrs.getValue("paint"), -1);                                                                         //id of item that user want to paint
-        int tax = NumberUtils.toInt(attrs.getValue("tax"), -1);                                                                             //tax for citizenship
+        String paint = StringUtils.defaultString(attrs.getValue("paint"));                                                                  //ids of items that user wants to paint
         String color = StringUtils.defaultString(attrs.getValue("color"));                                                                  //new color of recolored item
+        int tax = NumberUtils.toInt(attrs.getValue("tax"), -1);                                                                             //tax for citizenship
         int ch = NumberUtils.toInt(attrs.getValue("ch"), -1);                                                                               //license cost changing (license id)
         int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);                                                                           //license cost changing (a new cost)
         int w = NumberUtils.toInt(attrs.getValue("w"), -1);                                                                                 //wedding dress rent
