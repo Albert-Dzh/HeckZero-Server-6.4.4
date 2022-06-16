@@ -155,10 +155,7 @@ public class User {
         return (int) Math.sqrt(Math.pow(myLocX - user2LocX, 2) +  Math.pow(myLocY - user2LocY, 2));
     }
 
-    public boolean checkVip() {
-        Item vipCard = getItemBox().findItems(Item::isVIPCard).findFirst();
-        return vipCard == null || vipCard.isExpired();
-    }
+    public Item getVipCard() {return getItemBox().findItems(i -> i.isVIPCard() && !i.isExpired()).findFirst();}
 
     public long getNewId() {                                                                                                                //get a new id for an item
         long id1 = getParamLong(Params.id1);                                                                                                //get current user id1, id2, i1
@@ -646,6 +643,11 @@ public class User {
         return;
     }
 
+    public void delSendItem(Item item) {
+        getItemBox().delItem(item.getId());
+        sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
+        return;
+    }
     public void setRoom() {setRoom(-1, -1, 0, 0, 0);}                                                                                       //coming out
     public void setLocation(int X, int Y) {setRoom(X, Y, -1, -1, -1);}                                                                      //only change a location
     public void setBuilding(int Z, int hz) {setRoom(-1, -1, Z, hz, 0);}                                                                     //enter to building
@@ -679,8 +681,9 @@ public class User {
         expired.forEach(item -> {
             logger.info("deleting expired item %s for user %s", item, getLogin());
 
-            getItemBox().delItem(item.getId());
-            sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
+            delSendItem(item);
+//            getItemBox().delItem(item.getId());
+//            sendMsg(String.format("<DEL_ONE id=\"%d\"/>", item.getId()));
 
             ItemBox included = item.getIncluded();
             if (!included.isEmpty()) {

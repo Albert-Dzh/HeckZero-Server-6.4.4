@@ -48,8 +48,8 @@ public class ItemBox implements Iterable<Item> {
     public boolean isEmpty() {return items.isEmpty();}
     public List<Long> itemsIds() {return items.stream().mapToLong(Item::getId).boxed().toList();}                                           //get items IDs of the 1st level items
 
-    public int getMass()     {return items.stream().mapToInt(Item::getMass).sum();}                                                         //get the weight of all items in the itembox
-    public String getXml()   {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                       //get XML list of items as a list of <O/> nodes with the included items
+    public int getMass()         {return items.stream().mapToInt(Item::getMass).sum();}                                                     //get the weight of all items in the itembox
+    public String getXml()       {return items.stream().map(Item::getXml).collect(Collectors.joining());}                                   //get XML list of items as a list of <O/> nodes with the included items
     public ItemBox getAllItems() {return items.stream().map(Item::getAllItems).collect(ItemBox::new, ItemBox::addAll, ItemBox::addAll);}
 
     public Item findFirst() {return items.stream().findFirst().orElse(null);}

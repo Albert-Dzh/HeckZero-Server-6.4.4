@@ -268,20 +268,29 @@ public class CityHall extends Building {
         return;
     }
 
-    private void doVIP(User user) {                                                                                                          //buy a VIP card
+    private void doVIP(User user) {                                                                                                         //user buys a VIP card or renew an old one
         if (!user.decMoney(ItemsDct.MONEY_SILV, this.vip)) {                                                                                //try to charge a user for a VIP card
             user.sendMsg("<MR code=\"1\"/>");
             return;
         }
 
-        Item vip = ItemTemplate.getTemplateItem(ItemsDct.TYPE_VIP_CARD);                                                                    //generate a new VIP card item based on template
-        vip.setParam(Item.Params.dt,  Instant.now().getEpochSecond() + ServerMain.ONE_MES);                                                 //vip card validity date
+        Item vip = user.getVipCard();                                                                                                       //try to find an existing VIP card from user
+        if (vip != null) {                                                                                                                  //found
+            logger.info("renewing a VIP card id %d of user %s", vip.getId(), user.getLogin());
+            vip.setParam(Item.Params.dt, vip.getParamLong(Item.Params.dt) + ServerMain.ONE_MES);                                            //renew - extend dt param by 1 month
+            user.sendMsg(String.format("<CHANGE_ONE id=\"%d\" dt=\"%d\"/>", vip.getId(), vip.getParamLong(Item.Params.dt)));
+        }else {                                                                                                                             //create a new VIP card item
+            vip = ItemTemplate.getTemplateItem(ItemsDct.TYPE_VIP_CARD);                                                                     //create a new VIP card item based on a template item
+            logger.info("created a VIP card id %d for user %s", vip.getId(), user.getLogin());
+            vip.setParam(Item.Params.dt, Instant.now().getEpochSecond() + ServerMain.ONE_MES);                                              //set the vip card expiration date
+            user.addSendItem(vip);                                                                                                          //send a vip card to user
+        }
 
         user.addHistory(HistoryCodes.LOG_PAY, "Silver[" + this.vip + "]", getLogDescription(), HistoryCodes.ULOG_FOR_ALPHA_CODE);           //Оплатил {%s} в \'%s\' %s
         user.addHistory(HistoryCodes.LOG_BALANCE_INFO, String.valueOf(user.getMoneyCop()), String.valueOf(user.getMoneySilv()));            //На счету %s медных монет и %s серебряных.
         user.addHistory(HistoryCodes.LOG_GET_ITEMS_IN_HOUSE, vip.getLogDescription(), this.getLogDescription());                            //Получены предметы: {%s} в здании \'%s\'
-        addHistory(HistoryCodes.LOG_CITY_HALL_BUY_VIP_CARD, user.getLogin(), String.valueOf(this.vip));                                     //here must be a proper CityHall log message for the wedding rent, but it's absent in the LANG file
-        user.addSendItem(vip);
+        addHistory(HistoryCodes.LOG_CITY_HALL_BUY_VIP_CARD, user.getLogin(), String.valueOf(this.vip));                                     //Персонаж '%s' купил VIP-card: %s с.м.
+
         user.sendMsg("<MR code=\"0\"/>");
         return;
     }
