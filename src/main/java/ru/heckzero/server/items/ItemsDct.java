@@ -12,7 +12,7 @@ public class ItemsDct {
 
     public static final double TYPE_BANK_KEY = 786;                                                                                         //bank cell key
     public static final double TYPE_BANK_KEY_COPY = 786.2;                                                                                  //bank cell key copy
-
     public static final double TYPE_PASSPORT = 778;                                                                                         //Passport
     public static final double TYPE_VIP_CARD = 856;                                                                                         //VIP CARD
+    public static final double TYPE_TRADEMARK = 834;                                                                                        //TradeMark
 }

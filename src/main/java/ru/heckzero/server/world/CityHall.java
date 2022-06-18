@@ -55,6 +55,16 @@ public class CityHall extends Building {
         return new ArrayList<>();
     }
 
+    private int checkTrademark(String trade) {                                                                                              //check if the such trademark exists
+        try (Session session = ServerMain.sessionFactory.openSession()) {
+            Query<Item> query = session.createQuery("select i from Item i where i.type = :type and lower(i.made) = :made", Item.class).setParameter("type", ItemsDct.TYPE_TRADEMARK).setParameter("made", trade.toLowerCase()).setCacheable(true);
+            return query.list().size();
+        } catch (HibernateException e) {                                                                                                    //database problem occurred
+            logger.error("can't check if trademark '%s' exists: %s", trade, e.getMessage());
+        }
+        return 1;
+    }
+
     private int p1;                                                                                                                         //passport cost
     private int p2;                                                                                                                         //citizenship monthly fee
     private int d1;                                                                                                                         //wedding dress rent cost
@@ -119,7 +129,7 @@ public class CityHall extends Building {
         return;
     }
 
-    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, String paint, String color, int tax, int ch, int cost, int w) {
+    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, String paint, String color, int tax, int ch, int cost, int w, String trade) {
         if (p1 != -1 && p2 != -1) {                                                                                                         //set the CityHall options
             setCityHallParams(p1, p2, d1, ds, m1, o);                                                                                       //set and save new CityHall params
             addHistory(HistoryCodes.LOG_CITY_HALL_CHANGE_PARAMS, user.getLogin());
@@ -184,6 +194,11 @@ public class CityHall extends Building {
 
         if (!paint.isEmpty() && !color.isEmpty()) {                                                                                         //paint items
             doPaint(user, paint, color);
+            return;
+        }
+
+        if (!trade.isEmpty()) {                                                                                                             //user registers a trademark
+            doTradeMark(user, trade);
             return;
         }
 
@@ -318,4 +333,32 @@ public class CityHall extends Building {
         return;
     }
 
+    private void doTradeMark(User user, String trade) {                                                                                     //register a new trademark
+        trade = trade.trim();
+        if (checkTrademark(trade) != 0) {
+            user.sendMsg("<MR code=\"15\"/>");                                                                                              //Такая или подобная торговая марка уже зарегистрирована
+            return;
+        }
+
+        if (!user.decMoney(this.t)) {                                                                                                       //user hasn't got enough money
+            logger.warn("user %s hasn't got enough money to rent wedding clothes", user.getLogin());
+            user.sendMsg("<MR code=\"1\"/>");                                                                                               //Недостаточно монет
+            return;
+        }
+        this.addMoney(this.t);                                                                                                              //add money to city hall cache
+
+        Item tm = ItemTemplate.getTemplateItem(ItemsDct.TYPE_TRADEMARK);                                                                    //create a new TradeMark item
+        tm.setParam(Item.Params.made, trade);
+        tm.setParam(Item.Params.owner, user.getLogin());
+        tm.setParam(Item.Params.tm, Instant.now().getEpochSecond());
+        logger.info("created a trademark %s id %d for user %s", trade, tm.getId(), user.getLogin());
+
+        user.addHistory(HistoryCodes.LOG_PAY_AND_BALANCE, "Coins[" + this.t + "]", getLogDescription(), HistoryCodes.ULOG_FOR_TRADEMARK, String.valueOf(user.getMoneyCop()));//Оплатил {%s} в \'%s\' %s. В рюкзаке осталось %s мнт.
+        user.addHistory(HistoryCodes.LOG_GET_ITEMS_IN_HOUSE, tm.getLogDescription(), this.getLogDescription());                             //Получены предметы: {%s} в здании \'%s\'
+        addHistory(HistoryCodes.LOG_CITY_HALL_REG_TRADEMARK, user.getLogin(), trade);               	    			                    //Персонаж '%s' зарегистрировал торговую марку {%s}
+
+        user.addSendItem(tm);                                                                                                               //send a trademark item to the user
+        user.sendMsg("<MR code=\"0\"/>");
+        return;
+    }
 }

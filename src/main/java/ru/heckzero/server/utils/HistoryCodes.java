@@ -240,7 +240,7 @@ public class HistoryCodes {
 	public static final String ULOG_FOR_SOUVENIR_DELIVERY = "16";																	// за доставку сувенира
 	public static final String ULOG_FOR_WEDDING_RENT = "17";																		// :прокат одежды
 	public static final String ULOG_FOR_GIFT_PACKAGING = "18";																		//за оформление подарка
-	public static final String ULOG_FOR_RES_REFINE = "19";																			//за обогащение ресурсов
+	public static final String ULOG_FOR_RES_ENRICHMENT = "19";																		//за обогащение ресурсов
 	public static final String ULOG_FOR_TRADEMARK ="20";																			//за регистрацию торговой марки
 	public static final String ULOG_FOR_ALPHA_CODE = "25";																			//: оплата кода доступа альфа
 	public static final String ULOG_FOR_ITEMS_PAINT = "26";																			//: покраска брони
