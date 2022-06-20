@@ -129,7 +129,7 @@ public class CityHall extends Building {
         return;
     }
 
-    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, String paint, String color, int tax, int ch, int cost, int w, String trade) {
+    public void processCmd(User user, int p1, int p2, int d1, int ds, String m1, int o, int vip, int citizenship, int img, int lic, int buy, int count, int mod, String paint, String color, int tax, int ch, int cost, int w, String trade, int get) {
         if (p1 != -1 && p2 != -1) {                                                                                                         //set the CityHall options
             setCityHallParams(p1, p2, d1, ds, m1, o);                                                                                       //set and save new CityHall params
             addHistory(HistoryCodes.LOG_CITY_HALL_CHANGE_PARAMS, user.getLogin());
@@ -200,6 +200,13 @@ public class CityHall extends Building {
         if (!trade.isEmpty()) {                                                                                                             //user registers a trademark
             doTradeMark(user, trade);
             return;
+        }
+
+        if (get != -1) {                                                                                                                    //withdraw money from CityHall cash
+            int cashTaken = this.decMoney(get);
+            user.addMoney(ItemsDct.MONEY_COPP, cashTaken);
+            addHistory(HistoryCodes.LOG_CITY_HALL_GET_MONEY_FROM_CASH, user.getLogin(), String.valueOf(get));
+            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoneyCop()));
         }
 
         if (buy != -1 && count > 0) {                                                                                                       //buying licences

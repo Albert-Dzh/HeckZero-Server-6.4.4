@@ -100,9 +100,10 @@ public class CommandProcessor extends DefaultHandler {
         int ch = NumberUtils.toInt(attrs.getValue("ch"), -1);                                                                               //license cost changing (license id)
         int cost = NumberUtils.toInt(attrs.getValue("cost"), -1);                                                                           //license cost changing (a new cost)
         int w = NumberUtils.toInt(attrs.getValue("w"), -1);                                                                                 //wedding dress rent
+        int get = NumberUtils.toInt(attrs.getValue("get"), -1);                                                                             //money withdraw
 
 
-        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost, w, trade);
+        user.com_MR(p1, p2, d1, ds, m1, o, vip, citizenship, img, lic, buy, count, mod, paint, color, tax, ch, cost, w, trade, get);
         return;
     }
 
