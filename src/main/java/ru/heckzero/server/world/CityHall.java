@@ -205,8 +205,8 @@ public class CityHall extends Building {
         if (get != -1) {                                                                                                                    //withdraw money from CityHall cash
             int cashTaken = this.decMoney(get);
             user.addMoney(ItemsDct.MONEY_COPP, cashTaken);
-            addHistory(HistoryCodes.LOG_CITY_HALL_GET_MONEY_FROM_CASH, user.getLogin(), String.valueOf(get));
-            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoneyCop()));
+            addHistory(HistoryCodes.LOG_CITY_HALL_GET_MONEY_FROM_CASH, user.getLogin(), String.valueOf(get));                               //Владелец мэрии '%s' забрал из кассы %s мнт.
+            user.addHistory(HistoryCodes.LOG_GET_MONEY_FROM_CASH, String.valueOf(ItemsDct.MONEY_COPP), String.valueOf(get), getLogDescription(), String.valueOf(user.getMoneyCop()));//Забрал {%s[%s]} из кассы %s. В рюказке стало %s мнт.
         }
 
         if (buy != -1 && count > 0) {                                                                                                       //buying licences
