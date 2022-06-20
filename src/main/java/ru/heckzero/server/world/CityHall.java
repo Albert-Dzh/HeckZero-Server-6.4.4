@@ -341,7 +341,7 @@ public class CityHall extends Building {
         }
 
         if (!user.decMoney(this.t)) {                                                                                                       //user hasn't got enough money
-            logger.warn("user %s hasn't got enough money to rent wedding clothes", user.getLogin());
+            logger.warn("user %s hasn't got enough money to buy a trademark", user.getLogin());
             user.sendMsg("<MR code=\"1\"/>");                                                                                               //Недостаточно монет
             return;
         }
